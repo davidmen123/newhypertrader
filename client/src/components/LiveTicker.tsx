@@ -256,6 +256,10 @@ export default function LiveTicker() {
   const { data: volData } = trpc.hyperliquid.marketTicker.useQuery(undefined, {
     refetchInterval: 30 * 1000,
   });
+  const fallbackBtcChange =
+    volData?.btc != null && volData?.btcPrevClose != null && volData.btcPrevClose !== 0
+      ? ((volData.btc - volData.btcPrevClose) / volData.btcPrevClose) * 100
+      : null;
 
   // WebSocket for BTC price
   useEffect(() => {
@@ -346,8 +350,8 @@ export default function LiveTicker() {
         <PriceCard
           label="BTC"
           sublabel={lang === "zh" ? "永续" : "PERP"}
-          price={btcLast}
-          change={btcChange}
+          price={btcLast ?? volData?.btc ?? null}
+          change={btcChange ?? fallbackBtcChange}
           isLive
           flash={btcFlash}
           priceDecimals={0}
