@@ -15,7 +15,14 @@ export const appRouter = router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+      const res = ctx.res as typeof ctx.res & {
+        clearCookie?: (name: string, options?: unknown) => void;
+      };
+      if (typeof res.clearCookie === "function") {
+        res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+      } else {
+        ctx.res.setHeader("Set-Cookie", `${COOKIE_NAME}=; Max-Age=0; Path=/; HttpOnly; SameSite=None; Secure`);
+      }
       return {
         success: true,
       } as const;

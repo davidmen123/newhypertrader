@@ -598,7 +598,7 @@ export const deribitRouter = router({
       }
     }
 
-    return {
+    const result = {
       btcPrice: price,
       // Total equity
       totalEquityUsdc,
