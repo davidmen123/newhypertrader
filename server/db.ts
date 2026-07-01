@@ -1,8 +1,8 @@
 import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, InsertTrade, InsertPnlSnapshot, pnlSnapshots, trades, users, pageViews } from "../drizzle/schema";
-import { ENV } from './_core/env';
-import { getIndexPrice } from './deribit';
+import { InsertUser, InsertTrade, InsertPnlSnapshot, pnlSnapshots, trades, users, pageViews } from "../drizzle/schema.ts";
+import { ENV } from './_core/env.ts';
+import { getIndexPrice } from './deribit.ts';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 

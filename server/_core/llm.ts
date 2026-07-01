@@ -1,4 +1,4 @@
-import { ENV } from "./env";
+import { ENV } from "./env.ts";
 
 export type Role = "system" | "user" | "assistant" | "tool" | "function";
 

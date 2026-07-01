@@ -6,7 +6,7 @@
  * - earningsCalendar: Top 50 US stocks earnings for the next 7 days
  *   Source: Alpha Vantage free API (no key required for demo)
  */
-import { publicProcedure, router } from "../_core/trpc";
+import { publicProcedure, router } from "../_core/trpc.ts";
 
 // ─── In-memory cache ─────────────────────────────────────────────────────────
 interface CacheEntry<T> {

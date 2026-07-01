@@ -1,12 +1,12 @@
-import { COOKIE_NAME } from "../shared/const";
-import { getSessionCookieOptions } from "./_core/cookies";
-import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
-import { deribitRouter } from "./routers/deribit";
-import { calendarRouter } from "./routers/calendar";
-import { bitgetRouter } from "./routers/bitget";
-import { hyperliquidRouter } from "./routers/hyperliquid";
-import { incrementPageViews, getPageViews } from "./db";
+import { COOKIE_NAME } from "../shared/const.ts";
+import { getSessionCookieOptions } from "./_core/cookies.ts";
+import { systemRouter } from "./_core/systemRouter.ts";
+import { publicProcedure, router } from "./_core/trpc.ts";
+import { deribitRouter } from "./routers/deribit.ts";
+import { calendarRouter } from "./routers/calendar.ts";
+import { bitgetRouter } from "./routers/bitget.ts";
+import { hyperliquidRouter } from "./routers/hyperliquid.ts";
+import { incrementPageViews, getPageViews } from "./db.ts";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly

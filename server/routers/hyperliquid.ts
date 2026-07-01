@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { publicProcedure, router } from "../_core/trpc";
+import { publicProcedure, router } from "../_core/trpc.ts";
 import {
   getHyperliquidAccountOverview,
   getHyperliquidBtcPrice,
@@ -13,8 +13,8 @@ import {
   getHyperliquidSpotEquityUsdc,
   getHyperliquidSpotState,
   getHyperliquidTradeHistory,
-} from "../hyperliquid";
-import { getPnlSnapshots, upsertPnlSnapshot } from "../db";
+} from "../hyperliquid.ts";
+import { getPnlSnapshots, upsertPnlSnapshot } from "../db.ts";
 
 export const hyperliquidRouter = router({
   configStatus: publicProcedure.query(() => getHyperliquidConfigStatus()),

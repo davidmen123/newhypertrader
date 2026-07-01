@@ -16,7 +16,7 @@
  *   });
  */
 import { storagePut } from "server/storage";
-import { ENV } from "./env";
+import { ENV } from "./env.ts";
 
 export type GenerateImageOptions = {
   prompt: string;

@@ -12,8 +12,8 @@
  *   options_pl + futures_pl → total realized PnL
  *   delta_total    → portfolio delta
  */
-import { getAccountSummary } from "./deribit";
-import { upsertPnlSnapshot } from "./db";
+import { getAccountSummary } from "./deribit.ts";
+import { upsertPnlSnapshot } from "./db.ts";
 
 // Snapshot both BTC and USDC sub-accounts for full portfolio coverage
 const SNAPSHOT_CURRENCIES = ["BTC", "USDC"];
