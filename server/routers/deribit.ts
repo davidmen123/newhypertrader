@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { publicProcedure, router } from "../_core/trpc.ts";
+import { publicProcedure, router } from "../_core/trpc.js";
 import {
   getAccountSummaries,
   getAccountSummary,
@@ -8,7 +8,7 @@ import {
   getUserTradesByCurrency,
   getIndexPrice,
   deribitWs,
-} from "../deribit.ts";
+} from "../deribit.js";
 import {
   upsertTrades,
   getTradesFromDb,
@@ -17,8 +17,8 @@ import {
   getCombinedPnlSnapshots,
   getPnlAttributionSnapshots,
   getEarliestPnlSnapshots,
-} from "../db.ts";
-import { getSchedulerState } from "../scheduler.ts";
+} from "../db.js";
+import { getSchedulerState } from "../scheduler.js";
 
 export const deribitRouter = router({
   // New procedure to calculate trade metrics like win rate and P/L ratio

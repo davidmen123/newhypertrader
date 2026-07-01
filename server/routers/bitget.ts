@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { publicProcedure, router } from "../_core/trpc.ts";
+import { publicProcedure, router } from "../_core/trpc.js";
 import {
   getAllCurrentPositions,
   getBitgetAccountOverview,
@@ -8,9 +8,9 @@ import {
   getFuturesAccounts,
   getSpotAssets,
   getUnifiedAccountAssets,
-} from "../bitget.ts";
-import { getIndexPrice } from "../deribit.ts";
-import { getPnlSnapshots, upsertPnlSnapshot } from "../db.ts";
+} from "../bitget.js";
+import { getIndexPrice } from "../deribit.js";
+import { getPnlSnapshots, upsertPnlSnapshot } from "../db.js";
 
 export const bitgetRouter = router({
   configStatus: publicProcedure.query(() => getBitgetConfigStatus()),

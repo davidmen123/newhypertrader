@@ -1,1 +1,1 @@
-import {} from "./schema.ts";
+import {} from "./schema.js";

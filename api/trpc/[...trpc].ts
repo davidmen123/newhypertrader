@@ -1,6 +1,6 @@
 import { nodeHTTPRequestHandler } from "@trpc/server/adapters/node-http";
-import { appRouter } from "../../server/routers.ts";
-import { createContext } from "../../server/_core/context.ts";
+import { appRouter } from "../../server/routers.js";
+import { createContext } from "../../server/_core/context.js";
 
 export default async function handler(req: any, res: any) {
   const rawPath = req.query?.trpc;
