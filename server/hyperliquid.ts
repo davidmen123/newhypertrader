@@ -3,7 +3,7 @@ import https from "https";
 import tls from "tls";
 
 const HYPERLIQUID_API_URL = process.env.HYPERLIQUID_API_URL || "https://api.hyperliquid.xyz";
-const USER_ADDRESS = process.env.HYPERLIQUID_USER_ADDRESS || "";
+const USER_ADDRESS = process.env.HYPERLIQUID_USER_ADDRESS || process.env.HYPERLIQUID_ADDRESS || "";
 const MANUAL_INITIAL_CAPITAL_USDC = process.env.HYPERLIQUID_INITIAL_CAPITAL_USDC || "";
 const DEFAULT_PERP_DEXS = ["", "xyz"];
 
