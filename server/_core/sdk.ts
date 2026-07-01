@@ -264,6 +264,11 @@ class SDKServer {
     const rawCookie = request.headers?.cookie;
     const cookies = this.parseCookies(Array.isArray(rawCookie) ? rawCookie.join("; ") : rawCookie);
     const sessionCookie = cookies.get(COOKIE_NAME);
+
+    if (!sessionCookie) {
+      throw ForbiddenError("Missing optional session cookie");
+    }
+
     const session = await this.verifySession(sessionCookie);
 
     if (!session) {
