@@ -1,0 +1,15 @@
+{
+  "installCommand": "corepack pnpm install --no-frozen-lockfile",
+  "buildCommand": "corepack pnpm exec vite build",
+  "outputDirectory": "dist/public",
+  "rewrites": [
+    {
+      "source": "/api/trpc/(.*)",
+      "destination": "/api/trpc/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1773069271868,
+      "tag": "0000_early_monster_badoon",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1773069589329,
+      "tag": "0001_gigantic_ezekiel",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1773128671506,
+      "tag": "0002_charming_captain_marvel",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1773189196690,
+      "tag": "0003_nifty_ted_forrester",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1773190643820,
+      "tag": "0004_smooth_dormammu",
+      "breakpoints": true
+    }
+  ]
+}

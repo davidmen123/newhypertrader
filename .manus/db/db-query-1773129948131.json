@@ -1,0 +1,9 @@
+{
+  "query": "DELETE FROM pnl_snapshots;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2p2CTMbtsGXvVw9.6682a4003775 --database eLkBTk7YDWx3FvjHbvNA4i --execute DELETE FROM pnl_snapshots;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1566
+}

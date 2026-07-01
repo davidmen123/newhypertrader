@@ -1,0 +1,90 @@
+{
+  "query": "SELECT currency, date, equity, balance, btcPrice, snapshotAt FROM pnl_snapshots ORDER BY snapshotAt DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2p2CTMbtsGXvVw9.6682a4003775 --database eLkBTk7YDWx3FvjHbvNA4i --execute SELECT currency, date, equity, balance, btcPrice, snapshotAt FROM pnl_snapshots ORDER BY snapshotAt DESC LIMIT 10;",
+  "rows": [
+    {
+      "currency": "BTC",
+      "date": "2026-03-10",
+      "equity": "0.00983829",
+      "balance": "0.00658000",
+      "btcPrice": "NULL",
+      "snapshotAt": "1773129349590"
+    },
+    {
+      "currency": "USDC",
+      "date": "2026-03-10",
+      "equity": "85.43215640",
+      "balance": "27.30171476",
+      "btcPrice": "NULL",
+      "snapshotAt": "1773129349590"
+    },
+    {
+      "currency": "BTC",
+      "date": "2026-03-10",
+      "equity": "0.00983807",
+      "balance": "0.00658000",
+      "btcPrice": "NULL",
+      "snapshotAt": "1773129202616"
+    },
+    {
+      "currency": "USDC",
+      "date": "2026-03-10",
+      "equity": "85.27988988",
+      "balance": "27.30171476",
+      "btcPrice": "NULL",
+      "snapshotAt": "1773129202616"
+    },
+    {
+      "currency": "BTC",
+      "date": "2026-03-10",
+      "equity": "0.00984429",
+      "balance": "0.00658000",
+      "btcPrice": "NULL",
+      "snapshotAt": "1773129129727"
+    },
+    {
+      "currency": "USDC",
+      "date": "2026-03-10",
+      "equity": "85.49440807",
+      "balance": "27.30171476",
+      "btcPrice": "NULL",
+      "snapshotAt": "1773129129727"
+    },
+    {
+      "currency": "BTC",
+      "date": "2026-03-10",
+      "equity": "0.00983883",
+      "balance": "0.00658000",
+      "btcPrice": "NULL",
+      "snapshotAt": "1773128999330"
+    },
+    {
+      "currency": "USDC",
+      "date": "2026-03-10",
+      "equity": "85.58013601",
+      "balance": "27.30171476",
+      "btcPrice": "NULL",
+      "snapshotAt": "1773128999330"
+    },
+    {
+      "currency": "BTC",
+      "date": "2026-03-10",
+      "equity": "0.00982187",
+      "balance": "0.00658000",
+      "btcPrice": "NULL",
+      "snapshotAt": "1773128806863"
+    },
+    {
+      "currency": "USDC",
+      "date": "2026-03-10",
+      "equity": "85.53476631",
+      "balance": "27.30171476",
+      "btcPrice": "NULL",
+      "snapshotAt": "1773128806863"
+    }
+  ],
+  "messages": [],
+  "stdout": "currency\tdate\tequity\tbalance\tbtcPrice\tsnapshotAt\nBTC\t2026-03-10\t0.00983829\t0.00658000\tNULL\t1773129349590\nUSDC\t2026-03-10\t85.43215640\t27.30171476\tNULL\t1773129349590\nBTC\t2026-03-10\t0.00983807\t0.00658000\tNULL\t1773129202616\nUSDC\t2026-03-10\t85.27988988\t27.30171476\tNULL\t1773129202616\nBTC\t2026-03-10\t0.00984429\t0.00658000\tNULL\t1773129129727\nUSDC\t2026-03-10\t85.49440807\t27.30171476\tNULL\t1773129129727\nBTC\t2026-03-10\t0.00983883\t0.00658000\tNULL\t1773128999330\nUSDC\t2026-03-10\t85.58013601\t27.30171476\tNULL\t1773128999330\nBTC\t2026-03-10\t0.00982187\t0.00658000\tNULL\t1773128806863\nUSDC\t2026-03-10\t85.53476631\t27.30171476\tNULL\t1773128806863\n",
+  "stderr": "",
+  "execution_time_ms": 1544
+}

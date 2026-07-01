@@ -1,0 +1,1 @@
+ALTER TABLE `pnl_snapshots` ADD `btcPrice` decimal(20,2);
