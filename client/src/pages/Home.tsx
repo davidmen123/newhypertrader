@@ -105,7 +105,6 @@ export default function Home() {
                   fontSize: "0.68rem",
                   letterSpacing: "0.18em",
                   color: subtleTextColor,
-                  textTransform: "uppercase",
                   paddingTop: "0.2rem",
                 }}
               >
