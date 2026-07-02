@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLang } from "@/contexts/LangContext";
 import { RefreshCw } from "lucide-react";
@@ -111,6 +111,14 @@ function StatusPill({
       <span className="font-medium" style={{ color, fontSize: "0.68rem", letterSpacing: "0.08em" }}>
         {value}
       </span>
+    </div>
+  );
+}
+
+function SectionTitle({ children }: { children: ReactNode }) {
+  return (
+    <div className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.58rem" }}>
+      {children}
     </div>
   );
 }
@@ -235,72 +243,65 @@ export default function AccountOverview() {
         </span>
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-[1.45fr_1fr]">
-        <div
-          className="rounded-lg px-5 py-5 sm:px-6 sm:py-6"
-          style={{
-            background: "linear-gradient(135deg, var(--surface-soft), var(--surface-subtle))",
-            border: "1px solid var(--panel-border)",
-            boxShadow: "inset 0 1px 0 rgb(255 255 255 / 42%)",
-          }}
-        >
-          <div className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.62rem" }}>
-            {t(`总净值 (${equityUnit})`, `Total Equity (${equityUnit})`)}
-          </div>
-          <div className="num-display mt-3 text-foreground" style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)", lineHeight: 0.98 }}>
-            {fmt(totalEquity, equityDecimals)}
-            <span className="ml-2 text-muted-foreground/55" style={{ fontSize: "0.85rem" }}>
-              {equityUnit}
-            </span>
-          </div>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="text-muted-foreground/65 num-display" style={{ fontSize: "0.72rem" }}>
-              {isBtc ? `≈ $${fmt(data.totalEquityUsdc, 2)} USDC` : `≈ ${fmt(data.totalEquityBtc, 2)} BTC`}
-            </span>
-            <span
-              className="rounded px-2 py-0.5 num-display"
+      <div className="space-y-5">
+        <div className="space-y-2">
+          <SectionTitle>{t("核心账户状态", "Core Account")}</SectionTitle>
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(220px,0.75fr)_minmax(260px,0.85fr)]">
+            <div
+              className="rounded-lg px-5 py-5 sm:px-6 sm:py-6"
               style={{
-                fontSize: "0.72rem",
-                color: totalPnlUsdc != null && totalPnlUsdc >= 0 ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)",
-                background: totalPnlUsdc != null && totalPnlUsdc >= 0
-                  ? "oklch(68% 0.15 145 / 12%)"
-                  : "oklch(62% 0.15 25 / 12%)",
+                background: "linear-gradient(135deg, var(--surface-soft), var(--surface-subtle))",
+                border: "1px solid var(--panel-border)",
+                boxShadow: "inset 0 1px 0 rgb(255 255 255 / 42%)",
               }}
             >
-              {totalPnlUsdc != null ? fmtSign(totalPnlUsdc, 2) : "--"} USDC
-              {data.totalPnlPct != null ? ` · ${data.totalPnlPct >= 0 ? "+" : ""}${data.totalPnlPct.toFixed(2)}%` : ""}
-            </span>
-          </div>
-          <div className="mt-5 grid grid-cols-2 gap-3">
-            <MetricTile
-              label={t("初始资金", "Initial Capital")}
-              value={data.initialEquityUsdc != null ? `${fmt(data.initialEquityUsdc, 2)} USDC` : "--"}
-              tone="neutral"
-            />
+              <div className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.62rem" }}>
+                {t(`总净值 (${equityUnit})`, `Total Equity (${equityUnit})`)}
+              </div>
+              <div className="num-display mt-3 text-foreground" style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)", lineHeight: 0.98 }}>
+                {fmt(totalEquity, equityDecimals)}
+                <span className="ml-2 text-muted-foreground/55" style={{ fontSize: "0.85rem" }}>
+                  {equityUnit}
+                </span>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <span className="text-muted-foreground/65 num-display" style={{ fontSize: "0.72rem" }}>
+                  {isBtc ? `≈ $${fmt(data.totalEquityUsdc, 2)} USDC` : `≈ ${fmt(data.totalEquityBtc, 2)} BTC`}
+                </span>
+                <span className="text-muted-foreground/55" style={{ fontSize: "0.66rem" }}>
+                  {t("初始资金", "Initial")} {data.initialEquityUsdc != null ? `${fmt(data.initialEquityUsdc, 2)} USDC` : "--"}
+                </span>
+              </div>
+            </div>
+
             <MetricTile
               label={t("总盈亏", "Total PnL")}
               value={totalPnlUsdc != null ? `${fmtSign(totalPnlUsdc, 2)} USDC` : "--"}
               sub={data.totalPnlPct != null ? `${data.totalPnlPct >= 0 ? "+" : ""}${data.totalPnlPct.toFixed(2)}%` : undefined}
               tone={pnlTone}
             />
+
+            <LeveragePanel ratio={data.marginUsageRatio} lang={lang} />
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-3">
+        </div>
+
+        <div className="space-y-2">
+          <SectionTitle>{t("风险收益指标", "Risk & Return")}</SectionTitle>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <MetricTile
               label={t("最大回撤", "Max Drawdown")}
               value={data.maxDrawdownPct != null ? `${data.maxDrawdownPct.toFixed(2)}%` : "--"}
               tone={data.maxDrawdownUsdc != null && data.maxDrawdownUsdc < 0 ? "loss" : "neutral"}
             />
             <MetricTile
-              label={t("年化收益率", "Annualized Return")}
-              value={data.annualizedReturnPct != null ? `${fmtSign(data.annualizedReturnPct, 2)}%` : "--"}
-              tone={data.annualizedReturnPct != null && data.annualizedReturnPct >= 0 ? "profit" : "loss"}
-            />
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <MetricTile
               label={t("夏普比率", "Sharpe Ratio")}
               value={data.sharpeRatio != null && isFinite(data.sharpeRatio) ? fmt(data.sharpeRatio, 2) : "--"}
               tone={data.sharpeRatio != null && data.sharpeRatio >= 1 ? "profit" : "neutral"}
+            />
+            <MetricTile
+              label={t("年化收益率", "Annualized Return")}
+              value={data.annualizedReturnPct != null ? `${fmtSign(data.annualizedReturnPct, 2)}%` : "--"}
+              tone={data.annualizedReturnPct != null && data.annualizedReturnPct >= 0 ? "profit" : "loss"}
             />
             <MetricTile
               label={t("运行天数", "Running Days")}
@@ -311,9 +312,9 @@ export default function AccountOverview() {
           </div>
         </div>
 
-        <div className="grid gap-3">
-          <LeveragePanel ratio={data.marginUsageRatio} lang={lang} />
-          <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <SectionTitle>{t("交易表现", "Trade Performance")}</SectionTitle>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
             <MetricTile
               label={t("胜率", "Win Rate")}
               value={winRate != null ? `${winRate.toFixed(2)}%` : "--"}
@@ -326,34 +327,13 @@ export default function AccountOverview() {
               sub={t("平均盈利 / 平均亏损", "Avg Win / Avg Loss")}
               tone={plRatio != null && plRatio > 1 ? "profit" : "neutral"}
             />
+            <MetricTile
+              label={t("完整交易数", "Round Trips")}
+              value={metricsData?.totalTrades != null ? `${metricsData.totalTrades}` : "--"}
+              sub={metricsData ? `${t("盈利", "Wins")} ${metricsData.winningTrades} · ${t("亏损", "Losses")} ${metricsData.losingTrades}` : undefined}
+              tone="neutral"
+            />
           </div>
-          {metricsData && (
-            <div
-              className="rounded-lg px-4 py-3"
-              style={{
-                background: "var(--surface-subtle)",
-                border: "1px solid var(--panel-border)",
-              }}
-            >
-              <div className="text-muted-foreground/60 tracking-widest uppercase mb-3" style={{ fontSize: "0.58rem" }}>
-                {t("交易统计", "Trade Statistics")}
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <span className="text-muted-foreground/50" style={{ fontSize: "0.6rem" }}>{t("总交易数", "Total")}</span>
-                  <div className="num-display mt-1" style={{ fontSize: "0.95rem" }}>{metricsData.totalTrades}</div>
-                </div>
-                <div>
-                  <span className="text-muted-foreground/50" style={{ fontSize: "0.6rem" }}>{t("盈利", "Wins")}</span>
-                  <div className="num-display mt-1 text-profit" style={{ fontSize: "0.95rem" }}>{metricsData.winningTrades}</div>
-                </div>
-                <div>
-                  <span className="text-muted-foreground/50" style={{ fontSize: "0.6rem" }}>{t("亏损", "Losses")}</span>
-                  <div className="num-display mt-1 text-loss" style={{ fontSize: "0.95rem" }}>{metricsData.losingTrades}</div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
