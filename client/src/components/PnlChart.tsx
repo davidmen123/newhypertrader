@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLang } from "@/contexts/LangContext";
 import {
-  ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
+  ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceArea, ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
 import { RefreshCw, Database } from "lucide-react";
@@ -469,12 +469,44 @@ export default function PnlChart() {
                 ))}
               </defs>
               <CartesianGrid strokeDasharray="1 12" stroke="rgb(117 160 148 / 10%)" vertical horizontal={false} />
+              {gridMode === "percent" && percentVisible && percentGridTicks.slice(0, -1).map((tick, index) => {
+                const nextTick = percentGridTicks[index + 1];
+                const midpoint = (tick + nextTick) / 2;
+                const fill = midpoint >= 0
+                  ? index % 2 === 0 ? "rgb(41 185 116 / 9%)" : "rgb(41 185 116 / 5%)"
+                  : index % 2 === 0 ? "rgb(214 80 80 / 8%)" : "rgb(214 80 80 / 4%)";
+                return (
+                  <ReferenceArea
+                    key={`percent-band-${tick}-${nextTick}`}
+                    yAxisId="left"
+                    y1={tick}
+                    y2={nextTick}
+                    fill={fill}
+                    strokeOpacity={0}
+                    ifOverflow="extendDomain"
+                  />
+                );
+              })}
+              {gridMode === "asset" && assetGridTicks.slice(0, -1).map((tick, index) => {
+                const nextTick = assetGridTicks[index + 1];
+                return (
+                  <ReferenceArea
+                    key={`asset-band-${tick}-${nextTick}`}
+                    yAxisId="right"
+                    y1={tick}
+                    y2={nextTick}
+                    fill={index % 2 === 0 ? "rgb(87 150 190 / 9%)" : "rgb(87 150 190 / 5%)"}
+                    strokeOpacity={0}
+                    ifOverflow="extendDomain"
+                  />
+                );
+              })}
               {gridMode === "percent" && percentVisible && percentGridTicks.map((tick) => (
                 <ReferenceLine
                   key={`percent-grid-${tick}`}
                   yAxisId="left"
                   y={tick}
-                  stroke={tick === 0 ? "rgb(117 160 148 / 24%)" : "rgb(117 160 148 / 12%)"}
+                  stroke={tick === 0 ? "rgb(117 160 148 / 42%)" : "rgb(117 160 148 / 20%)"}
                   strokeDasharray={tick === 0 ? "4 6" : "1 10"}
                   ifOverflow="extendDomain"
                 />
@@ -484,7 +516,7 @@ export default function PnlChart() {
                   key={`asset-grid-${tick}`}
                   yAxisId="right"
                   y={tick}
-                  stroke="rgb(117 160 148 / 12%)"
+                  stroke="rgb(117 160 148 / 20%)"
                   strokeDasharray="1 10"
                   ifOverflow="extendDomain"
                 />
