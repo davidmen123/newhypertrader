@@ -44,40 +44,40 @@
 }
 
 :root {
-  /* Daylight paper theme */
+  /* Light professional dashboard theme */
   --radius: 12px;
-  --background: #f4f3ef;
-  --foreground: #151515;
+  --background: #f7f8f6;
+  --foreground: #111315;
   --card: #ffffff;
-  --card-foreground: #151515;
+  --card-foreground: #111315;
   --popover: #ffffff;
-  --popover-foreground: #151515;
-  --primary: #151515;
+  --popover-foreground: #111315;
+  --primary: #111315;
   --primary-foreground: #fffef8;
-  --secondary: #e8e5dd;
-  --secondary-foreground: #202020;
-  --muted: #e9e7e0;
-  --muted-foreground: #6c6b66;
-  --accent: #7b2a1f;
+  --secondary: #eef1ed;
+  --secondary-foreground: #1c2024;
+  --muted: #eef1ed;
+  --muted-foreground: #626970;
+  --accent: #1f6b4f;
   --accent-foreground: #fffef8;
   --destructive: oklch(60% 0.18 25);
   --destructive-foreground: oklch(95% 0 0);
-  --border: rgb(0 0 0 / 12%);
-  --input: rgb(0 0 0 / 12%);
-  --ring: #7b2a1f;
+  --border: rgb(17 19 21 / 12%);
+  --input: rgb(17 19 21 / 12%);
+  --ring: #1f6b4f;
   --chart-1: #48d28b;
   --chart-2: #d7bb72;
   --chart-3: oklch(72% 0.13 85);
   --chart-4: oklch(62% 0.12 285);
   --chart-5: oklch(62% 0.12 25);
-  --sidebar: #f4f3ef;
-  --sidebar-foreground: #151515;
-  --sidebar-primary: #151515;
+  --sidebar: #f7f8f6;
+  --sidebar-foreground: #111315;
+  --sidebar-primary: #111315;
   --sidebar-primary-foreground: #fffef8;
-  --sidebar-accent: #e9e7e0;
-  --sidebar-accent-foreground: #151515;
-  --sidebar-border: rgb(0 0 0 / 12%);
-  --sidebar-ring: #7b2a1f;
+  --sidebar-accent: #eef1ed;
+  --sidebar-accent-foreground: #111315;
+  --sidebar-border: rgb(17 19 21 / 12%);
+  --sidebar-ring: #1f6b4f;
 }
 
 .dark {
@@ -152,10 +152,10 @@
 
 /* Glass card */
 .glass-card {
-  background: rgb(255 255 255 / 58%);
-  border: 1px solid rgb(0 0 0 / 10%);
+  background: rgb(255 255 255 / 88%);
+  border: 1px solid rgb(17 19 21 / 10%);
   border-radius: 12px;
-  box-shadow: 0 18px 60px rgb(35 31 25 / 10%);
+  box-shadow: 0 14px 36px rgb(17 24 39 / 8%);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 }
@@ -183,19 +183,19 @@
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: rgb(70 70 66 / 78%);
-  border-bottom: 1px solid rgb(0 0 0 / 10%);
+  color: rgb(56 63 71 / 78%);
+  border-bottom: 1px solid rgb(17 19 21 / 10%);
 }
 .minimal-table td {
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid rgb(0 0 0 / 8%);
+  border-bottom: 1px solid rgb(17 19 21 / 8%);
   font-family: "DM Mono", monospace;
   font-size: 0.8rem;
   font-weight: 400;
-  color: #1b1b1a;
+  color: #16191c;
 }
 .minimal-table tbody tr:hover td {
-  background: rgb(0 0 0 / 4%);
+  background: rgb(17 19 21 / 4%);
 }
 .dark .minimal-table th {
   color: rgb(210 210 204 / 78%);
@@ -218,18 +218,18 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   transition: all 0.2s ease;
-  border: 1px solid rgb(0 0 0 / 18%);
-  color: rgb(35 35 32 / 76%);
+  border: 1px solid rgb(17 19 21 / 18%);
+  color: rgb(35 41 47 / 76%);
   background: transparent;
 }
 .pill-tab:hover {
-  color: #151515;
-  border-color: rgb(123 42 31 / 65%);
+  color: #111315;
+  border-color: rgb(31 107 79 / 60%);
 }
 .pill-tab.active {
-  background: rgb(123 42 31 / 10%);
-  border-color: rgb(123 42 31 / 65%);
-  color: #151515;
+  background: rgb(31 107 79 / 10%);
+  border-color: rgb(31 107 79 / 65%);
+  color: #111315;
 }
 .dark .pill-tab {
   border-color: rgb(255 255 255 / 18%);

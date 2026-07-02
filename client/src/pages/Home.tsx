@@ -80,13 +80,13 @@ export default function Home() {
 
   const pageBackground = isDark
     ? "#000000"
-    : "radial-gradient(circle, rgb(22 22 20 / 7%) 0.8px, transparent 0.9px) 0 0 / 5px 5px, linear-gradient(180deg, #f7f6f1 0%, #efeee9 100%)";
+    : "linear-gradient(180deg, #fbfcfa 0%, #f4f6f2 46%, #eef1ed 100%)";
   const heroTitleColor = isDark ? "#fffef8" : "#111111";
-  const heroAccentColor = isDark ? "rgb(242 231 201 / 88%)" : "rgb(123 42 31 / 92%)";
-  const heroMetaColor = isDark ? "rgb(255 255 255 / 86%)" : "rgb(48 48 45 / 82%)";
-  const subtleTextColor = isDark ? "rgb(230 230 224 / 76%)" : "rgb(42 42 39 / 68%)";
-  const panelBackground = isDark ? "rgb(255 255 255 / 4%)" : "rgb(255 255 255 / 54%)";
-  const panelBorder = isDark ? "rgb(255 255 255 / 9%)" : "rgb(0 0 0 / 10%)";
+  const heroAccentColor = isDark ? "rgb(242 231 201 / 88%)" : "rgb(31 107 79 / 92%)";
+  const heroMetaColor = isDark ? "rgb(255 255 255 / 86%)" : "rgb(42 47 52 / 82%)";
+  const subtleTextColor = isDark ? "rgb(230 230 224 / 76%)" : "rgb(75 82 89 / 72%)";
+  const panelBackground = isDark ? "rgb(255 255 255 / 4%)" : "rgb(255 255 255 / 82%)";
+  const panelBorder = isDark ? "rgb(255 255 255 / 9%)" : "rgb(17 19 21 / 10%)";
 
   return (
     <div
@@ -187,7 +187,7 @@ export default function Home() {
               background:
                 isDark
                   ? "linear-gradient(to right, transparent, rgb(215 187 114 / 34%), transparent)"
-                  : "linear-gradient(to right, transparent, rgb(0 0 0 / 16%), transparent)",
+                  : "linear-gradient(to right, transparent, rgb(17 19 21 / 16%), transparent)",
               marginTop: "1.5rem",
             }}
           />
