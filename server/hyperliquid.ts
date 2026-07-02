@@ -476,7 +476,9 @@ function pickMid(mids: Record<string, string>, keys: string[]) {
 export async function getHyperliquidMarketPrices() {
   const mids = await getHyperliquidMids();
   return {
+    btc: pickMid(mids, ["BTC", "BTCUSDC", "BTCUSDT"]),
     gold: pickMid(mids, ["GOLD", "XAU", "XAUUSD", "PAXG"]),
+    nas100: pickMid(mids, ["NAS100", "NDX", "NASDAQ", "US100"]),
     sp500: pickMid(mids, ["SP500", "SPX", "US500", "SPX500"]),
   };
 }
