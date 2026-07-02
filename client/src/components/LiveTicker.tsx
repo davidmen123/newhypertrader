@@ -126,25 +126,8 @@ export default function LiveTicker() {
     refetchInterval: 30 * 1000,
   });
 
-  const rowLabel = (text: string, mt = false) => (
-    <p
-      style={{
-        fontSize: "0.6rem",
-        letterSpacing: "0.16em",
-        color: "rgb(164 188 174 / 64%)",
-        textTransform: "uppercase",
-        marginBottom: "0.5rem",
-        marginTop: mt ? "1.4rem" : 0,
-      }}
-    >
-      {text}
-    </p>
-  );
-
   return (
     <div>
-      {rowLabel(lang === "zh" ? "实时行情" : "Live Prices")}
-
       {/* BTC · VIX · GOLD · QQQ */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         {[
