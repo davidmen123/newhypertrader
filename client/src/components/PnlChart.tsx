@@ -35,7 +35,7 @@ const PNL_START_DATE = "2026-06-27";
 // ─── Tooltip ─────────────────────────────────────────────────────────────────
 interface TooltipProps {
   active?: boolean;
-  payload?: Array<{ value: number; dataKey: string; color?: string; payload?: ChartPoint }>;
+  payload?: Array<{ value: number | null; dataKey: string; color?: string; payload?: ChartPoint }>;
   label?: string;
   labels: Record<SeriesKey, string>;
   visible: Record<SeriesKey, boolean>;
@@ -46,7 +46,7 @@ type ChartPoint = {
   equity: number;
   pnl: number;
   accountPerformance: number;
-  btcBenchmark: number;
+  btcBenchmark: number | null;
   assetTrend: number;
 };
 
@@ -141,6 +141,7 @@ function CustomTooltip({ active, payload, label, labels, visible }: TooltipProps
         seen.add(seriesKey);
         if (!visible[seriesKey]) return null;
         const val = Number(p.value);
+        if (!Number.isFinite(val)) return null;
         const formatted = seriesKey === "assetTrend"
           ? `${val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC`
           : `${formatSigned(val)}%`;
@@ -273,13 +274,16 @@ export default function PnlChart() {
   // Build chart data: account performance follows PnL, while BTC benchmark
   // follows BTC price change. Both are percentages on one axis.
   const baseEquity = snapshots.length > 0 ? parseFloat(snapshots[0].equity) : null;
-  const baseBtcPrice = snapshots.length > 0 ? parseFloat(snapshots[0].btcPrice) : null;
+  const validBtcPrices = snapshots
+    .map((s) => parseFloat(String(s.btcPrice ?? "")))
+    .filter((price) => Number.isFinite(price) && price > 0);
+  const baseBtcPrice = validBtcPrices.length > 0 ? validBtcPrices[0] : null;
   const chartData = snapshots.map((s) => {
     const eq = parseFloat(s.equity);
-    const btcPrice = parseFloat(s.btcPrice);
-    const btcBenchmark = baseBtcPrice && baseBtcPrice !== 0 && isFinite(btcPrice)
+    const btcPrice = parseFloat(String(s.btcPrice ?? ""));
+    const btcBenchmark = baseBtcPrice && baseBtcPrice !== 0 && Number.isFinite(btcPrice) && btcPrice > 0
       ? ((btcPrice - baseBtcPrice) / baseBtcPrice) * 100
-      : 0;
+      : null;
     const pnl = s.totalPnl ? parseFloat(s.totalPnl) : 0;
     const accountPerformance = baseEquity && baseEquity !== 0 && isFinite(pnl)
       ? (pnl / baseEquity) * 100

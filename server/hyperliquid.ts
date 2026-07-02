@@ -263,7 +263,7 @@ export interface HyperliquidCandle {
   n?: number;
   o?: string;
   s?: string;
-  t: number;
+  t?: number;
   v?: string;
 }
 
@@ -777,10 +777,11 @@ export async function getHyperliquidPortfolioSnapshots(params: {
 
   const btcPriceForTime = (time: number) => {
     if (candles.length === 0) return null;
+    const candleTime = (candle: HyperliquidCandle) => candle.t ?? candle.T ?? 0;
     let best = candles[0];
-    let bestDistance = Math.abs(candles[0].t - time);
+    let bestDistance = Math.abs(candleTime(candles[0]) - time);
     for (const candle of candles) {
-      const distance = Math.abs(candle.t - time);
+      const distance = Math.abs(candleTime(candle) - time);
       if (distance < bestDistance) {
         best = candle;
         bestDistance = distance;
