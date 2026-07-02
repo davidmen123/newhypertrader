@@ -426,7 +426,7 @@ export default function PnlChart() {
                   tickLine={false}
                   axisLine={false}
                   width={62}
-                  tickFormatter={(v) => `${v.toFixed(1)}%`}
+                  tickFormatter={(v) => `${v.toFixed(2)}%`}
                 />
               )}
               {assetTrendVisible && (

@@ -27,7 +27,7 @@ function num(value: string | number | null | undefined) {
   return Number.isFinite(n) ? n : 0;
 }
 
-function fmt(value: string | number | null | undefined, decimals = 4) {
+function fmt(value: string | number | null | undefined, decimals = 2) {
   const n = num(value);
   return n.toLocaleString("en-US", {
     minimumFractionDigits: decimals,
@@ -35,7 +35,7 @@ function fmt(value: string | number | null | undefined, decimals = 4) {
   });
 }
 
-function signed(value: string | number | null | undefined, decimals = 4) {
+function signed(value: string | number | null | undefined, decimals = 2) {
   const n = num(value);
   return `${n > 0 ? "+" : ""}${fmt(n, decimals)}`;
 }
@@ -205,14 +205,14 @@ export default function TradeHistory() {
             <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.6rem" }}>
               {t("手续费", "Fees")}
             </span>
-            <div className="num-display" style={{ fontSize: "0.78rem" }}>{fmt(totalFees, 4)}</div>
+            <div className="num-display" style={{ fontSize: "0.78rem" }}>{fmt(totalFees, 2)}</div>
           </div>
           <div>
             <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.6rem" }}>
               {t("已平仓盈亏", "Closed PnL")}
             </span>
             <div className="num-display" style={{ fontSize: "0.78rem", color: pnlColor(totalPnl) }}>
-              {signed(totalPnl, 4)}
+              {signed(totalPnl, 2)}
             </div>
           </div>
         </div>
@@ -265,11 +265,11 @@ export default function TradeHistory() {
                       <td className="py-2 pr-4" style={{ fontSize: "0.68rem", color: "var(--text-soft)" }}>{trade.category}</td>
                       <td className="py-2 pr-4" style={{ color: isBuy ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)", fontSize: "0.7rem", fontWeight: 600 }}>{isBuy ? t("买入", "Buy") : t("卖出", "Sell")}</td>
                       <td className="py-2 pr-4" style={{ fontSize: "0.68rem", color: "var(--text-soft)" }}>{trade.tradeSide || "—"}</td>
-                      <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execQty, 6)}</td>
-                      <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execPrice, 4)}</td>
-                      <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execValue, 4)}</td>
-                      <td className="py-2 pr-4 num-display" style={{ fontSize: "0.68rem", color: "var(--text-soft)" }}>{fee ? `${fmt(fee.fee, 4)} ${fee.feeCoin}` : "—"}</td>
-                      <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem", color: pnlColor(pnl) }}>{pnl !== 0 ? signed(pnl, 4) : "—"}</td>
+                      <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execQty, 2)}</td>
+                      <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execPrice, 2)}</td>
+                      <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execValue, 2)}</td>
+                      <td className="py-2 pr-4 num-display" style={{ fontSize: "0.68rem", color: "var(--text-soft)" }}>{fee ? `${fmt(fee.fee, 2)} ${fee.feeCoin}` : "—"}</td>
+                      <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem", color: pnlColor(pnl) }}>{pnl !== 0 ? signed(pnl, 2) : "—"}</td>
                     </tr>
                   );
                 })}
@@ -293,9 +293,9 @@ export default function TradeHistory() {
                   <div className="flex items-center gap-3 flex-wrap">
                     <span style={{ color: isBuy ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)", fontWeight: 600 }}>{isBuy ? t("买入", "Buy") : t("卖出", "Sell")}</span>
                     <span>{trade.category}</span>
-                    <span>{t("价格", "Price")}: {fmt(trade.execPrice, 4)}</span>
-                    <span>{t("数量", "Qty")}: {fmt(trade.execQty, 6)}</span>
-                    {num(trade.execPnl) !== 0 && <span style={{ color: pnlColor(trade.execPnl) }}>PnL: {signed(trade.execPnl, 4)}</span>}
+                    <span>{t("价格", "Price")}: {fmt(trade.execPrice, 2)}</span>
+                    <span>{t("数量", "Qty")}: {fmt(trade.execQty, 2)}</span>
+                    {num(trade.execPnl) !== 0 && <span style={{ color: pnlColor(trade.execPnl) }}>PnL: {signed(trade.execPnl, 2)}</span>}
                   </div>
                 </div>
               );

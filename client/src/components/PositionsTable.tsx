@@ -25,7 +25,7 @@ function num(value: string | number | null | undefined) {
   return Number.isFinite(n) ? n : 0;
 }
 
-function fmt(value: string | number | null | undefined, decimals = 4) {
+function fmt(value: string | number | null | undefined, decimals = 2) {
   const n = num(value);
   return n.toLocaleString("en-US", {
     minimumFractionDigits: decimals,
@@ -33,7 +33,7 @@ function fmt(value: string | number | null | undefined, decimals = 4) {
   });
 }
 
-function signed(value: string | number | null | undefined, decimals = 4) {
+function signed(value: string | number | null | undefined, decimals = 2) {
   const n = num(value);
   return `${n > 0 ? "+" : ""}${fmt(n, decimals)}`;
 }
@@ -104,7 +104,7 @@ export default function PositionsTable() {
                 {t("未实现盈亏", "Unrealized PnL")}
               </span>
               <div className={`num-display ${pnlColor(totalUnrealized)}`} style={{ fontSize: "0.9rem" }}>
-                {signed(totalUnrealized, 4)}
+                {signed(totalUnrealized, 2)}
               </div>
             </div>
             <div>
@@ -112,7 +112,7 @@ export default function PositionsTable() {
                 {t("已实现盈亏", "Realized PnL")}
               </span>
               <div className={`num-display ${pnlColor(totalRealized)}`} style={{ fontSize: "0.9rem" }}>
-                {signed(totalRealized, 4)}
+                {signed(totalRealized, 2)}
               </div>
             </div>
           </div>
@@ -145,12 +145,12 @@ export default function PositionsTable() {
                           {isLong ? t("多", "Long") : t("空", "Short")}
                         </span>
                       </td>
-                      <td>{fmt(p.total, 6)}</td>
-                      <td>{fmt(p.available, 6)}</td>
+                      <td>{fmt(p.total, 2)}</td>
+                      <td>{fmt(p.available, 2)}</td>
                       <td>{fmt(p.avgPrice, 2)}</td>
                       <td>{fmt(p.markPrice, 2)}</td>
-                      <td>{fmt(p.leverage, 0)}x</td>
-                      <td className={pnlColor(p.unrealisedPnl)}>{signed(p.unrealisedPnl, 4)}</td>
+                      <td>{fmt(p.leverage, 2)}x</td>
+                      <td className={pnlColor(p.unrealisedPnl)}>{signed(p.unrealisedPnl, 2)}</td>
                       <td className={pnlColor(p.profitRate)}>{signed(num(p.profitRate) * 100, 2)}%</td>
                       <td>{num(p.liquidationPrice) > 0 ? fmt(p.liquidationPrice, 2) : "—"}</td>
                       <td className="text-muted-foreground">{formatTime(p.updatedTime, lang)}</td>
@@ -175,10 +175,10 @@ export default function PositionsTable() {
                     <span className={isLong ? "text-profit" : "text-loss"}>{isLong ? t("多", "Long") : t("空", "Short")}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    <span>{t("数量", "Size")}: {fmt(p.total, 6)}</span>
+                    <span>{t("数量", "Size")}: {fmt(p.total, 2)}</span>
                     <span>{t("均价", "Avg")}: {fmt(p.avgPrice, 2)}</span>
                     <span>{t("标记价", "Mark")}: {fmt(p.markPrice, 2)}</span>
-                    <span className={pnlColor(p.unrealisedPnl)}>{t("盈亏", "PnL")}: {signed(p.unrealisedPnl, 4)}</span>
+                    <span className={pnlColor(p.unrealisedPnl)}>{t("盈亏", "PnL")}: {signed(p.unrealisedPnl, 2)}</span>
                   </div>
                 </div>
               );

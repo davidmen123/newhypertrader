@@ -2,7 +2,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { RefreshCw } from "lucide-react";
 
-function fmt(val: number | string | undefined | null, d = 4): string {
+function fmt(val: number | string | undefined | null, d = 2): string {
   if (val == null) return "—";
   const n = typeof val === "string" ? parseFloat(val) : val;
   if (isNaN(n)) return "—";
@@ -162,9 +162,9 @@ export default function TradesTable() {
                         {direction === "buy" ? "Long" : "Short"}
                       </span>
                     </td>
-                    <td>{fmt(amount, 0)}</td>
+                    <td>{fmt(amount, 2)}</td>
                     <td>{fmt(price, 2)}</td>
-                    <td className="text-muted-foreground">{fmt(fee, 6)}</td>
+                    <td className="text-muted-foreground">{fmt(fee, 2)}</td>
                     <td>
                       {profitNum != null ? (
                         <span className={profitNum > 0 ? "text-profit" : profitNum < 0 ? "text-loss" : "text-neutral"}>

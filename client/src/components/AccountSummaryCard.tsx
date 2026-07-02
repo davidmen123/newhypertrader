@@ -3,7 +3,7 @@ import { RefreshCw } from "lucide-react";
 
 const SUPPORTED = ["BTC", "ETH"];
 
-function fmt(val: number | undefined | null, d = 4): string {
+function fmt(val: number | undefined | null, d = 2): string {
   if (val == null) return "—";
   return val.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
 }
@@ -95,7 +95,7 @@ export default function AccountSummaryCard() {
               <StatItem label="Margin Bal" value={fmt(s.margin_balance)} />
               <StatItem label="Futures PnL" value={<PnlValue value={s.futures_pl} />} />
               <StatItem label="Options PnL" value={<PnlValue value={s.options_pl} />} />
-              <StatItem label="Delta Total" value={fmt(s.delta_total, 4)} />
+              <StatItem label="Delta Total" value={fmt(s.delta_total, 2)} />
               <StatItem label="Options Value" value={fmt(s.options_value)} />
               <StatItem label="Realized PnL" value={<PnlValue value={s.realized_pl} />} />
               <StatItem label="Init Margin" value={fmt(s.initial_margin)} />

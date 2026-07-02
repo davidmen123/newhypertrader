@@ -4,7 +4,7 @@ import { RefreshCw } from "lucide-react";
 
 const SUPPORTED = ["BTC", "ETH"];
 
-function fmt(val: number | undefined | null, d = 4): string {
+function fmt(val: number | undefined | null, d = 2): string {
   if (val == null) return "—";
   return val.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
 }
@@ -96,7 +96,7 @@ export default function PortfolioSummary() {
             />
             <StatBox
               label={tr.deltaTotal}
-              value={<span className="text-neutral">{fmt(s.delta_total, 4)}</span>}
+              value={<span className="text-neutral">{fmt(s.delta_total, 2)}</span>}
             />
             <StatBox
               label={tr.marginBalance}
@@ -139,21 +139,21 @@ export default function PortfolioSummary() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <StatBox
               label={tr.btcBalance}
-              value={<span className="text-foreground">{fmt(btc.balance, 6)}</span>}
+              value={<span className="text-foreground">{fmt(btc.balance, 2)}</span>}
               sub="BTC"
             />
             <StatBox
               label={tr.ethBalance}
-              value={<span className="text-foreground">{fmt(eth.balance, 6)}</span>}
+              value={<span className="text-foreground">{fmt(eth.balance, 2)}</span>}
               sub="ETH"
             />
             <StatBox
               label="BTC Delta"
-              value={<span className="text-neutral">{fmt(btc.delta_total, 4)}</span>}
+              value={<span className="text-neutral">{fmt(btc.delta_total, 2)}</span>}
             />
             <StatBox
               label="ETH Delta"
-              value={<span className="text-neutral">{fmt(eth.delta_total, 4)}</span>}
+              value={<span className="text-neutral">{fmt(eth.delta_total, 2)}</span>}
             />
           </div>
         </div>

@@ -155,7 +155,7 @@ export default function AccountOverview() {
   const isBtc = denomination === "BTC";
   const totalEquity = isBtc ? data.totalEquityBtc : data.totalEquityUsdc;
   const equityUnit = isBtc ? "BTC" : "USDC";
-  const equityDecimals = isBtc ? 6 : 2;
+  const equityDecimals = 2;
   const totalPnlUsdc = data.totalPnlUsdc ?? null;
   const pnlTone = totalPnlUsdc != null && totalPnlUsdc >= 0 ? "profit" : "loss";
   const winRate = metricsData?.winRate ?? null;
@@ -255,7 +255,7 @@ export default function AccountOverview() {
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <span className="text-muted-foreground/65 num-display" style={{ fontSize: "0.72rem" }}>
-              {isBtc ? `≈ $${fmt(data.totalEquityUsdc, 2)} USDC` : `≈ ${fmt(data.totalEquityBtc, 6)} BTC`}
+              {isBtc ? `≈ $${fmt(data.totalEquityUsdc, 2)} USDC` : `≈ ${fmt(data.totalEquityBtc, 2)} BTC`}
             </span>
             <span
               className="rounded px-2 py-0.5 num-display"
@@ -298,7 +298,7 @@ export default function AccountOverview() {
           <div className="grid grid-cols-2 gap-3">
             <MetricTile
               label={t("胜率", "Win Rate")}
-              value={winRate != null ? `${winRate.toFixed(1)}%` : "--"}
+              value={winRate != null ? `${winRate.toFixed(2)}%` : "--"}
               sub={metricsData?.totalTrades != null ? `${metricsData.winningTrades}/${metricsData.totalTrades}` : t("暂无交易", "No trades")}
               tone={winRate != null && winRate >= 50 ? "profit" : "neutral"}
             />

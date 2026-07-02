@@ -382,8 +382,8 @@ export default function PnlAttribution() {
                   tickLine={false}
                   tickFormatter={(v: number) =>
                     Math.abs(v) >= 1000
-                      ? `${(v / 1000).toFixed(1)}k`
-                      : v.toFixed(1)
+                      ? `${(v / 1000).toFixed(2)}k`
+                      : v.toFixed(2)
                   }
                   width={44}
                 />

@@ -75,10 +75,10 @@ export const hyperliquidRouter = router({
       return { current: null, prevClose: null };
     }
 
-    const [hyperliquidRes, btcRes, btcYahooRes, vixRes, qqqRes] = await Promise.allSettled([
+    const [hyperliquidRes, btcYahooRes, goldYahooRes, vixRes, qqqRes] = await Promise.allSettled([
       getHyperliquidMarketPrices(),
-      getHyperliquidBtcPrice(),
       fetchYahooQuote("BTC-USD"),
+      fetchYahooQuote("GC=F"),
       fetchYahooQuote("%5EVIX"),
       fetchYahooQuote("QQQ"),
     ]);
@@ -86,16 +86,16 @@ export const hyperliquidRouter = router({
     const hyperliquid = hyperliquidRes.status === "fulfilled"
       ? hyperliquidRes.value
       : { gold: null, sp500: null };
-    const btc = btcRes.status === "fulfilled" ? btcRes.value : null;
     const btcYahoo = btcYahooRes.status === "fulfilled" ? btcYahooRes.value : { current: null, prevClose: null };
+    const goldYahoo = goldYahooRes.status === "fulfilled" ? goldYahooRes.value : { current: null, prevClose: null };
     const vix = vixRes.status === "fulfilled" ? vixRes.value : { current: null, prevClose: null };
     const qqq = qqqRes.status === "fulfilled" ? qqqRes.value : { current: null, prevClose: null };
 
     return {
-      btc: btc && btc > 0 ? btc : btcYahoo.current,
+      btc: btcYahoo.current,
       btcPrevClose: btcYahoo.prevClose,
-      gold: hyperliquid.gold,
-      goldPrevClose: null,
+      gold: hyperliquid.gold ?? goldYahoo.current,
+      goldPrevClose: goldYahoo.prevClose,
       qqq: qqq.current,
       qqqPrevClose: qqq.prevClose,
       vix: vix.current,
