@@ -61,8 +61,26 @@ function displayPrice(order: HyperliquidOpenOrder) {
   return num(order.limitPrice) > 0 ? fmt(order.limitPrice, 2) : "—";
 }
 
-function displayTriggerCondition(order: HyperliquidOpenOrder) {
-  if (order.triggerCondition) return order.triggerCondition;
+function displayOrderType(order: HyperliquidOpenOrder, lang: string) {
+  if (lang !== "zh") return order.orderType || "—";
+
+  const type = order.orderType.toLowerCase();
+  if (type.includes("take profit")) return "止盈";
+  if (type.includes("stop")) return "止损";
+  if (type.includes("limit")) return "限价";
+  if (type.includes("market")) return "市价";
+  return order.orderType || "—";
+}
+
+function localizeTriggerCondition(condition: string, lang: string) {
+  if (!condition || lang !== "zh") return condition;
+  return condition
+    .replace(/price\s+above\s+/i, "价格≥")
+    .replace(/price\s+below\s+/i, "价格≤");
+}
+
+function displayTriggerCondition(order: HyperliquidOpenOrder, lang: string) {
+  if (order.triggerCondition) return localizeTriggerCondition(order.triggerCondition, lang);
   return num(order.triggerPrice) > 0 ? fmt(order.triggerPrice, 2) : "—";
 }
 
@@ -71,13 +89,13 @@ function isClosePositionOrder(order: HyperliquidOpenOrder) {
   return num(order.size) === 0 && (type.includes("market") || order.isTrigger || Boolean(order.triggerCondition));
 }
 
-function displaySize(order: HyperliquidOpenOrder) {
-  if (isClosePositionOrder(order)) return "close position";
+function displaySize(order: HyperliquidOpenOrder, lang: string) {
+  if (isClosePositionOrder(order)) return lang === "zh" ? "平仓" : "close position";
   return fmt(order.size, 2);
 }
 
-function displayOriginalSize(order: HyperliquidOpenOrder) {
-  if (isClosePositionOrder(order)) return "close position";
+function displayOriginalSize(order: HyperliquidOpenOrder, lang: string) {
+  if (isClosePositionOrder(order)) return lang === "zh" ? "平仓" : "close position";
   return fmt(order.originalSize, 2);
 }
 
@@ -139,12 +157,12 @@ export default function OpenOrdersTable() {
                     <td className="text-foreground font-medium">{order.symbol}</td>
                     <td>{order.market === "default" ? "PERP" : order.market}</td>
                     <td className={sideClass(order.side)}>{sideLabel(order.side, lang)}</td>
-                    <td>{order.orderType || "—"}</td>
+                    <td>{displayOrderType(order, lang)}</td>
                     <td>{displayPrice(order)}</td>
-                    <td>{displaySize(order)}</td>
-                    <td>{displayOriginalSize(order)}</td>
+                    <td>{displaySize(order, lang)}</td>
+                    <td>{displayOriginalSize(order, lang)}</td>
                     <td>{order.tif || "—"}</td>
-                    <td>{displayTriggerCondition(order)}</td>
+                    <td>{displayTriggerCondition(order, lang)}</td>
                     <td className="text-muted-foreground">{formatTime(order.timestamp, lang)}</td>
                   </tr>
                 ))}
@@ -165,11 +183,11 @@ export default function OpenOrdersTable() {
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <span>{t("市场", "Market")}: {order.market === "default" ? "PERP" : order.market}</span>
-                  <span>{t("类型", "Type")}: {order.orderType || "—"}</span>
+                  <span>{t("类型", "Type")}: {displayOrderType(order, lang)}</span>
                   <span>{t("价格", "Price")}: {displayPrice(order)}</span>
-                  <span>{t("数量", "Size")}: {displaySize(order)}</span>
+                  <span>{t("数量", "Size")}: {displaySize(order, lang)}</span>
                   <span>{t("有效期", "TIF")}: {order.tif || "—"}</span>
-                  <span>{t("触发条件", "Trigger")}: {displayTriggerCondition(order)}</span>
+                  <span>{t("触发条件", "Trigger")}: {displayTriggerCondition(order, lang)}</span>
                   <span>{t("时间", "Time")}: {formatTime(order.timestamp, lang)}</span>
                 </div>
               </div>
