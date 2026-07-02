@@ -615,6 +615,69 @@ export function getHyperliquidPerformanceStats(portfolio: HyperliquidPortfolio) 
   };
 }
 
+function signedFillSize(fill: HyperliquidFill) {
+  const size = toNumber(fill.sz);
+  return fill.side === "A" ? -size : size;
+}
+
+function calculateRoundTripTradeMetrics(fills: HyperliquidFill[]) {
+  const tolerance = 0.00000001;
+  const sortedFills = fills
+    .slice()
+    .sort((a, b) => a.time - b.time);
+  const openTrades = new Map<string, { pnl: number }>();
+  const completedPnls: number[] = [];
+
+  for (const fill of sortedFills) {
+    const coin = fill.coin;
+    const startPosition = toNumber(fill.startPosition);
+    const endPosition = startPosition + signedFillSize(fill);
+    const startAbs = Math.abs(startPosition);
+    const endAbs = Math.abs(endPosition);
+    const startsFlat = startAbs <= tolerance;
+    const endsFlat = endAbs <= tolerance;
+    const flipsSide = startAbs > tolerance && endAbs > tolerance && Math.sign(startPosition) !== Math.sign(endPosition);
+    const realizedPnl = toNumber(fill.closedPnl);
+
+    if (!openTrades.has(coin) && !startsFlat) {
+      openTrades.set(coin, { pnl: 0 });
+    }
+
+    if (startsFlat && !endsFlat && !openTrades.has(coin)) {
+      openTrades.set(coin, { pnl: 0 });
+    }
+
+    const current = openTrades.get(coin);
+    if (current) current.pnl += realizedPnl;
+
+    if (endsFlat || flipsSide) {
+      const closingTrade = openTrades.get(coin);
+      if (closingTrade) completedPnls.push(closingTrade.pnl);
+      openTrades.delete(coin);
+      if (flipsSide) {
+        openTrades.set(coin, { pnl: 0 });
+      }
+    }
+  }
+
+  const winningTrades = completedPnls.filter((pnl) => pnl > 0).length;
+  const losingTrades = completedPnls.filter((pnl) => pnl < 0).length;
+  const breakevenTrades = completedPnls.length - winningTrades - losingTrades;
+  const grossWin = completedPnls.reduce((sum, pnl) => sum + Math.max(0, pnl), 0);
+  const grossLoss = Math.abs(completedPnls.reduce((sum, pnl) => sum + Math.min(0, pnl), 0));
+  const avgWin = winningTrades > 0 ? grossWin / winningTrades : 0;
+  const avgLoss = losingTrades > 0 ? grossLoss / losingTrades : 0;
+
+  return {
+    totalTrades: completedPnls.length,
+    winningTrades,
+    losingTrades,
+    breakevenTrades,
+    winRate: completedPnls.length > 0 ? (winningTrades / completedPnls.length) * 100 : null,
+    plRatio: avgLoss > 0 ? avgWin / avgLoss : null,
+  };
+}
+
 export async function getHyperliquidOfficialBalanceUsdc() {
   const portfolio = await getHyperliquidPortfolio();
   return getHyperliquidPortfolioEquitySummary(portfolio).latest;
@@ -812,11 +875,7 @@ export async function getHyperliquidAccountOverview() {
     ? (totalPnlUsdc / initialEquityUsdc) * 100
     : null;
   const totalEquityBtc = btcPrice > 0 ? totalEquityUsdc / btcPrice : 0;
-  const winningTrades = fills.filter((fill) => toNumber(fill.closedPnl) > 0).length;
-  const losingTrades = fills.filter((fill) => toNumber(fill.closedPnl) < 0).length;
-  const grossWin = fills.reduce((sum, fill) => sum + Math.max(0, toNumber(fill.closedPnl)), 0);
-  const grossLoss = Math.abs(fills.reduce((sum, fill) => sum + Math.min(0, toNumber(fill.closedPnl)), 0));
-  const closedTrades = winningTrades + losingTrades;
+  const tradeMetrics = calculateRoundTripTradeMetrics(fills);
 
   return {
     exchange: "Hyperliquid",
@@ -847,13 +906,7 @@ export async function getHyperliquidAccountOverview() {
     runningDays: performance.runningDays,
     calmarRatio: null,
     totalNtlPos,
-    metrics: {
-      totalTrades: closedTrades,
-      winningTrades,
-      losingTrades,
-      winRate: closedTrades > 0 ? (winningTrades / closedTrades) * 100 : null,
-      plRatio: grossLoss > 0 ? grossWin / grossLoss : null,
-    },
+    metrics: tradeMetrics,
   };
 }
 
