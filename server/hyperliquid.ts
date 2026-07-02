@@ -675,6 +675,13 @@ export async function getHyperliquidAccountOverview() {
     (sum, item) => sum + toNumber(item.position.unrealizedPnl),
     0
   );
+  const initialEquityUsdc = initialCapitalUsdc ?? portfolioEquity.initial;
+  const totalPnlUsdc = initialEquityUsdc && initialEquityUsdc > 0
+    ? totalEquityUsdc - initialEquityUsdc
+    : null;
+  const totalPnlPct = totalPnlUsdc != null && initialEquityUsdc && initialEquityUsdc > 0
+    ? (totalPnlUsdc / initialEquityUsdc) * 100
+    : null;
   const totalEquityBtc = btcPrice > 0 ? totalEquityUsdc / btcPrice : 0;
   const winningTrades = fills.filter((fill) => toNumber(fill.closedPnl) > 0).length;
   const losingTrades = fills.filter((fill) => toNumber(fill.closedPnl) < 0).length;
@@ -691,15 +698,15 @@ export async function getHyperliquidAccountOverview() {
     spotUsdcBalance,
     spotBalances: spotState.balances ?? [],
     totalEquityUsdc,
-    initialEquityUsdc: initialCapitalUsdc ?? portfolioEquity.initial,
+    initialEquityUsdc,
     totalEquityBtc,
     btcBalance: totalEquityBtc,
     btcEquity: totalEquityBtc,
     usdcBalance: totalEquityUsdc,
     usdcEquity: totalEquityUsdc,
     sessionUplUsdc,
-    totalPnlUsdc: sessionUplUsdc,
-    totalPnlPct: totalEquityUsdc > 0 ? (sessionUplUsdc / totalEquityUsdc) * 100 : 0,
+    totalPnlUsdc,
+    totalPnlPct,
     imUsdc: totalMarginUsed,
     mmUsdc: 0,
     availableUsdc: withdrawable > 0 ? withdrawable : spotUsdcBalance,

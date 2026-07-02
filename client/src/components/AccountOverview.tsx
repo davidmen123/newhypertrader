@@ -156,18 +156,19 @@ export default function AccountOverview() {
   const totalEquity = isBtc ? data.totalEquityBtc : data.totalEquityUsdc;
   const equityUnit = isBtc ? "BTC" : "USDC";
   const equityDecimals = isBtc ? 6 : 2;
-  const pnlTone = data.totalPnlUsdc >= 0 ? "profit" : "loss";
+  const totalPnlUsdc = data.totalPnlUsdc ?? null;
+  const pnlTone = totalPnlUsdc != null && totalPnlUsdc >= 0 ? "profit" : "loss";
   const winRate = metricsData?.winRate ?? null;
   const plRatio = metricsData?.plRatio ?? null;
   const leverage = Number.isFinite(data.marginUsageRatio) ? data.marginUsageRatio : 0;
   const hasExposure = data.totalNtlPos > 0 || leverage > 0;
   const strategyStatus = hasExposure
-    ? data.totalPnlUsdc >= 0
+    ? totalPnlUsdc != null && totalPnlUsdc >= 0
       ? t("持仓中", "In Position")
       : t("持仓观察", "Monitoring")
     : t("空仓观察", "Watching");
   const strategyColor = hasExposure
-    ? data.totalPnlUsdc >= 0
+    ? totalPnlUsdc != null && totalPnlUsdc >= 0
       ? "oklch(68% 0.15 145)"
       : "oklch(72% 0.14 55)"
     : "oklch(72% 0.08 230)";
@@ -260,13 +261,13 @@ export default function AccountOverview() {
               className="rounded px-2 py-0.5 num-display"
               style={{
                 fontSize: "0.72rem",
-                color: data.totalPnlUsdc >= 0 ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)",
-                background: data.totalPnlUsdc >= 0
+                color: totalPnlUsdc != null && totalPnlUsdc >= 0 ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)",
+                background: totalPnlUsdc != null && totalPnlUsdc >= 0
                   ? "oklch(68% 0.15 145 / 12%)"
                   : "oklch(62% 0.15 25 / 12%)",
               }}
             >
-              {fmtSign(data.totalPnlUsdc, 2)} USDC
+              {totalPnlUsdc != null ? fmtSign(totalPnlUsdc, 2) : "--"} USDC
               {data.totalPnlPct != null ? ` · ${data.totalPnlPct >= 0 ? "+" : ""}${data.totalPnlPct.toFixed(2)}%` : ""}
             </span>
           </div>
@@ -277,8 +278,8 @@ export default function AccountOverview() {
               tone="neutral"
             />
             <MetricTile
-              label={t("当前盈亏", "Current PnL")}
-              value={`${fmtSign(data.totalPnlUsdc, 2)} USDC`}
+              label={t("总盈亏", "Total PnL")}
+              value={totalPnlUsdc != null ? `${fmtSign(totalPnlUsdc, 2)} USDC` : "--"}
               sub={data.totalPnlPct != null ? `${data.totalPnlPct >= 0 ? "+" : ""}${data.totalPnlPct.toFixed(2)}%` : undefined}
               tone={pnlTone}
             />
