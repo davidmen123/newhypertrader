@@ -140,7 +140,6 @@ export default function OpenOrdersTable() {
               <thead>
                 <tr>
                   <th>{t("合约", "Symbol")}</th>
-                  <th>{t("市场", "Market")}</th>
                   <th>{t("方向", "Side")}</th>
                   <th>{t("类型", "Type")}</th>
                   <th>{t("价格", "Price")}</th>
@@ -155,7 +154,6 @@ export default function OpenOrdersTable() {
                 {orders.map((order) => (
                   <tr key={`${order.timestamp}-${order.symbol}-${order.side}-${order.size}`}>
                     <td className="text-foreground font-medium">{order.symbol}</td>
-                    <td>{order.market === "default" ? "PERP" : order.market}</td>
                     <td className={sideClass(order.side)}>{sideLabel(order.side, lang)}</td>
                     <td>{displayOrderType(order, lang)}</td>
                     <td>{displayPrice(order)}</td>
@@ -182,7 +180,6 @@ export default function OpenOrdersTable() {
                   <span className={sideClass(order.side)}>{sideLabel(order.side, lang)}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  <span>{t("市场", "Market")}: {order.market === "default" ? "PERP" : order.market}</span>
                   <span>{t("类型", "Type")}: {displayOrderType(order, lang)}</span>
                   <span>{t("价格", "Price")}: {displayPrice(order)}</span>
                   <span>{t("数量", "Size")}: {displaySize(order, lang)}</span>
