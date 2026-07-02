@@ -656,7 +656,7 @@ export async function getHyperliquidPortfolioSnapshots(params: {
       const totalPnl = nearestHistoryValue(pnlHistory, time) ?? String(toNumber(equity) - baseEquity);
       return {
         currency: "USDC",
-        date: new Date(time).toISOString().slice(0, 16).replace("T", " "),
+        date: new Date(time + 8 * 60 * 60 * 1000).toISOString().slice(0, 16).replace("T", " "),
         equity,
         balance: equity,
         unrealizedPnl: totalPnl,

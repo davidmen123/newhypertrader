@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLang } from "@/contexts/LangContext";
 import {
@@ -67,6 +67,24 @@ function formatAxisDay(value: string) {
 
 function getDateKey(value: string) {
   return String(value ?? "").slice(0, 10);
+}
+
+function formatUtc8Now(lang: string) {
+  return new Intl.DateTimeFormat(lang === "zh" ? "zh-CN" : "en-US", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(new Date());
+}
+
+function formatUtc8Date(date: Date) {
+  const utc8OffsetMs = 8 * 60 * 60 * 1000;
+  return new Date(date.getTime() + utc8OffsetMs).toISOString().slice(0, 10);
 }
 
 function CustomTooltip({ active, payload, label, labels, visible }: TooltipProps) {
@@ -167,16 +185,24 @@ function SeriesToggle({
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function PnlChart() {
   const { lang } = useLang();
-  type TimeRange = "1D" | "7D" | "30D" | "90D" | "MAX";
+  type TimeRange = "7D" | "30D" | "90D" | "MAX";
   const [visible, setVisible] = useState<Record<SeriesKey, boolean>>({
     accountPerformance: true,
     btcBenchmark: true,
     assetTrend: false,
   });
   const [timeRange, setTimeRange] = useState<TimeRange | null>(null);
+  const [utc8Now, setUtc8Now] = useState(() => formatUtc8Now(lang));
+
+  useEffect(() => {
+    setUtc8Now(formatUtc8Now(lang));
+    const timer = window.setInterval(() => {
+      setUtc8Now(formatUtc8Now(lang));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [lang]);
 
   // Compute startDate from timeRange
-  // 1D  = today only (all intra-day snapshots)
   // 7D  = past 7 calendar days
   // 30D = past 30 calendar days
   // 90D = past 90 calendar days
@@ -184,15 +210,10 @@ export default function PnlChart() {
   const startDate = useMemo(() => {
     if (timeRange == null || timeRange === "MAX") return PNL_START_DATE;
     const now = new Date();
-    if (timeRange === "1D") {
-      // Today in UTC
-      const today = now.toISOString().slice(0, 10);
-      return today > PNL_START_DATE ? today : PNL_START_DATE;
-    }
     const days = timeRange === "7D" ? 7 : timeRange === "30D" ? 30 : 90;
     const d = new Date(now);
-    d.setUTCDate(d.getUTCDate() - days);
-    const rangeStart = d.toISOString().slice(0, 10);
+    d.setDate(d.getDate() - days);
+    const rangeStart = formatUtc8Date(d);
     return rangeStart > PNL_START_DATE ? rangeStart : PNL_START_DATE;
   }, [timeRange]);
 
@@ -322,10 +343,10 @@ export default function PnlChart() {
         </div>
         <div className="flex items-center gap-1.5 ml-auto">
           <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.62rem" }}>
-            {lang === "zh" ? "记录方式" : "Mode"}
+            {lang === "zh" ? "快照时间" : "Snapshot Time"}
           </span>
           <span className="num-display text-foreground/70" style={{ fontSize: "0.72rem" }}>
-            {lang === "zh" ? "手动快照" : "Manual"}
+            {utc8Now} UTC+8
           </span>
         </div>
       </div>
@@ -338,7 +359,7 @@ export default function PnlChart() {
             {lang === "zh" ? "周期" : "Range"}
           </span>
           <div className="flex gap-1">
-            {(["1D", "7D", "30D", "90D", "MAX"] as const).map((r) => (
+            {(["7D", "30D", "90D", "MAX"] as const).map((r) => (
               <button
                 key={r}
                 onClick={() => setTimeRange(r)}

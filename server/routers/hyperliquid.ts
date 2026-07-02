@@ -171,7 +171,7 @@ export const hyperliquidRouter = router({
 
   snapshotPnl: publicProcedure.mutation(async () => {
     const now = Date.now();
-    const date = new Date(now).toISOString().slice(0, 10);
+    const date = new Date(now + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const [perpStates, spotState, btcPrice, officialBalanceUsdc] = await Promise.all([
       getHyperliquidPerpStates(),
       getHyperliquidSpotState().catch(() => ({ balances: [] })),
