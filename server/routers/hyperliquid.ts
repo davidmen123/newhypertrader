@@ -5,6 +5,7 @@ import {
   getHyperliquidBtcPrice,
   getHyperliquidConfigStatus,
   getHyperliquidMarketPrices,
+  getHyperliquidOpenOrders,
   getActiveHyperliquidPerpStates,
   getHyperliquidPerpStates,
   getHyperliquidPositions,
@@ -114,6 +115,10 @@ export const hyperliquidRouter = router({
 
   positions: publicProcedure.query(async () => {
     return getHyperliquidPositions();
+  }),
+
+  openOrders: publicProcedure.query(async () => {
+    return getHyperliquidOpenOrders();
   }),
 
   tradeHistory: publicProcedure

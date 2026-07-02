@@ -281,6 +281,24 @@ export interface HyperliquidLedgerUpdate {
   };
 }
 
+export interface HyperliquidOpenOrder {
+  coin?: string;
+  side?: string;
+  limitPx?: string;
+  sz?: string;
+  origSz?: string;
+  oid?: number | string;
+  timestamp?: number;
+  reduceOnly?: boolean;
+  orderType?: string;
+  tif?: string;
+  triggerPx?: string;
+  triggerCondition?: string;
+  isTrigger?: boolean;
+  cloid?: string | null;
+  [key: string]: unknown;
+}
+
 export async function getHyperliquidState(dex = "") {
   const user = assertAddress();
   return callInfo<HyperliquidClearinghouseState>({
@@ -358,6 +376,51 @@ export async function getHyperliquidFills(startTime?: number, endTime?: number) 
     });
   }
   return callInfo<HyperliquidFill[]>({ type: "userFills", user });
+}
+
+async function getHyperliquidOpenOrdersForDex(dex = "") {
+  const user = assertAddress();
+  return callInfo<HyperliquidOpenOrder[]>({
+    type: "frontendOpenOrders",
+    user,
+    ...(dex ? { dex } : {}),
+  });
+}
+
+export async function getHyperliquidOpenOrders() {
+  const results = await Promise.allSettled(
+    getPerpDexes().map(async (dex) => ({
+      dex,
+      orders: await getHyperliquidOpenOrdersForDex(dex),
+    }))
+  );
+
+  const orders = results.flatMap((result) => {
+    if (result.status === "fulfilled") {
+      return result.value.orders.map((order) => ({ ...order, dex: result.value.dex }));
+    }
+    console.warn("[Hyperliquid] Failed to read open orders:", result.reason);
+    return [];
+  });
+
+  return orders.map((order) => ({
+    symbol: order.coin ? `${order.coin}-PERP` : "—",
+    market: order.dex ? String(order.dex) : "default",
+    coin: order.coin ?? "",
+    side: order.side ?? "",
+    orderType: order.orderType ?? (order.isTrigger ? "Trigger" : "Limit"),
+    limitPrice: String(order.limitPx ?? ""),
+    size: String(order.sz ?? ""),
+    originalSize: String(order.origSz ?? order.sz ?? ""),
+    orderId: String(order.oid ?? ""),
+    timestamp: String(order.timestamp ?? ""),
+    reduceOnly: Boolean(order.reduceOnly),
+    tif: order.tif ?? "",
+    triggerPrice: order.triggerPx != null ? String(order.triggerPx) : "",
+    triggerCondition: order.triggerCondition ?? "",
+    isTrigger: Boolean(order.isTrigger),
+    cloid: order.cloid ?? "",
+  }));
 }
 
 export async function getHyperliquidLedgerUpdates(startTime = 0, endTime = Date.now()) {
@@ -635,6 +698,7 @@ export async function getHyperliquidPositions() {
       markPrice: String(mark),
       unrealisedPnl: String(toNumber(position.unrealizedPnl)),
       curRealisedPnl: String(toNumber(position.cumFunding?.sinceOpen)),
+      fundingFee: String(toNumber(position.cumFunding?.sinceOpen)),
       liquidationPrice: position.liquidationPx ? String(position.liquidationPx) : "0",
       profitRate: String(toNumber(position.returnOnEquity)),
       updatedTime: String(state.time ?? now),

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import LiveTicker from "@/components/LiveTicker";
 import PositionsTable from "@/components/PositionsTable";
+import OpenOrdersTable from "@/components/OpenOrdersTable";
 import PnlChart from "@/components/PnlChart";
 import AccountOverview from "@/components/AccountOverview";
 import EconomicCalendar from "@/components/EconomicCalendar";
@@ -238,22 +239,27 @@ export default function Home() {
             <PositionsTable />
           </CollapsibleSection>
 
-          {/* 3. PnL History — default collapsed on mobile, open on desktop */}
+          {/* 3. Open Orders — default open */}
+          <CollapsibleSection label={lang === "zh" ? "当前委托" : "Open Orders"} defaultOpen={true}>
+            <OpenOrdersTable />
+          </CollapsibleSection>
+
+          {/* 4. PnL History — default collapsed on mobile, open on desktop */}
           <CollapsibleSection label={tr.pnlHistory} defaultOpen={true}>
             <PnlChart />
           </CollapsibleSection>
 
-          {/* 4. Trade History — default collapsed */}
+          {/* 5. Trade History — default collapsed */}
           <CollapsibleSection label={lang === "zh" ? "历史成交" : "Trade History"} defaultOpen={false}>
             <TradeHistory />
           </CollapsibleSection>
 
-          {/* 5. Economic Calendar — default collapsed */}
+          {/* 6. Economic Calendar — default collapsed */}
           <CollapsibleSection label={tr.economicCalendar} defaultOpen={false}>
             <EconomicCalendar />
           </CollapsibleSection>
 
-          {/* 6. Earnings Calendar — default collapsed */}
+          {/* 7. Earnings Calendar — default collapsed */}
           <CollapsibleSection label={tr.earningsCalendar} defaultOpen={false}>
             <EarningsCalendar />
           </CollapsibleSection>

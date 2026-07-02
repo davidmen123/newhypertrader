@@ -15,6 +15,7 @@ type HyperliquidPosition = {
   markPrice: string;
   unrealisedPnl: string;
   curRealisedPnl: string;
+  fundingFee: string;
   liquidationPrice: string;
   profitRate: string;
   updatedTime: string;
@@ -130,6 +131,7 @@ export default function PositionsTable() {
                   <th>{t("杠杆", "Lev.")}</th>
                   <th>{t("未实现盈亏", "Unrealized")}</th>
                   <th>{t("收益率", "ROI")}</th>
+                  <th>{t("资金费", "Funding")}</th>
                   <th>{t("强平价", "Liq.")}</th>
                   <th>{t("更新", "Updated")}</th>
                 </tr>
@@ -152,6 +154,7 @@ export default function PositionsTable() {
                       <td>{fmt(p.leverage, 2)}x</td>
                       <td className={pnlColor(p.unrealisedPnl)}>{signed(p.unrealisedPnl, 2)}</td>
                       <td className={pnlColor(p.profitRate)}>{signed(num(p.profitRate) * 100, 2)}%</td>
+                      <td className={pnlColor(p.fundingFee)}>{signed(p.fundingFee, 2)}</td>
                       <td>{num(p.liquidationPrice) > 0 ? fmt(p.liquidationPrice, 2) : "—"}</td>
                       <td className="text-muted-foreground">{formatTime(p.updatedTime, lang)}</td>
                     </tr>
@@ -179,6 +182,7 @@ export default function PositionsTable() {
                     <span>{t("均价", "Avg")}: {fmt(p.avgPrice, 2)}</span>
                     <span>{t("标记价", "Mark")}: {fmt(p.markPrice, 2)}</span>
                     <span className={pnlColor(p.unrealisedPnl)}>{t("盈亏", "PnL")}: {signed(p.unrealisedPnl, 2)}</span>
+                    <span className={pnlColor(p.fundingFee)}>{t("资金费", "Funding")}: {signed(p.fundingFee, 2)}</span>
                   </div>
                 </div>
               );
