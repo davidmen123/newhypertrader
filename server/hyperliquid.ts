@@ -627,8 +627,9 @@ function calculateRoundTripTradeMetrics(fills: HyperliquidFill[]) {
   const sortedFills = fills
     .slice()
     .sort((a, b) => a.time - b.time);
-  const openTrades = new Map<string, { pnl: number }>();
+  const openTrades = new Map<string, { pnl: number; openedAt: number }>();
   const completedPnls: number[] = [];
+  const completedHoldingHours: number[] = [];
 
   for (const fill of sortedFills) {
     const coin = fill.coin;
@@ -642,11 +643,11 @@ function calculateRoundTripTradeMetrics(fills: HyperliquidFill[]) {
     const realizedPnl = toNumber(fill.closedPnl);
 
     if (!openTrades.has(coin) && !startsFlat) {
-      openTrades.set(coin, { pnl: 0 });
+      openTrades.set(coin, { pnl: 0, openedAt: fill.time });
     }
 
     if (startsFlat && !endsFlat && !openTrades.has(coin)) {
-      openTrades.set(coin, { pnl: 0 });
+      openTrades.set(coin, { pnl: 0, openedAt: fill.time });
     }
 
     const current = openTrades.get(coin);
@@ -654,10 +655,16 @@ function calculateRoundTripTradeMetrics(fills: HyperliquidFill[]) {
 
     if (endsFlat || flipsSide) {
       const closingTrade = openTrades.get(coin);
-      if (closingTrade) completedPnls.push(closingTrade.pnl);
+      if (closingTrade) {
+        completedPnls.push(closingTrade.pnl);
+        const holdingHours = (fill.time - closingTrade.openedAt) / (60 * 60 * 1000);
+        if (Number.isFinite(holdingHours) && holdingHours >= 0) {
+          completedHoldingHours.push(holdingHours);
+        }
+      }
       openTrades.delete(coin);
       if (flipsSide) {
-        openTrades.set(coin, { pnl: 0 });
+        openTrades.set(coin, { pnl: 0, openedAt: fill.time });
       }
     }
   }
@@ -669,6 +676,9 @@ function calculateRoundTripTradeMetrics(fills: HyperliquidFill[]) {
   const grossLoss = Math.abs(completedPnls.reduce((sum, pnl) => sum + Math.min(0, pnl), 0));
   const avgWin = winningTrades > 0 ? grossWin / winningTrades : 0;
   const avgLoss = losingTrades > 0 ? grossLoss / losingTrades : 0;
+  const averageHoldingHours = completedHoldingHours.length > 0
+    ? completedHoldingHours.reduce((sum, hours) => sum + hours, 0) / completedHoldingHours.length
+    : null;
 
   return {
     totalTrades: completedPnls.length,
@@ -677,6 +687,7 @@ function calculateRoundTripTradeMetrics(fills: HyperliquidFill[]) {
     breakevenTrades,
     winRate: completedPnls.length > 0 ? (winningTrades / completedPnls.length) * 100 : null,
     plRatio: avgLoss > 0 ? avgWin / avgLoss : null,
+    averageHoldingHours,
   };
 }
 

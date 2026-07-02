@@ -148,6 +148,18 @@ export default function AccountOverview() {
     return v >= 0 ? `+${s}` : `-${s}`;
   };
 
+  const fmtHoldingHours = (hours: number | null | undefined) => {
+    if (hours == null || !isFinite(hours)) return "--";
+    if (hours < 1) return t("不足 1 小时", "< 1 hour");
+    const roundedHours = Math.round(hours);
+    if (roundedHours < 24) return t(`${roundedHours} 小时`, `${roundedHours}h`);
+    const days = Math.floor(roundedHours / 24);
+    const restHours = roundedHours % 24;
+    return restHours > 0
+      ? t(`${days} 天 ${restHours} 小时`, `${days}d ${restHours}h`)
+      : t(`${days} 天`, `${days}d`);
+  };
+
   const t = (zh: string, en: string) => (lang === "zh" ? zh : en);
 
   if (isLoading) {
@@ -314,7 +326,7 @@ export default function AccountOverview() {
 
         <div className="space-y-2">
           <SectionTitle>{t("交易表现", "Trade Performance")}</SectionTitle>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <MetricTile
               label={t("胜率", "Win Rate")}
               value={winRate != null ? `${winRate.toFixed(2)}%` : "--"}
@@ -331,6 +343,12 @@ export default function AccountOverview() {
               label={t("完整交易数", "Round Trips")}
               value={metricsData?.totalTrades != null ? `${metricsData.totalTrades}` : "--"}
               sub={metricsData ? `${t("盈利", "Wins")} ${metricsData.winningTrades} · ${t("亏损", "Losses")} ${metricsData.losingTrades}` : undefined}
+              tone="neutral"
+            />
+            <MetricTile
+              label={t("平均持仓时长", "Avg Holding Time")}
+              value={fmtHoldingHours(metricsData?.averageHoldingHours)}
+              sub={t("按完整交易统计", "Closed trades only")}
               tone="neutral"
             />
           </div>
