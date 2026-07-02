@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLang } from "@/contexts/LangContext";
 import {
-  ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
 import { RefreshCw, Database } from "lucide-react";
@@ -85,6 +85,39 @@ function formatUtc8Now(lang: string) {
 function formatUtc8Date(date: Date) {
   const utc8OffsetMs = 8 * 60 * 60 * 1000;
   return new Date(date.getTime() + utc8OffsetMs).toISOString().slice(0, 10);
+}
+
+function makeValueGridTicks(values: number[], preferredCount = 6) {
+  const finiteValues = values.filter(Number.isFinite);
+  if (finiteValues.length === 0) return [0];
+
+  let min = Math.min(...finiteValues);
+  let max = Math.max(...finiteValues);
+  if (min === max) {
+    const pad = Math.max(Math.abs(min) * 0.08, 1);
+    min -= pad;
+    max += pad;
+  }
+
+  if (min < 0 && max > 0) {
+    const span = Math.max(Math.abs(min), Math.abs(max));
+    min = -span;
+    max = span;
+  }
+
+  const rawStep = (max - min) / Math.max(preferredCount - 1, 1);
+  const magnitude = 10 ** Math.floor(Math.log10(Math.max(rawStep, 0.000001)));
+  const residual = rawStep / magnitude;
+  const niceStep = residual > 5 ? 10 * magnitude : residual > 2 ? 5 * magnitude : residual > 1 ? 2 * magnitude : magnitude;
+  const niceMin = Math.floor(min / niceStep) * niceStep;
+  const niceMax = Math.ceil(max / niceStep) * niceStep;
+  const ticks: number[] = [];
+
+  for (let value = niceMin; value <= niceMax + niceStep * 0.5; value += niceStep) {
+    ticks.push(Number(value.toFixed(6)));
+  }
+
+  return ticks.length > 0 ? ticks : [0];
 }
 
 function CustomTooltip({ active, payload, label, labels, visible }: TooltipProps) {
@@ -276,6 +309,13 @@ export default function PnlChart() {
     Math.max(0, assetMin - assetPadding),
     assetMax + assetPadding,
   ];
+  const percentGridValues = chartData.flatMap((d) => [
+    visible.accountPerformance ? d.accountPerformance : null,
+    visible.btcBenchmark ? d.btcBenchmark : null,
+  ]).filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+  const percentGridTicks = makeValueGridTicks(percentGridValues);
+  const assetGridTicks = makeValueGridTicks(assetValues);
+  const gridMode = assetTrendVisible && !percentVisible ? "asset" : "percent";
 
   const toggleSeries = (key: SeriesKey) => {
     setVisible((prev) => {
@@ -430,7 +470,27 @@ export default function PnlChart() {
                   </linearGradient>
                 ))}
               </defs>
-              <CartesianGrid strokeDasharray="1 10" stroke="rgb(117 160 148 / 10%)" vertical horizontal />
+              <CartesianGrid strokeDasharray="1 12" stroke="rgb(117 160 148 / 10%)" vertical horizontal={false} />
+              {gridMode === "percent" && percentVisible && percentGridTicks.map((tick) => (
+                <ReferenceLine
+                  key={`percent-grid-${tick}`}
+                  yAxisId="left"
+                  y={tick}
+                  stroke={tick === 0 ? "rgb(117 160 148 / 24%)" : "rgb(117 160 148 / 12%)"}
+                  strokeDasharray={tick === 0 ? "4 6" : "1 10"}
+                  ifOverflow="extendDomain"
+                />
+              ))}
+              {gridMode === "asset" && assetGridTicks.map((tick) => (
+                <ReferenceLine
+                  key={`asset-grid-${tick}`}
+                  yAxisId="right"
+                  y={tick}
+                  stroke="rgb(117 160 148 / 12%)"
+                  strokeDasharray="1 10"
+                  ifOverflow="extendDomain"
+                />
+              ))}
               <XAxis
                 dataKey="date"
                 tick={{ fill: "rgb(160 190 182 / 42%)", fontSize: 11, fontFamily: "DM Mono" }}
@@ -447,6 +507,7 @@ export default function PnlChart() {
                   tickLine={false}
                   axisLine={false}
                   width={62}
+                  ticks={percentGridTicks}
                   tickFormatter={(v) => `${v.toFixed(2)}%`}
                 />
               )}
@@ -459,6 +520,7 @@ export default function PnlChart() {
                   tickLine={false}
                   axisLine={false}
                   width={72}
+                  ticks={assetGridTicks}
                   tickFormatter={(v) => v.toLocaleString("en-US", { maximumFractionDigits: 0 })}
                 />
               )}
