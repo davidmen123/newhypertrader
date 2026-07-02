@@ -553,6 +553,68 @@ export function getHyperliquidMaxDrawdown(portfolio: HyperliquidPortfolio) {
   };
 }
 
+function getUtc8DateKey(time: number) {
+  return new Date(time + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+export function getHyperliquidPerformanceStats(portfolio: HyperliquidPortfolio) {
+  const windowData =
+    findPortfolioWindow(portfolio, "allTime") ??
+    portfolio.find(([, data]) => data.accountValueHistory?.length)?.[1];
+  const history = windowData?.accountValueHistory ?? [];
+
+  if (history.length < 2) {
+    return {
+      sharpeRatio: null,
+      annualizedReturnPct: null,
+      runningDays: null,
+    };
+  }
+
+  const firstTime = history[0][0];
+  const firstEquity = toNumber(history[0][1]);
+  const latestEquity = toNumber(history[history.length - 1][1]);
+  const runningDays = Math.max(1, Math.ceil((Date.now() - firstTime) / (24 * 60 * 60 * 1000)));
+  const annualizedReturnPct = firstEquity > 0 && latestEquity > 0
+    ? (Math.pow(latestEquity / firstEquity, 365 / runningDays) - 1) * 100
+    : null;
+
+  const dailyClose = new Map<string, number>();
+  for (const [time, equity] of history) {
+    dailyClose.set(getUtc8DateKey(time), toNumber(equity));
+  }
+
+  const dailyEquities = Array.from(dailyClose.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([, equity]) => equity)
+    .filter((equity) => Number.isFinite(equity) && equity > 0);
+  const dailyReturns: number[] = [];
+  for (let i = 1; i < dailyEquities.length; i += 1) {
+    const prev = dailyEquities[i - 1];
+    const current = dailyEquities[i];
+    if (prev > 0) dailyReturns.push((current - prev) / prev);
+  }
+
+  if (dailyReturns.length < 2) {
+    return {
+      sharpeRatio: null,
+      annualizedReturnPct,
+      runningDays,
+    };
+  }
+
+  const meanReturn = dailyReturns.reduce((sum, value) => sum + value, 0) / dailyReturns.length;
+  const variance = dailyReturns.reduce((sum, value) => sum + Math.pow(value - meanReturn, 2), 0) / (dailyReturns.length - 1);
+  const volatility = Math.sqrt(variance);
+  const sharpeRatio = volatility > 0 ? (meanReturn / volatility) * Math.sqrt(365) : null;
+
+  return {
+    sharpeRatio,
+    annualizedReturnPct,
+    runningDays,
+  };
+}
+
 export async function getHyperliquidOfficialBalanceUsdc() {
   const portfolio = await getHyperliquidPortfolio();
   return getHyperliquidPortfolioEquitySummary(portfolio).latest;
@@ -722,6 +784,9 @@ export async function getHyperliquidAccountOverview() {
   const drawdown = portfolio
     ? getHyperliquidMaxDrawdown(portfolio)
     : { maxDrawdownUsdc: null, maxDrawdownPct: null };
+  const performance = portfolio
+    ? getHyperliquidPerformanceStats(portfolio)
+    : { sharpeRatio: null, annualizedReturnPct: null, runningDays: null };
   const activePerpStates = getActiveHyperliquidPerpStates(perpStates);
   const summaries = activePerpStates.map(({ state }) => state.marginSummary ?? state.crossMarginSummary ?? {});
   const perpEquityUsdc = summaries.reduce((sum, summary) => sum + toNumber(summary.accountValue), 0);
@@ -777,6 +842,9 @@ export async function getHyperliquidAccountOverview() {
     marginUsageRatio: totalEquityUsdc > 0 ? totalNtlPos / totalEquityUsdc : 0,
     maxDrawdownUsdc: drawdown.maxDrawdownUsdc,
     maxDrawdownPct: drawdown.maxDrawdownPct,
+    sharpeRatio: performance.sharpeRatio,
+    annualizedReturnPct: performance.annualizedReturnPct,
+    runningDays: performance.runningDays,
     calmarRatio: null,
     totalNtlPos,
     metrics: {

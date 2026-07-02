@@ -290,6 +290,24 @@ export default function AccountOverview() {
               value={data.maxDrawdownPct != null ? `${data.maxDrawdownPct.toFixed(2)}%` : "--"}
               tone={data.maxDrawdownUsdc != null && data.maxDrawdownUsdc < 0 ? "loss" : "neutral"}
             />
+            <MetricTile
+              label={t("年化收益率", "Annualized Return")}
+              value={data.annualizedReturnPct != null ? `${fmtSign(data.annualizedReturnPct, 2)}%` : "--"}
+              tone={data.annualizedReturnPct != null && data.annualizedReturnPct >= 0 ? "profit" : "loss"}
+            />
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <MetricTile
+              label={t("夏普比率", "Sharpe Ratio")}
+              value={data.sharpeRatio != null && isFinite(data.sharpeRatio) ? fmt(data.sharpeRatio, 2) : "--"}
+              tone={data.sharpeRatio != null && data.sharpeRatio >= 1 ? "profit" : "neutral"}
+            />
+            <MetricTile
+              label={t("运行天数", "Running Days")}
+              value={data.runningDays != null ? `${data.runningDays}` : "--"}
+              sub={t("天", "days")}
+              tone="neutral"
+            />
           </div>
         </div>
 
