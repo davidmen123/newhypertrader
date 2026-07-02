@@ -8,7 +8,8 @@ import EconomicCalendar from "@/components/EconomicCalendar";
 import TradeHistory from "@/components/TradeHistory";
 import EarningsCalendar from "@/components/EarningsCalendar";
 import { useLang } from "@/contexts/LangContext";
-import { ChevronDown } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
+import { ChevronDown, Moon, Sun } from "lucide-react";
 
 interface CollapsibleSectionProps {
   label: string;
@@ -30,15 +31,15 @@ function CollapsibleSection({ label, defaultOpen = true, children }: Collapsible
       >
         <span
           className="text-xs tracking-[0.25em] uppercase"
-          style={{ color: "rgb(205 222 211 / 78%)", fontFamily: "Inter, sans-serif", whiteSpace: "nowrap" }}
+          style={{ color: "var(--muted-foreground)", fontFamily: "Inter, sans-serif", whiteSpace: "nowrap" }}
         >
           {label}
         </span>
-        <div style={{ flex: 1, height: 1, background: "rgb(255 255 255 / 10%)" }} />
+        <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
         <ChevronDown
           size={13}
           style={{
-            color: "rgb(205 222 211 / 72%)",
+            color: "var(--muted-foreground)",
             transition: "transform 0.25s ease",
             transform: open ? "rotate(0deg)" : "rotate(-90deg)",
             flexShrink: 0,
@@ -62,6 +63,8 @@ function CollapsibleSection({ label, defaultOpen = true, children }: Collapsible
 
 export default function Home() {
   const { tr, lang, setLang } = useLang();
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === "dark";
 
   // Page view counter: increment on mount, display total
   const incrementMutation = trpc.pageViews.increment.useMutation();
@@ -75,15 +78,20 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const pageBackground = isDark
+    ? "#000000"
+    : "radial-gradient(circle, rgb(22 22 20 / 7%) 0.8px, transparent 0.9px) 0 0 / 5px 5px, linear-gradient(180deg, #f7f6f1 0%, #efeee9 100%)";
+  const heroTitleColor = isDark ? "#fffef8" : "#111111";
+  const heroAccentColor = isDark ? "rgb(242 231 201 / 88%)" : "rgb(123 42 31 / 92%)";
+  const heroMetaColor = isDark ? "rgb(255 255 255 / 86%)" : "rgb(48 48 45 / 82%)";
+  const subtleTextColor = isDark ? "rgb(230 230 224 / 76%)" : "rgb(42 42 39 / 68%)";
+  const panelBackground = isDark ? "rgb(255 255 255 / 4%)" : "rgb(255 255 255 / 54%)";
+  const panelBorder = isDark ? "rgb(255 255 255 / 9%)" : "rgb(0 0 0 / 10%)";
+
   return (
     <div
       className="min-h-screen text-foreground"
-      style={{
-        background:
-          "radial-gradient(ellipse at 18% 0%, rgb(215 187 114 / 13%) 0%, transparent 38%), " +
-          "radial-gradient(ellipse at 84% 22%, rgb(255 255 255 / 8%) 0%, transparent 34%), " +
-          "linear-gradient(115deg, #030304 0%, #070708 44%, #111114 100%)",
-      }}
+      style={{ background: pageBackground }}
     >
       {/* ── Header ── */}
       <header className="px-4 sm:px-12 pt-7 sm:pt-10 pb-6 sm:pb-8">
@@ -98,8 +106,8 @@ export default function Home() {
                   fontWeight: 300,
                   letterSpacing: "0.04em",
                   lineHeight: 1.02,
-                  color: "#fffef8",
-                  textShadow: "0 12px 42px rgb(0 0 0 / 55%)",
+                  color: heroTitleColor,
+                  textShadow: isDark ? "0 12px 42px rgb(0 0 0 / 55%)" : "none",
                 }}
               >
                 以交易为生
@@ -110,7 +118,7 @@ export default function Home() {
                   fontSize: "clamp(0.95rem, 1.45vw, 1.2rem)",
                   fontWeight: 400,
                   letterSpacing: "0.08em",
-                  color: "rgb(242 231 201 / 88%)",
+                  color: heroAccentColor,
                   marginTop: "0.72rem",
                 }}
               >
@@ -119,7 +127,7 @@ export default function Home() {
               <div
                 style={{
                   fontFamily: '"Songti SC", "STSong", "Noto Serif SC", serif',
-                  color: "rgb(255 255 255 / 86%)",
+                  color: heroMetaColor,
                   fontSize: "clamp(0.88rem, 1.28vw, 1.05rem)",
                   fontWeight: 300,
                   letterSpacing: "0.18em",
@@ -132,18 +140,29 @@ export default function Home() {
 
             {/* Right: date + lang switch */}
             <div className="flex flex-col items-end gap-3">
-              <button
-                onClick={() => setLang(lang === "en" ? "zh" : "en")}
-                className="pill-tab text-xs"
-                style={{ minWidth: 60 }}
-              >
-                {tr.langSwitch}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={toggleTheme}
+                  className="pill-tab text-xs inline-flex items-center gap-2"
+                  style={{ minWidth: 74 }}
+                  title={isDark ? "切换到白天" : "切换到黑夜"}
+                >
+                  {isDark ? <Sun size={13} /> : <Moon size={13} />}
+                  {isDark ? "DAY" : "NIGHT"}
+                </button>
+                <button
+                  onClick={() => setLang(lang === "en" ? "zh" : "en")}
+                  className="pill-tab text-xs"
+                  style={{ minWidth: 60 }}
+                >
+                  {tr.langSwitch}
+                </button>
+              </div>
               <div
                 style={{
                   fontFamily: "DM Mono, monospace",
                   fontSize: "0.65rem",
-                  color: "rgb(230 230 224 / 72%)",
+                  color: subtleTextColor,
                   letterSpacing: "0.04em",
                   textAlign: "right",
                 }}
@@ -166,7 +185,9 @@ export default function Home() {
             style={{
               height: 1,
               background:
-                "linear-gradient(to right, transparent, rgb(215 187 114 / 34%), transparent)",
+                isDark
+                  ? "linear-gradient(to right, transparent, rgb(215 187 114 / 34%), transparent)"
+                  : "linear-gradient(to right, transparent, rgb(0 0 0 / 16%), transparent)",
               marginTop: "1.5rem",
             }}
           />
@@ -218,15 +239,15 @@ export default function Home() {
       {/* ── Footer ── */}
       <footer
         className="px-4 sm:px-12 py-5"
-        style={{ borderTop: "1px solid rgb(255 255 255 / 9%)" }}
+        style={{ borderTop: `1px solid ${panelBorder}` }}
       >
         <div className="max-w-6xl mx-auto flex flex-col gap-3">
           <div
             className="rounded-lg px-4 py-3"
             style={{
-              background: "rgb(255 255 255 / 4%)",
-              border: "1px solid rgb(255 255 255 / 8%)",
-              color: "rgb(230 230 224 / 62%)",
+              background: panelBackground,
+              border: `1px solid ${panelBorder}`,
+              color: subtleTextColor,
               fontSize: "0.68rem",
               lineHeight: 1.7,
             }}
@@ -242,7 +263,7 @@ export default function Home() {
               fontSize: "0.6rem",
               letterSpacing: "0.18em",
               textTransform: "uppercase",
-              color: "rgb(205 222 211 / 70%)",
+              color: subtleTextColor,
             }}
           >
             以交易为生 Trading for a living
@@ -253,7 +274,7 @@ export default function Home() {
               fontFamily: "Inter, sans-serif",
               fontSize: "0.62rem",
               letterSpacing: "0.08em",
-              color: "rgb(230 230 224 / 70%)",
+              color: subtleTextColor,
             }}
           >
             <span>公众号：温格笔记</span>
@@ -265,7 +286,7 @@ export default function Home() {
                 style={{
                   fontFamily: "DM Mono, monospace",
                   fontSize: "0.55rem",
-                  color: "rgb(205 222 211 / 66%)",
+                  color: subtleTextColor,
                   letterSpacing: "0.06em",
                 }}
               >
@@ -276,7 +297,7 @@ export default function Home() {
               style={{
                 fontFamily: "DM Mono, monospace",
                 fontSize: "0.6rem",
-                color: "rgb(205 222 211 / 66%)",
+                color: subtleTextColor,
               }}
             >
               {tr.autoRefresh}

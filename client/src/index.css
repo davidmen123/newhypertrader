@@ -44,45 +44,68 @@
 }
 
 :root {
-  /* Classic black trading dashboard theme */
+  /* Daylight paper theme */
   --radius: 12px;
-  --background: #050506;
-  --foreground: #f4f4f1;
-  --card: #111114;
-  --card-foreground: #f4f4f1;
-  --popover: #141416;
-  --popover-foreground: #f4f4f1;
-  --primary: #f2e7c9;
-  --primary-foreground: #101011;
-  --secondary: #1b1c20;
-  --secondary-foreground: #ededeb;
-  --muted: #18191d;
-  --muted-foreground: #a9aaa7;
-  --accent: #d7bb72;
-  --accent-foreground: #0d0d0e;
+  --background: #f4f3ef;
+  --foreground: #151515;
+  --card: #ffffff;
+  --card-foreground: #151515;
+  --popover: #ffffff;
+  --popover-foreground: #151515;
+  --primary: #151515;
+  --primary-foreground: #fffef8;
+  --secondary: #e8e5dd;
+  --secondary-foreground: #202020;
+  --muted: #e9e7e0;
+  --muted-foreground: #6c6b66;
+  --accent: #7b2a1f;
+  --accent-foreground: #fffef8;
   --destructive: oklch(60% 0.18 25);
   --destructive-foreground: oklch(95% 0 0);
-  --border: rgb(255 255 255 / 10%);
-  --input: rgb(255 255 255 / 12%);
-  --ring: #d7bb72;
+  --border: rgb(0 0 0 / 12%);
+  --input: rgb(0 0 0 / 12%);
+  --ring: #7b2a1f;
   --chart-1: #48d28b;
   --chart-2: #d7bb72;
   --chart-3: oklch(72% 0.13 85);
   --chart-4: oklch(62% 0.12 285);
   --chart-5: oklch(62% 0.12 25);
-  --sidebar: #0b0b0d;
-  --sidebar-foreground: #f4f4f1;
-  --sidebar-primary: #f2e7c9;
-  --sidebar-primary-foreground: #101011;
-  --sidebar-accent: #18191d;
-  --sidebar-accent-foreground: #f4f4f1;
-  --sidebar-border: rgb(255 255 255 / 10%);
-  --sidebar-ring: #d7bb72;
+  --sidebar: #f4f3ef;
+  --sidebar-foreground: #151515;
+  --sidebar-primary: #151515;
+  --sidebar-primary-foreground: #fffef8;
+  --sidebar-accent: #e9e7e0;
+  --sidebar-accent-foreground: #151515;
+  --sidebar-border: rgb(0 0 0 / 12%);
+  --sidebar-ring: #7b2a1f;
 }
 
 .dark {
-  --background: #050506;
+  --background: #000000;
   --foreground: #f4f4f1;
+  --card: #080808;
+  --card-foreground: #f7f7f2;
+  --popover: #0b0b0b;
+  --popover-foreground: #f7f7f2;
+  --primary: #f2e7c9;
+  --primary-foreground: #050505;
+  --secondary: #111111;
+  --secondary-foreground: #f1f1ec;
+  --muted: #111111;
+  --muted-foreground: #bdbdb6;
+  --accent: #d7bb72;
+  --accent-foreground: #050505;
+  --border: rgb(255 255 255 / 14%);
+  --input: rgb(255 255 255 / 14%);
+  --ring: #d7bb72;
+  --sidebar: #000000;
+  --sidebar-foreground: #f4f4f1;
+  --sidebar-primary: #f2e7c9;
+  --sidebar-primary-foreground: #050505;
+  --sidebar-accent: #111111;
+  --sidebar-accent-foreground: #f4f4f1;
+  --sidebar-border: rgb(255 255 255 / 14%);
+  --sidebar-ring: #d7bb72;
 }
 
 @layer base {
@@ -129,12 +152,17 @@
 
 /* Glass card */
 .glass-card {
-  background: rgb(17 17 20 / 78%);
-  border: 1px solid rgb(255 255 255 / 10%);
+  background: rgb(255 255 255 / 58%);
+  border: 1px solid rgb(0 0 0 / 10%);
   border-radius: 12px;
-  box-shadow: 0 18px 60px rgb(0 0 0 / 34%);
+  box-shadow: 0 18px 60px rgb(35 31 25 / 10%);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
+}
+.dark .glass-card {
+  background: rgb(8 8 8 / 86%);
+  border-color: rgb(255 255 255 / 13%);
+  box-shadow: 0 18px 60px rgb(0 0 0 / 58%);
 }
 
 /* Thin divider */
@@ -155,19 +183,30 @@
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: rgb(190 190 186 / 78%);
-  border-bottom: 1px solid rgb(255 255 255 / 10%);
+  color: rgb(70 70 66 / 78%);
+  border-bottom: 1px solid rgb(0 0 0 / 10%);
 }
 .minimal-table td {
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid rgb(255 255 255 / 8%);
+  border-bottom: 1px solid rgb(0 0 0 / 8%);
   font-family: "DM Mono", monospace;
   font-size: 0.8rem;
   font-weight: 400;
-  color: #ecece8;
+  color: #1b1b1a;
 }
 .minimal-table tbody tr:hover td {
-  background: rgb(255 255 255 / 5%);
+  background: rgb(0 0 0 / 4%);
+}
+.dark .minimal-table th {
+  color: rgb(210 210 204 / 78%);
+  border-bottom-color: rgb(255 255 255 / 12%);
+}
+.dark .minimal-table td {
+  color: #f2f2ed;
+  border-bottom-color: rgb(255 255 255 / 9%);
+}
+.dark .minimal-table tbody tr:hover td {
+  background: rgb(255 255 255 / 6%);
 }
 
 /* Pill tab */
@@ -179,17 +218,30 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   transition: all 0.2s ease;
-  border: 1px solid rgb(255 255 255 / 16%);
-  color: rgb(230 230 224 / 72%);
+  border: 1px solid rgb(0 0 0 / 18%);
+  color: rgb(35 35 32 / 76%);
   background: transparent;
 }
 .pill-tab:hover {
-  color: #fffef8;
-  border-color: rgb(215 187 114 / 65%);
+  color: #151515;
+  border-color: rgb(123 42 31 / 65%);
 }
 .pill-tab.active {
-  background: rgb(215 187 114 / 14%);
-  border-color: rgb(215 187 114 / 75%);
+  background: rgb(123 42 31 / 10%);
+  border-color: rgb(123 42 31 / 65%);
+  color: #151515;
+}
+.dark .pill-tab {
+  border-color: rgb(255 255 255 / 18%);
+  color: rgb(240 240 232 / 80%);
+}
+.dark .pill-tab:hover {
+  color: #fffef8;
+  border-color: rgb(215 187 114 / 70%);
+}
+.dark .pill-tab.active {
+  background: rgb(215 187 114 / 16%);
+  border-color: rgb(215 187 114 / 78%);
   color: #fffef8;
 }
 
