@@ -66,6 +66,21 @@ function displayTriggerCondition(order: HyperliquidOpenOrder) {
   return num(order.triggerPrice) > 0 ? fmt(order.triggerPrice, 2) : "—";
 }
 
+function isClosePositionOrder(order: HyperliquidOpenOrder) {
+  const type = order.orderType.toLowerCase();
+  return num(order.size) === 0 && (type.includes("market") || order.isTrigger || Boolean(order.triggerCondition));
+}
+
+function displaySize(order: HyperliquidOpenOrder) {
+  if (isClosePositionOrder(order)) return "close position";
+  return fmt(order.size, 2);
+}
+
+function displayOriginalSize(order: HyperliquidOpenOrder) {
+  if (isClosePositionOrder(order)) return "close position";
+  return fmt(order.originalSize, 2);
+}
+
 export default function OpenOrdersTable() {
   const { lang } = useLang();
   const t = (zh: string, en: string) => (lang === "zh" ? zh : en);
@@ -126,8 +141,8 @@ export default function OpenOrdersTable() {
                     <td className={sideClass(order.side)}>{sideLabel(order.side, lang)}</td>
                     <td>{order.orderType || "—"}</td>
                     <td>{displayPrice(order)}</td>
-                    <td>{fmt(order.size, 2)}</td>
-                    <td>{fmt(order.originalSize, 2)}</td>
+                    <td>{displaySize(order)}</td>
+                    <td>{displayOriginalSize(order)}</td>
                     <td>{order.tif || "—"}</td>
                     <td>{displayTriggerCondition(order)}</td>
                     <td className="text-muted-foreground">{formatTime(order.timestamp, lang)}</td>
@@ -152,7 +167,7 @@ export default function OpenOrdersTable() {
                   <span>{t("市场", "Market")}: {order.market === "default" ? "PERP" : order.market}</span>
                   <span>{t("类型", "Type")}: {order.orderType || "—"}</span>
                   <span>{t("价格", "Price")}: {displayPrice(order)}</span>
-                  <span>{t("数量", "Size")}: {fmt(order.size, 2)}</span>
+                  <span>{t("数量", "Size")}: {displaySize(order)}</span>
                   <span>{t("有效期", "TIF")}: {order.tif || "—"}</span>
                   <span>{t("触发条件", "Trigger")}: {displayTriggerCondition(order)}</span>
                   <span>{t("时间", "Time")}: {formatTime(order.timestamp, lang)}</span>
