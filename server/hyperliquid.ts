@@ -765,7 +765,8 @@ export async function getHyperliquidPortfolioSnapshots(params: {
 
   const firstTime = filteredHistory[0]?.[0] ?? startMs;
   const lastTime = filteredHistory[filteredHistory.length - 1]?.[0] ?? Math.min(endMs, Date.now());
-  const interval = lastTime - firstTime <= 2 * 24 * 60 * 60 * 1000 ? "1h" : "1d";
+  const historySpanMs = lastTime - firstTime;
+  const interval = historySpanMs <= 30 * 24 * 60 * 60 * 1000 ? "1h" : "1d";
   const candles = filteredHistory.length > 0
     ? await getHyperliquidCandles({
       coin: "BTC",
