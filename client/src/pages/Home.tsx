@@ -81,12 +81,13 @@ export default function Home() {
   const pageBackground = isDark
     ? "#000000"
     : "linear-gradient(180deg, #fbfcfa 0%, #f4f6f2 46%, #eef1ed 100%)";
-  const heroTitleColor = isDark ? "#fffef8" : "#111111";
-  const heroAccentColor = isDark ? "rgb(242 231 201 / 88%)" : "rgb(31 107 79 / 92%)";
-  const heroMetaColor = isDark ? "rgb(255 255 255 / 86%)" : "rgb(42 47 52 / 82%)";
+  const heroTitleColor = isDark ? "#fffef8" : "#101214";
+  const heroAccentColor = isDark ? "rgb(242 231 201 / 88%)" : "rgb(31 107 79 / 86%)";
+  const heroMetaColor = isDark ? "rgb(255 255 255 / 82%)" : "rgb(42 47 52 / 76%)";
   const subtleTextColor = isDark ? "rgb(230 230 224 / 76%)" : "rgb(75 82 89 / 72%)";
   const panelBackground = isDark ? "rgb(255 255 255 / 4%)" : "rgb(255 255 255 / 82%)";
   const panelBorder = isDark ? "rgb(255 255 255 / 9%)" : "rgb(17 19 21 / 10%)";
+  const heroRule = isDark ? "rgb(242 231 201 / 42%)" : "rgb(17 19 21 / 18%)";
 
   return (
     <div
@@ -94,81 +95,52 @@ export default function Home() {
       style={{ background: pageBackground }}
     >
       {/* ── Header ── */}
-      <header className="px-4 sm:px-12 pt-7 sm:pt-10 pb-6 sm:pb-8">
+      <header className="px-4 sm:px-12 pt-7 sm:pt-10 pb-8 sm:pb-11">
         <div className="max-w-6xl mx-auto">
-          <div className="flex items-start justify-between">
-            {/* Title block */}
-            <div>
-              <h1
-                style={{
-                  fontFamily: '"Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif',
-                  fontSize: "clamp(2.35rem, 7vw, 5.4rem)",
-                  fontWeight: 200,
-                  letterSpacing: "0.015em",
-                  lineHeight: 1.02,
-                  color: heroTitleColor,
-                  textShadow: isDark ? "0 12px 42px rgb(0 0 0 / 55%)" : "none",
-                }}
-              >
-                以交易为生
-              </h1>
-              <div
-                style={{
-                  fontFamily: '"Bodoni 72", Didot, "Bodoni 72 Smallcaps", "Cormorant Garamond", Georgia, serif',
-                  fontSize: "clamp(1.05rem, 1.55vw, 1.32rem)",
-                  fontWeight: 400,
-                  letterSpacing: "0.025em",
-                  color: heroAccentColor,
-                  marginTop: "0.62rem",
-                }}
-              >
-                Trading for a living
-              </div>
-              <div
-                style={{
-                  fontFamily: '"Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif',
-                  color: heroMetaColor,
-                  fontSize: "clamp(0.88rem, 1.28vw, 1.05rem)",
-                  fontWeight: 200,
-                  letterSpacing: "0.1em",
-                  marginTop: "1rem",
-                }}
-              >
-                风控&nbsp;&nbsp;|&nbsp;&nbsp;累积&nbsp;&nbsp;|&nbsp;&nbsp;复利
-              </div>
-            </div>
-
-            {/* Right: date + lang switch */}
-            <div className="flex flex-col items-end gap-3">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={toggleTheme}
-                  className="pill-tab text-xs inline-flex items-center gap-2"
-                  style={{ minWidth: 74 }}
-                  title={isDark ? "切换到白天" : "切换到黑夜"}
-                >
-                  {isDark ? <Sun size={13} /> : <Moon size={13} />}
-                  {isDark ? "DAY" : "NIGHT"}
-                </button>
-                <button
-                  onClick={() => setLang(lang === "en" ? "zh" : "en")}
-                  className="pill-tab text-xs"
-                  style={{ minWidth: 60 }}
-                >
-                  {tr.langSwitch}
-                </button>
-              </div>
+          <div className="flex flex-col gap-8 sm:gap-10">
+            <div className="flex items-start justify-between gap-5">
               <div
                 style={{
                   fontFamily: "DM Mono, monospace",
-                  fontSize: "0.65rem",
+                  fontSize: "0.68rem",
+                  letterSpacing: "0.18em",
                   color: subtleTextColor,
-                  letterSpacing: "0.04em",
-                  textAlign: "right",
+                  textTransform: "uppercase",
+                  paddingTop: "0.2rem",
                 }}
-                className="hidden sm:block"
               >
-                <div>
+                Pnlnote&nbsp;&nbsp;/&nbsp;&nbsp;Live Account
+              </div>
+
+              <div className="flex flex-col items-end gap-2.5">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={toggleTheme}
+                    className="pill-tab text-xs inline-flex items-center gap-2"
+                    style={{ minWidth: 74 }}
+                    title={isDark ? "切换到白天" : "切换到黑夜"}
+                  >
+                    {isDark ? <Sun size={13} /> : <Moon size={13} />}
+                    {isDark ? "DAY" : "NIGHT"}
+                  </button>
+                  <button
+                    onClick={() => setLang(lang === "en" ? "zh" : "en")}
+                    className="pill-tab text-xs"
+                    style={{ minWidth: 60 }}
+                  >
+                    {tr.langSwitch}
+                  </button>
+                </div>
+                <div
+                  style={{
+                    fontFamily: "DM Mono, monospace",
+                    fontSize: "0.65rem",
+                    color: subtleTextColor,
+                    letterSpacing: "0.04em",
+                    textAlign: "right",
+                  }}
+                  className="hidden sm:block"
+                >
                   {new Date().toLocaleDateString(lang === "zh" ? "zh-CN" : "en-US", {
                     weekday: "long",
                     year: "numeric",
@@ -176,6 +148,74 @@ export default function Home() {
                     day: "numeric",
                   })}
                 </div>
+              </div>
+            </div>
+
+            <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_290px] lg:items-end">
+              <div>
+                <div
+                  className="flex items-center gap-3 mb-5"
+                  style={{
+                    fontFamily: "DM Mono, monospace",
+                    color: subtleTextColor,
+                    fontSize: "0.72rem",
+                    letterSpacing: "0.16em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  <span>{lang === "zh" ? "长期主义" : "Long Term"}</span>
+                  <span style={{ width: 42, height: 1, background: heroRule }} />
+                  <span>{lang === "zh" ? "实盘记录" : "Live Ledger"}</span>
+                </div>
+                <h1
+                  style={{
+                    fontFamily: '"Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif',
+                    fontSize: "clamp(3rem, 6.6vw, 5.05rem)",
+                    fontWeight: 300,
+                    letterSpacing: "0.015em",
+                    lineHeight: 0.98,
+                    color: heroTitleColor,
+                    textShadow: isDark ? "0 12px 42px rgb(0 0 0 / 55%)" : "none",
+                  }}
+                >
+                  以交易为生
+                </h1>
+                <div
+                  className="flex flex-wrap items-center gap-4 sm:gap-5"
+                  style={{
+                    marginTop: "1rem",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: '"Bodoni 72", Didot, "Cormorant Garamond", Georgia, serif',
+                      fontSize: "clamp(1.08rem, 1.45vw, 1.28rem)",
+                      fontWeight: 400,
+                      letterSpacing: "0.015em",
+                      color: heroAccentColor,
+                    }}
+                  >
+                    Trading for a living
+                  </span>
+                  <span className="hidden sm:block" style={{ width: 76, height: 1, background: heroRule }} />
+                </div>
+              </div>
+
+              <div
+                style={{
+                  fontFamily: '"Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif',
+                  color: heroMetaColor,
+                  fontSize: "clamp(0.92rem, 1.1vw, 1.04rem)",
+                  fontWeight: 300,
+                  letterSpacing: "0.16em",
+                  lineHeight: 1.9,
+                  borderLeft: `1px solid ${heroRule}`,
+                  paddingLeft: "1.25rem",
+                }}
+              >
+                <div>{lang === "zh" ? "风控" : "Risk Control"}</div>
+                <div>{lang === "zh" ? "累积" : "Accumulation"}</div>
+                <div>{lang === "zh" ? "复利" : "Compounding"}</div>
               </div>
             </div>
           </div>
