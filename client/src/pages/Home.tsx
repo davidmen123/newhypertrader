@@ -93,11 +93,11 @@ export default function Home() {
             <div>
               <h1
                 style={{
-                  fontFamily: "Inter, sans-serif",
+                  fontFamily: '"Songti SC", "STSong", "Noto Serif SC", serif',
                   fontSize: "clamp(2.35rem, 7vw, 5.4rem)",
-                  fontWeight: 500,
-                  letterSpacing: "0.06em",
-                  lineHeight: 0.96,
+                  fontWeight: 300,
+                  letterSpacing: "0.04em",
+                  lineHeight: 1.02,
                   color: "#fffef8",
                   textShadow: "0 12px 42px rgb(0 0 0 / 55%)",
                 }}
@@ -106,23 +106,23 @@ export default function Home() {
               </h1>
               <div
                 style={{
-                  fontFamily: "Inter, sans-serif",
-                  fontSize: "clamp(0.66rem, 1.2vw, 0.82rem)",
-                  fontWeight: 500,
-                  letterSpacing: "0.34em",
-                  textTransform: "uppercase",
+                  fontFamily: '"Cormorant Garamond", Georgia, serif',
+                  fontSize: "clamp(0.95rem, 1.45vw, 1.2rem)",
+                  fontWeight: 400,
+                  letterSpacing: "0.08em",
                   color: "rgb(242 231 201 / 88%)",
-                  marginTop: "0.85rem",
+                  marginTop: "0.72rem",
                 }}
               >
                 Trading for a living
               </div>
               <div
                 style={{
+                  fontFamily: '"Songti SC", "STSong", "Noto Serif SC", serif',
                   color: "rgb(255 255 255 / 86%)",
-                  fontSize: "0.72rem",
-                  fontWeight: 500,
-                  letterSpacing: "0.24em",
+                  fontSize: "clamp(0.88rem, 1.28vw, 1.05rem)",
+                  fontWeight: 300,
+                  letterSpacing: "0.18em",
                   marginTop: "1rem",
                 }}
               >
