@@ -109,7 +109,7 @@ export default function Home() {
                   paddingTop: "0.2rem",
                 }}
               >
-                Pnlnote&nbsp;&nbsp;/&nbsp;&nbsp;Live Account
+                PnLNote.com&nbsp;&nbsp;/&nbsp;&nbsp;Live Account
               </div>
 
               <div className="flex flex-col items-end gap-2.5">
@@ -153,20 +153,6 @@ export default function Home() {
 
             <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_290px] lg:items-end">
               <div>
-                <div
-                  className="flex items-center gap-3 mb-5"
-                  style={{
-                    fontFamily: "DM Mono, monospace",
-                    color: subtleTextColor,
-                    fontSize: "0.72rem",
-                    letterSpacing: "0.16em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  <span>{lang === "zh" ? "长期主义" : "Long Term"}</span>
-                  <span style={{ width: 42, height: 1, background: heroRule }} />
-                  <span>{lang === "zh" ? "实盘记录" : "Live Ledger"}</span>
-                </div>
                 <h1
                   style={{
                     fontFamily: '"Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif',
