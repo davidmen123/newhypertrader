@@ -309,6 +309,8 @@ export default function PnlChart() {
     Math.max(0, assetMin - assetPadding),
     assetMax + assetPadding,
   ];
+  const percentVisible = visible.accountPerformance || visible.btcBenchmark;
+  const assetTrendVisible = visible.assetTrend;
   const percentGridValues = chartData.flatMap((d) => [
     visible.accountPerformance ? d.accountPerformance : null,
     visible.btcBenchmark ? d.btcBenchmark : null,
@@ -326,10 +328,6 @@ export default function PnlChart() {
       return { ...prev, [key]: nextActive };
     });
   };
-
-  // Determine which Y axes are needed
-  const percentVisible = visible.accountPerformance || visible.btcBenchmark;
-  const assetTrendVisible = visible.assetTrend;
 
   return (
     <div className="glass-card px-4 sm:px-8 py-5 sm:py-7 fade-in">
