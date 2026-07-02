@@ -166,7 +166,7 @@ export default function EconomicCalendar() {
             <thead>
               <tr
                 style={{
-                  borderBottom: "1px solid oklch(40% 0.02 200 / 30%)",
+                  borderBottom: "1px solid var(--panel-border)",
                 }}
               >
                 {colHeaders.map((h) => (
@@ -175,7 +175,7 @@ export default function EconomicCalendar() {
                     style={{
                       textAlign: "left",
                       padding: "6px 10px",
-                      color: "rgb(190 190 186 / 76%)",
+                      color: "var(--text-soft)",
                       fontWeight: 400,
                       letterSpacing: "0.08em",
                       fontSize: "0.62rem",
@@ -193,29 +193,29 @@ export default function EconomicCalendar() {
                 <tr
                   key={event.id}
                   style={{
-                    borderBottom: "1px solid rgb(255 255 255 / 9%)",
+                    borderBottom: "1px solid var(--panel-border)",
                     background:
                       idx % 2 === 0
                         ? "transparent"
-                        : "rgb(255 255 255 / 4%)",
+                        : "var(--surface-hover)",
                     transition: "background 0.15s",
                   }}
                   onMouseEnter={(e) => {
                     (e.currentTarget as HTMLTableRowElement).style.background =
-                      "rgb(77 142 116 / 28%)";
+                      "rgb(31 107 79 / 12%)";
                   }}
                   onMouseLeave={(e) => {
                     (e.currentTarget as HTMLTableRowElement).style.background =
                       idx % 2 === 0
                         ? "transparent"
-                        : "rgb(255 255 255 / 4%)";
+                        : "var(--surface-hover)";
                   }}
                 >
                   <td
                     style={{
                       padding: "8px 10px",
                       fontFamily: "DM Mono, monospace",
-                      color: "rgb(210 226 215 / 78%)",
+                      color: "var(--text-soft)",
                       whiteSpace: "nowrap",
                     }}
                   >
@@ -224,10 +224,7 @@ export default function EconomicCalendar() {
                   <td
                     style={{
                       padding: "8px 10px",
-                      color:
-                        event.importance === 3
-                          ? "oklch(88% 0.015 200)"
-                          : "oklch(78% 0.015 200)",
+                      color: event.importance === 3 ? "var(--metric-neutral)" : "var(--text-soft)",
                       fontWeight: event.importance === 3 ? 500 : 400,
                       maxWidth: 300,
                     }}
@@ -241,7 +238,7 @@ export default function EconomicCalendar() {
                     style={{
                       padding: "8px 10px",
                       fontFamily: "DM Mono, monospace",
-                      color: "rgb(210 226 215 / 78%)",
+                      color: "var(--text-soft)",
                     }}
                   >
                     {event.forecast ?? "—"}
@@ -250,7 +247,7 @@ export default function EconomicCalendar() {
                     style={{
                       padding: "8px 10px",
                       fontFamily: "DM Mono, monospace",
-                      color: "rgb(190 190 186 / 78%)",
+                      color: "var(--text-soft)",
                     }}
                   >
                     {event.previous ?? "—"}
@@ -262,7 +259,7 @@ export default function EconomicCalendar() {
                       fontWeight: 600,
                       color: event.actual
                         ? "oklch(72% 0.12 145)"
-                        : "rgb(176 198 185 / 68%)",
+                        : "var(--text-faint)",
                     }}
                   >
                     {event.actual ?? "—"}

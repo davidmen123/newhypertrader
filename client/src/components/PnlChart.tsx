@@ -143,9 +143,9 @@ function SeriesToggle({
       style={{
         fontSize: "0.68rem",
         letterSpacing: "0.06em",
-        border: `1px solid ${active ? color : "rgb(255 255 255 / 12%)"}`,
+        border: `1px solid ${active ? color : "var(--panel-border)"}`,
         background: active ? `${color}22` : "transparent",
-        color: active ? color : "rgb(190 190 186 / 76%)",
+        color: active ? color : "var(--text-soft)",
         boxShadow: active ? `0 0 18px ${color}18` : "none",
         cursor: "pointer",
       }}
@@ -301,7 +301,7 @@ export default function PnlChart() {
       {/* Hyperliquid snapshot status bar */}
       <div
         className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-5 px-4 py-3 rounded-lg"
-        style={{ background: "rgb(255 255 255 / 5%)", border: "1px solid rgb(255 255 255 / 9%)" }}
+        style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}
       >
         <div className="flex items-center gap-1.5">
           <Database size={12} className="text-profit" />
@@ -351,7 +351,7 @@ export default function PnlChart() {
         </div>
 
         {/* Divider — hidden on mobile */}
-        <div className="hidden sm:block" style={{ width: 1, height: 16, background: "rgb(255 255 255 / 10%)" }} />
+        <div className="hidden sm:block" style={{ width: 1, height: 16, background: "var(--panel-border)" }} />
 
         {/* Series toggles */}
         <div className="flex items-center gap-2">

@@ -44,7 +44,7 @@ function pnlColor(value: string | number | null | undefined) {
   const n = num(value);
   if (n > 0) return "oklch(68% 0.15 145)";
   if (n < 0) return "oklch(62% 0.15 25)";
-  return "rgb(190 190 186 / 78%)";
+  return "var(--text-soft)";
 }
 
 const PAGE_SIZE = 20;
@@ -193,7 +193,7 @@ export default function TradeHistory() {
       {filtered.length > 0 && (
         <div
           className="flex flex-wrap gap-x-6 gap-y-1.5 mb-4 px-4 py-2.5 rounded-lg"
-          style={{ background: "rgb(255 255 255 / 5%)", border: "1px solid rgb(255 255 255 / 9%)" }}
+          style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}
         >
           <div>
             <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.6rem" }}>
@@ -234,12 +234,12 @@ export default function TradeHistory() {
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full" style={{ borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ borderBottom: "1px solid rgb(255 255 255 / 10%)" }}>
+                <tr style={{ borderBottom: "1px solid var(--panel-border)" }}>
                   {[t("时间", "Time"), t("交易对", "Symbol"), t("市场", "Market"), t("方向", "Side"), t("开平", "Open/Close"), t("数量", "Qty"), t("成交价", "Price"), t("成交额", "Value"), t("手续费", "Fee"), t("盈亏", "PnL")].map((h) => (
                     <th
                       key={h}
                       className="text-left pb-2 pr-4"
-                      style={{ fontSize: "0.6rem", color: "rgb(190 190 186 / 76%)", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 500 }}
+                      style={{ fontSize: "0.6rem", color: "var(--text-soft)", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 500 }}
                     >
                       {h}
                     </th>
@@ -256,19 +256,19 @@ export default function TradeHistory() {
                     <tr
                       key={rowKey}
                       style={{
-                        borderBottom: "1px solid rgb(255 255 255 / 8%)",
-                        background: index % 2 === 0 ? "transparent" : "rgb(255 255 255 / 3%)",
+                        borderBottom: "1px solid var(--panel-border)",
+                        background: index % 2 === 0 ? "transparent" : "var(--surface-hover)",
                       }}
                     >
-                      <td className="py-2 pr-4" style={{ fontSize: "0.68rem", color: "rgb(190 190 186 / 78%)", fontFamily: "DM Mono, monospace", whiteSpace: "nowrap" }}>{fmtTime(trade.createdTime)}</td>
+                      <td className="py-2 pr-4" style={{ fontSize: "0.68rem", color: "var(--text-soft)", fontFamily: "DM Mono, monospace", whiteSpace: "nowrap" }}>{fmtTime(trade.createdTime)}</td>
                       <td className="py-2 pr-4 text-foreground font-medium" style={{ fontSize: "0.72rem" }}>{trade.symbol}</td>
-                      <td className="py-2 pr-4" style={{ fontSize: "0.68rem", color: "rgb(190 190 186 / 78%)" }}>{trade.category}</td>
+                      <td className="py-2 pr-4" style={{ fontSize: "0.68rem", color: "var(--text-soft)" }}>{trade.category}</td>
                       <td className="py-2 pr-4" style={{ color: isBuy ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)", fontSize: "0.7rem", fontWeight: 600 }}>{isBuy ? t("买入", "Buy") : t("卖出", "Sell")}</td>
-                      <td className="py-2 pr-4" style={{ fontSize: "0.68rem", color: "rgb(190 190 186 / 78%)" }}>{trade.tradeSide || "—"}</td>
+                      <td className="py-2 pr-4" style={{ fontSize: "0.68rem", color: "var(--text-soft)" }}>{trade.tradeSide || "—"}</td>
                       <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execQty, 6)}</td>
                       <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execPrice, 4)}</td>
                       <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execValue, 4)}</td>
-                      <td className="py-2 pr-4 num-display" style={{ fontSize: "0.68rem", color: "rgb(190 190 186 / 78%)" }}>{fee ? `${fmt(fee.fee, 4)} ${fee.feeCoin}` : "—"}</td>
+                      <td className="py-2 pr-4 num-display" style={{ fontSize: "0.68rem", color: "var(--text-soft)" }}>{fee ? `${fmt(fee.fee, 4)} ${fee.feeCoin}` : "—"}</td>
                       <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem", color: pnlColor(pnl) }}>{pnl !== 0 ? signed(pnl, 4) : "—"}</td>
                     </tr>
                   );
@@ -284,11 +284,11 @@ export default function TradeHistory() {
                 <div
                   key={`${trade.execId}-${index}`}
                   className="rounded-lg px-4 py-3"
-                  style={{ background: "rgb(255 255 255 / 5%)", border: "1px solid rgb(255 255 255 / 9%)" }}
+                  style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}
                 >
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="font-medium">{trade.symbol}</span>
-                    <span style={{ fontSize: "0.62rem", color: "rgb(190 190 186 / 76%)", fontFamily: "DM Mono, monospace" }}>{fmtTime(trade.createdTime)}</span>
+                    <span style={{ fontSize: "0.62rem", color: "var(--text-soft)", fontFamily: "DM Mono, monospace" }}>{fmtTime(trade.createdTime)}</span>
                   </div>
                   <div className="flex items-center gap-3 flex-wrap">
                     <span style={{ color: isBuy ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)", fontWeight: 600 }}>{isBuy ? t("买入", "Buy") : t("卖出", "Sell")}</span>
@@ -302,7 +302,7 @@ export default function TradeHistory() {
             })}
           </div>
 
-          <div className="flex items-center justify-between mt-4 pt-3" style={{ borderTop: "1px solid rgb(255 255 255 / 10%)" }}>
+          <div className="flex items-center justify-between mt-4 pt-3" style={{ borderTop: "1px solid var(--panel-border)" }}>
             <span className="text-muted-foreground" style={{ fontSize: "0.65rem" }}>
               {t(`第 ${page + 1} / ${totalPages} 页，共 ${filtered.length} 条`, `Page ${page + 1} of ${totalPages} · ${filtered.length} trades`)}
             </span>

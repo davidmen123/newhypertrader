@@ -3,7 +3,7 @@ import { useLang } from "@/contexts/LangContext";
 import { RefreshCw } from "lucide-react";
 
 function TimeOfDayBadge({ time, lang }: { time: string | null; lang: string }) {
-  if (!time) return <span style={{ color: "rgb(176 198 185 / 68%)" }}>—</span>;
+  if (!time) return <span style={{ color: "var(--text-faint)" }}>—</span>;
 
   const isPre = time === "pre-market" || time === "before-open";
   const isPost = time === "post-market" || time === "after-close";
@@ -157,13 +157,13 @@ export default function EarningsCalendar() {
               {/* Date header */}
               <div
                 className="flex items-center gap-3 mb-3"
-                style={{ borderBottom: "1px solid oklch(40% 0.02 200 / 25%)", paddingBottom: 6 }}
+                style={{ borderBottom: "1px solid var(--panel-border)", paddingBottom: 6 }}
               >
                 <span
                   style={{
                     fontFamily: "Cormorant Garamond, serif",
                     fontSize: "1rem",
-                    color: "oklch(78% 0.015 200)",
+                    color: "var(--metric-neutral)",
                     fontStyle: "italic",
                   }}
                 >
@@ -173,7 +173,7 @@ export default function EarningsCalendar() {
                   style={{
                     fontFamily: "DM Mono, monospace",
                     fontSize: "0.62rem",
-                    color: "oklch(48% 0.01 200)",
+                    color: "var(--text-soft)",
                     letterSpacing: "0.08em",
                   }}
                 >
@@ -198,7 +198,7 @@ export default function EarningsCalendar() {
                           style={{
                             textAlign: "left",
                             padding: "4px 10px",
-                            color: "oklch(42% 0.015 200)",
+                            color: "var(--text-soft)",
                             fontWeight: 400,
                             letterSpacing: "0.08em",
                             fontSize: "0.6rem",
@@ -216,18 +216,18 @@ export default function EarningsCalendar() {
                       <tr
                         key={item.symbol}
                         style={{
-                          borderBottom: "1px solid rgb(255 255 255 / 8%)",
+                          borderBottom: "1px solid var(--panel-border)",
                           background:
-                            idx % 2 === 0 ? "transparent" : "rgb(255 255 255 / 4%)",
+                            idx % 2 === 0 ? "transparent" : "var(--surface-hover)",
                           transition: "background 0.15s",
                         }}
                         onMouseEnter={(e) => {
                           (e.currentTarget as HTMLTableRowElement).style.background =
-                            "rgb(77 142 116 / 28%)";
+                            "rgb(31 107 79 / 12%)";
                         }}
                         onMouseLeave={(e) => {
                           (e.currentTarget as HTMLTableRowElement).style.background =
-                            idx % 2 === 0 ? "transparent" : "rgb(255 255 255 / 4%)";
+                            idx % 2 === 0 ? "transparent" : "var(--surface-hover)";
                         }}
                       >
                         <td
@@ -245,7 +245,7 @@ export default function EarningsCalendar() {
                         <td
                           style={{
                             padding: "7px 10px",
-                            color: "oklch(75% 0.015 200)",
+                            color: "var(--text-soft)",
                             maxWidth: 200,
                           }}
                         >
@@ -257,7 +257,7 @@ export default function EarningsCalendar() {
                             fontFamily: "DM Mono, monospace",
                             color: item.estimate
                               ? "oklch(72% 0.12 145)"
-                              : "rgb(176 198 185 / 68%)",
+                              : "var(--text-faint)",
                           }}
                         >
                           {item.estimate ? `$${item.estimate}` : "—"}
@@ -268,7 +268,7 @@ export default function EarningsCalendar() {
                         <td
                           style={{
                             padding: "7px 10px",
-                            color: "oklch(52% 0.01 200)",
+                            color: "var(--text-soft)",
                             fontSize: "0.65rem",
                             maxWidth: 200,
                           }}
@@ -288,7 +288,7 @@ export default function EarningsCalendar() {
       {/* Legend */}
       <div
         className="mt-6 pt-4 flex flex-wrap gap-4"
-        style={{ borderTop: "1px solid rgb(255 255 255 / 9%)" }}
+        style={{ borderTop: "1px solid var(--panel-border)" }}
       >
         {[
           {
@@ -310,7 +310,7 @@ export default function EarningsCalendar() {
                 flexShrink: 0,
               }}
             />
-            <span style={{ fontSize: "0.62rem", color: "oklch(48% 0.01 200)", letterSpacing: "0.04em" }}>
+            <span style={{ fontSize: "0.62rem", color: "var(--text-soft)", letterSpacing: "0.04em" }}>
               {label}
             </span>
           </div>

@@ -97,7 +97,7 @@ export default function PositionsTable() {
         <>
           <div
             className="flex flex-wrap gap-x-6 gap-y-2 mb-4 px-4 py-2.5 rounded-lg"
-            style={{ background: "rgb(255 255 255 / 5%)", border: "1px solid rgb(255 255 255 / 9%)" }}
+            style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}
           >
             <div>
               <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.6rem" }}>
@@ -168,7 +168,7 @@ export default function PositionsTable() {
                 <div
                   key={`${p.category}-${p.symbol}-${p.posSide}`}
                   className="rounded-lg px-4 py-3"
-                  style={{ background: "rgb(255 255 255 / 5%)", border: "1px solid rgb(255 255 255 / 9%)" }}
+                  style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium">{p.symbol}</span>

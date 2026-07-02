@@ -19,7 +19,7 @@ function fmt(n: number | null | undefined, decimals = 2): string {
 function ChangeTag({ pct }: { pct: number | null }) {
   if (pct == null || isNaN(pct))
     return (
-      <span style={{ color: "rgb(180 180 176 / 68%)", fontFamily: "DM Mono, monospace", fontSize: "0.72rem" }}>—</span>
+      <span style={{ color: "var(--text-faint)", fontFamily: "DM Mono, monospace", fontSize: "0.72rem" }}>—</span>
     );
   const up = pct >= 0;
   return (
@@ -73,7 +73,7 @@ function PriceCard({
       ? "oklch(72% 0.14 145)"
       : flash === "down"
         ? "oklch(68% 0.18 25)"
-        : "oklch(92% 0.01 200)";
+        : "var(--metric-neutral)";
 
   return (
     <div
@@ -88,7 +88,7 @@ function PriceCard({
               fontFamily: "DM Mono, monospace",
               fontSize: compact ? "0.56rem" : "0.62rem",
               letterSpacing: "0.12em",
-              color: "rgb(190 190 186 / 78%)",
+              color: "var(--text-soft)",
               textTransform: "uppercase",
             }}
           >
@@ -100,7 +100,7 @@ function PriceCard({
                 fontFamily: "DM Mono, monospace",
                 fontSize: "0.54rem",
                 letterSpacing: "0.08em",
-                color: "rgb(170 170 166 / 64%)",
+                color: "var(--text-faint)",
               }}
             >
               {sublabel}
@@ -123,7 +123,7 @@ function PriceCard({
               style={{
                 fontFamily: "DM Mono, monospace",
                 fontSize: "0.52rem",
-                color: "rgb(190 190 186 / 78%)",
+                color: "var(--text-soft)",
                 letterSpacing: "0.08em",
               }}
             >
@@ -148,7 +148,7 @@ function PriceCard({
         {price != null ? (
           fmt(price, priceDecimals)
         ) : (
-          <span style={{ color: "rgb(190 190 186 / 62%)", animation: "pulse 2s infinite" }}>—</span>
+          <span style={{ color: "var(--text-faint)", animation: "pulse 2s infinite" }}>—</span>
         )}
       </div>
 
@@ -186,7 +186,7 @@ function VolCard({ label, sublabel, current, prevDay, decimals = 2, lang, compac
             fontFamily: "DM Mono, monospace",
             fontSize: compact ? "0.56rem" : "0.62rem",
             letterSpacing: "0.12em",
-            color: "rgb(190 190 186 / 78%)",
+            color: "var(--text-soft)",
             textTransform: "uppercase",
           }}
         >
@@ -198,7 +198,7 @@ function VolCard({ label, sublabel, current, prevDay, decimals = 2, lang, compac
               fontFamily: "DM Mono, monospace",
               fontSize: "0.54rem",
               letterSpacing: "0.08em",
-              color: "rgb(170 170 166 / 64%)",
+              color: "var(--text-faint)",
               marginLeft: "0.4rem",
             }}
           >
@@ -214,11 +214,11 @@ function VolCard({ label, sublabel, current, prevDay, decimals = 2, lang, compac
           fontSize: compact ? "clamp(0.85rem, 1.4vw, 1.15rem)" : "clamp(1.4rem, 2.4vw, 2.1rem)",
           fontWeight: 300,
           letterSpacing: "-0.02em",
-          color: "oklch(92% 0.01 200)",
+          color: "var(--metric-neutral)",
           lineHeight: 1.05,
         }}
       >
-        {current != null ? fmt(current, decimals) : <span style={{ color: "rgb(190 190 186 / 62%)" }}>—</span>}
+        {current != null ? fmt(current, decimals) : <span style={{ color: "var(--text-faint)" }}>—</span>}
       </div>
 
       {/* Previous day (small, below) */}
@@ -227,7 +227,7 @@ function VolCard({ label, sublabel, current, prevDay, decimals = 2, lang, compac
           style={{
             fontFamily: "DM Mono, monospace",
             fontSize: "0.68rem",
-            color: "rgb(180 180 176 / 68%)",
+            color: "var(--text-faint)",
             letterSpacing: "0.04em",
           }}
         >

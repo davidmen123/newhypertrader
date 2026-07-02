@@ -20,7 +20,7 @@ function PnlValue({ value }: { value: number }) {
 
 function StatBox({ label, value, sub }: { label: string; value: React.ReactNode; sub?: string }) {
   return (
-    <div className="flex flex-col gap-1.5 p-4 rounded-lg" style={{ background: "rgb(255 255 255 / 5%)", border: "1px solid rgb(255 255 255 / 8%)" }}>
+    <div className="flex flex-col gap-1.5 p-4 rounded-lg" style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}>
       <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.62rem" }}>{label}</span>
       <div className="num-display text-lg">{value}</div>
       {sub && <span className="text-muted-foreground/60" style={{ fontSize: "0.65rem" }}>{sub}</span>}
@@ -125,14 +125,14 @@ export default function PortfolioSummary() {
 
           {/* Divider between currencies */}
           {s.currency !== summaries[summaries.length - 1].currency && (
-            <div className="mt-6" style={{ height: 1, background: "rgb(255 255 255 / 10%)" }} />
+            <div className="mt-6" style={{ height: 1, background: "var(--panel-border)" }} />
           )}
         </div>
       ))}
 
       {/* Cross-currency summary row */}
       {btc && eth && (
-        <div className="mt-6 pt-6" style={{ borderTop: "1px solid rgb(255 255 255 / 10%)" }}>
+        <div className="mt-6 pt-6" style={{ borderTop: "1px solid var(--panel-border)" }}>
           <div className="text-muted-foreground tracking-widest uppercase mb-3" style={{ fontSize: "0.65rem" }}>
             {tr.portfolio} — Cross Asset
           </div>

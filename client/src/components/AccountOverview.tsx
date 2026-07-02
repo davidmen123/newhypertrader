@@ -21,14 +21,14 @@ function MetricTile({
       ? "oklch(62% 0.15 25)"
       : tone === "warning"
       ? "oklch(72% 0.14 55)"
-      : "oklch(92% 0.01 200)";
+      : "var(--metric-neutral)";
 
   return (
     <div
       className="min-h-[86px] rounded-lg px-4 py-3"
       style={{
-        background: "rgb(255 255 255 / 4%)",
-        border: "1px solid rgb(255 255 255 / 8%)",
+        background: "var(--surface-subtle)",
+        border: "1px solid var(--panel-border)",
       }}
     >
       <div className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.58rem" }}>
@@ -61,8 +61,8 @@ function LeveragePanel({ ratio, lang }: { ratio: number; lang: string }) {
     <div
       className="rounded-lg px-4 py-3"
       style={{
-        background: "rgb(255 255 255 / 4%)",
-        border: "1px solid rgb(255 255 255 / 8%)",
+        background: "var(--surface-subtle)",
+        border: "1px solid var(--panel-border)",
       }}
     >
       <div className="flex items-center justify-between">
@@ -73,7 +73,7 @@ function LeveragePanel({ ratio, lang }: { ratio: number; lang: string }) {
           {leverage.toFixed(2)}x
         </span>
       </div>
-      <div className="mt-3 h-1.5 w-full rounded-full overflow-hidden" style={{ background: "rgb(255 255 255 / 10%)" }}>
+      <div className="mt-3 h-1.5 w-full rounded-full overflow-hidden" style={{ background: "var(--panel-border)" }}>
         <div
           className="h-full rounded-full transition-all duration-700"
           style={{ width: `${pct}%`, background: color, boxShadow: `0 0 18px ${color}44` }}
@@ -216,8 +216,8 @@ export default function AccountOverview() {
       <div
         className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg px-4 py-3"
         style={{
-          background: "rgb(255 255 255 / 4%)",
-          border: "1px solid rgb(255 255 255 / 8%)",
+          background: "var(--surface-subtle)",
+          border: "1px solid var(--panel-border)",
         }}
       >
         <StatusPill
@@ -239,9 +239,9 @@ export default function AccountOverview() {
         <div
           className="rounded-lg px-5 py-5 sm:px-6 sm:py-6"
           style={{
-            background: "linear-gradient(135deg, rgb(255 255 255 / 7%), rgb(255 255 255 / 3%))",
-            border: "1px solid rgb(255 255 255 / 10%)",
-            boxShadow: "inset 0 1px 0 rgb(255 255 255 / 6%)",
+            background: "linear-gradient(135deg, var(--surface-soft), var(--surface-subtle))",
+            border: "1px solid var(--panel-border)",
+            boxShadow: "inset 0 1px 0 rgb(255 255 255 / 42%)",
           }}
         >
           <div className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.62rem" }}>
@@ -313,8 +313,8 @@ export default function AccountOverview() {
             <div
               className="rounded-lg px-4 py-3"
               style={{
-                background: "rgb(255 255 255 / 4%)",
-                border: "1px solid rgb(255 255 255 / 8%)",
+                background: "var(--surface-subtle)",
+                border: "1px solid var(--panel-border)",
               }}
             >
               <div className="text-muted-foreground/60 tracking-widest uppercase mb-3" style={{ fontSize: "0.58rem" }}>
