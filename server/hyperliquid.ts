@@ -559,6 +559,13 @@ function getUtc8DateKey(time: number) {
   return new Date(time + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
+function calculateAnnualizedReturnPct(initialEquity: number | null | undefined, latestEquity: number | null | undefined, runningDays: number | null | undefined) {
+  if (!initialEquity || !latestEquity || !runningDays || initialEquity <= 0 || latestEquity <= 0 || runningDays <= 0) {
+    return null;
+  }
+  return (Math.pow(latestEquity / initialEquity, 365 / runningDays) - 1) * 100;
+}
+
 export function getHyperliquidPerformanceStats(portfolio: HyperliquidPortfolio) {
   const windowData =
     findPortfolioWindow(portfolio, "allTime") ??
@@ -577,9 +584,7 @@ export function getHyperliquidPerformanceStats(portfolio: HyperliquidPortfolio) 
   const firstEquity = toNumber(history[0][1]);
   const latestEquity = toNumber(history[history.length - 1][1]);
   const runningDays = Math.max(1, Math.ceil((Date.now() - firstTime) / (24 * 60 * 60 * 1000)));
-  const annualizedReturnPct = firstEquity > 0 && latestEquity > 0
-    ? (Math.pow(latestEquity / firstEquity, 365 / runningDays) - 1) * 100
-    : null;
+  const annualizedReturnPct = calculateAnnualizedReturnPct(firstEquity, latestEquity, runningDays);
 
   const dailyClose = new Map<string, number>();
   for (const [time, equity] of history) {
@@ -890,6 +895,11 @@ export async function getHyperliquidAccountOverview() {
     : null;
   const totalEquityBtc = btcPrice > 0 ? totalEquityUsdc / btcPrice : 0;
   const tradeMetrics = calculateRoundTripTradeMetrics(fills);
+  const accountAnnualizedReturnPct = calculateAnnualizedReturnPct(
+    initialEquityUsdc,
+    totalEquityUsdc,
+    performance.runningDays
+  );
 
   return {
     exchange: "Hyperliquid",
@@ -916,7 +926,7 @@ export async function getHyperliquidAccountOverview() {
     maxDrawdownUsdc: drawdown.maxDrawdownUsdc,
     maxDrawdownPct: drawdown.maxDrawdownPct,
     sharpeRatio: performance.sharpeRatio,
-    annualizedReturnPct: performance.annualizedReturnPct,
+    annualizedReturnPct: accountAnnualizedReturnPct ?? performance.annualizedReturnPct,
     runningDays: performance.runningDays,
     calmarRatio: null,
     totalNtlPos,
