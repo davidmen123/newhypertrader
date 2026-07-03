@@ -43,21 +43,114 @@ const HEADERS = {
 // S&P 100 constituents are used as the practical "top 100 US large-cap"
 // universe. The index has 101 tickers because Alphabet has two share classes.
 const TOP100_SYMBOLS = [
-  "AAPL", "ABBV", "ABT", "ACN", "ADBE", "AMAT", "AMD", "AMGN", "AMT", "AMZN",
-  "AVGO", "AXP", "BA", "BAC", "BKNG", "BLK", "BMY", "BNY", "BRK.B", "BRK-B",
-  "C", "CAT", "CL", "CMCSA", "COF", "COP", "COST", "CRM", "CSCO", "CVS",
-  "CVX", "DE", "DHR", "DIS", "DUK", "EMR", "FDX", "GD", "GE", "GEV",
-  "GILD", "GM", "GOOG", "GOOGL", "GS", "HD", "HON", "IBM", "INTC", "INTU",
-  "ISRG", "JNJ", "JPM", "KO", "LIN", "LLY", "LMT", "LOW", "LRCX", "MA",
-  "MCD", "MDLZ", "MDT", "META", "MMM", "MO", "MRK", "MS", "MSFT", "MU",
-  "NEE", "NFLX", "NKE", "NOW", "NVDA", "ORCL", "PEP", "PFE", "PG", "PLTR",
-  "PM", "QCOM", "RTX", "SBUX", "SCHW", "SO", "SPG", "T", "TMO", "TMUS",
-  "TSLA", "TXN", "UBER", "UNH", "UNP", "UPS", "USB", "V", "VZ", "WFC",
-  "WMT", "XOM",
+  "AAPL",
+  "ABBV",
+  "ABT",
+  "ACN",
+  "ADBE",
+  "AMAT",
+  "AMD",
+  "AMGN",
+  "AMT",
+  "AMZN",
+  "AVGO",
+  "AXP",
+  "BA",
+  "BAC",
+  "BKNG",
+  "BLK",
+  "BMY",
+  "BNY",
+  "BRK.B",
+  "BRK-B",
+  "C",
+  "CAT",
+  "CL",
+  "CMCSA",
+  "COF",
+  "COP",
+  "COST",
+  "CRM",
+  "CSCO",
+  "CVS",
+  "CVX",
+  "DE",
+  "DHR",
+  "DIS",
+  "DUK",
+  "EMR",
+  "FDX",
+  "GD",
+  "GE",
+  "GEV",
+  "GILD",
+  "GM",
+  "GOOG",
+  "GOOGL",
+  "GS",
+  "HD",
+  "HON",
+  "IBM",
+  "INTC",
+  "INTU",
+  "ISRG",
+  "JNJ",
+  "JPM",
+  "KO",
+  "LIN",
+  "LLY",
+  "LMT",
+  "LOW",
+  "LRCX",
+  "MA",
+  "MCD",
+  "MDLZ",
+  "MDT",
+  "META",
+  "MMM",
+  "MO",
+  "MRK",
+  "MS",
+  "MSFT",
+  "MU",
+  "NEE",
+  "NFLX",
+  "NKE",
+  "NOW",
+  "NVDA",
+  "ORCL",
+  "PEP",
+  "PFE",
+  "PG",
+  "PLTR",
+  "PM",
+  "QCOM",
+  "RTX",
+  "SBUX",
+  "SCHW",
+  "SO",
+  "SPG",
+  "T",
+  "TMO",
+  "TMUS",
+  "TSLA",
+  "TXN",
+  "UBER",
+  "UNH",
+  "UNP",
+  "UPS",
+  "USB",
+  "V",
+  "VZ",
+  "WFC",
+  "WMT",
+  "XOM",
 ];
 
 const TOP100_SET = new Set(TOP100_SYMBOLS);
-const TOP100_RANK = new Map(TOP100_SYMBOLS.map((symbol, index) => [symbol, index]));
+const TOP100_RANK = new Map(
+  TOP100_SYMBOLS.map((symbol, index) => [symbol, index])
+);
 
 const IMPACT_MAP: Record<string, number> = {
   High: 3,
@@ -67,11 +160,16 @@ const IMPACT_MAP: Record<string, number> = {
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-async function fetchText(url: string, referer = "https://www.alphavantage.co/") {
+async function fetchText(
+  url: string,
+  referer = "https://www.alphavantage.co/"
+) {
   const isNasdaq = referer.includes("nasdaq.com");
   const requestHeaders: Record<string, string> = {
     "User-Agent": HEADERS["User-Agent"],
-    Accept: isNasdaq ? "application/json, text/plain, */*" : "application/json, text/csv, text/plain, */*",
+    Accept: isNasdaq
+      ? "application/json, text/plain, */*"
+      : "application/json, text/csv, text/plain, */*",
     Referer: referer,
   };
   if (isNasdaq) {
@@ -91,16 +189,31 @@ async function fetchText(url: string, referer = "https://www.alphavantage.co/") 
     const { execFile } = await import("child_process");
     const { promisify } = await import("util");
     const execFileAsync = promisify(execFile);
-    const { stdout } = await execFileAsync("curl", [
-      "-sS",
-      "-L",
-      "--max-time", "15",
-      "-A", HEADERS["User-Agent"],
-      "-H", `Accept: ${requestHeaders.Accept}`,
-      "-H", `Referer: ${referer}`,
-      ...(isNasdaq ? ["-H", "Origin: https://www.nasdaq.com", "-H", "Accept-Language: en-US,en;q=0.9"] : []),
-      url,
-    ], { timeout: 18000 });
+    const { stdout } = await execFileAsync(
+      "curl",
+      [
+        "-sS",
+        "-L",
+        "--max-time",
+        "15",
+        "-A",
+        HEADERS["User-Agent"],
+        "-H",
+        `Accept: ${requestHeaders.Accept}`,
+        "-H",
+        `Referer: ${referer}`,
+        ...(isNasdaq
+          ? [
+              "-H",
+              "Origin: https://www.nasdaq.com",
+              "-H",
+              "Accept-Language: en-US,en;q=0.9",
+            ]
+          : []),
+        url,
+      ],
+      { timeout: 18000 }
+    );
     return stdout;
   }
 }
@@ -113,12 +226,12 @@ function parseCsvLine(line: string) {
   for (let i = 0; i < line.length; i++) {
     const char = line[i];
     const next = line[i + 1];
-    if (char === "\"" && next === "\"") {
-      current += "\"";
+    if (char === '"' && next === '"') {
+      current += '"';
       i++;
       continue;
     }
-    if (char === "\"") {
+    if (char === '"') {
       inQuotes = !inQuotes;
       continue;
     }
@@ -131,11 +244,15 @@ function parseCsvLine(line: string) {
   }
 
   cols.push(current);
-  return cols.map((col) => col.trim());
+  return cols.map(col => col.trim());
 }
 
 function normalizeEarningsSymbol(symbol: string) {
-  return symbol.trim().toUpperCase().replace("/", ".").replace("BRK-B", "BRK.B");
+  return symbol
+    .trim()
+    .toUpperCase()
+    .replace("/", ".")
+    .replace("BRK-B", "BRK.B");
 }
 
 function toUtc8Display(isoWithOffset: string): string {
@@ -193,7 +310,9 @@ function getUtc8DateWindow(days: number) {
   const startMs = Date.now() + 8 * 60 * 60 * 1000;
   const dates: string[] = [];
   for (let i = 0; i <= days; i++) {
-    dates.push(new Date(startMs + i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10));
+    dates.push(
+      new Date(startMs + i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+    );
   }
   return {
     start: dates[0],
@@ -205,7 +324,8 @@ function getUtc8DateWindow(days: number) {
 function normalizeTimeOfDay(value: string | null | undefined) {
   if (!value) return null;
   const lower = value.trim().toLowerCase();
-  if (!lower || lower === "time-not-supplied" || lower === "not supplied") return null;
+  if (!lower || lower === "time-not-supplied" || lower === "not supplied")
+    return null;
   if (lower.includes("pre") || lower.includes("before")) return "pre-market";
   if (lower.includes("post") || lower.includes("after")) return "post-market";
   return value.trim();
@@ -243,14 +363,19 @@ function sortAndLimitEarnings(results: EarningsEvent[]) {
     });
 }
 
-async function fetchNasdaqEarningsFallback(dates: string[]): Promise<EarningsEvent[]> {
+async function fetchNasdaqEarningsFallback(
+  dates: string[]
+): Promise<EarningsEvent[]> {
   const results: EarningsEvent[] = [];
 
   for (const date of dates) {
     const url = `https://api.nasdaq.com/api/calendar/earnings?date=${encodeURIComponent(date)}`;
     let parsed: any;
     try {
-      const text = await fetchText(url, "https://www.nasdaq.com/market-activity/earnings");
+      const text = await fetchText(
+        url,
+        "https://www.nasdaq.com/market-activity/earnings"
+      );
       parsed = JSON.parse(text);
     } catch {
       continue;
@@ -268,7 +393,10 @@ async function fetchNasdaqEarningsFallback(dates: string[]): Promise<EarningsEve
         symbol,
         name: String(row?.name ?? symbol).trim() || symbol,
         reportDate: date,
-        estimate: String(row?.epsForecast ?? row?.epsForecastDollar ?? "").replace(/^\$/, "").trim() || null,
+        estimate:
+          String(row?.epsForecast ?? row?.epsForecastDollar ?? "")
+            .replace(/^\$/, "")
+            .trim() || null,
         currency: "USD",
         timeOfDay,
         timeOfDayUtc8: describeUtc8Time(timeOfDay),
@@ -277,7 +405,9 @@ async function fetchNasdaqEarningsFallback(dates: string[]): Promise<EarningsEve
     }
   }
 
-  console.log(`[EarningsCalendar] Nasdaq fallback rows=${results.length} dates=${dates[0]}..${dates[dates.length - 1]}`);
+  console.log(
+    `[EarningsCalendar] Nasdaq fallback rows=${results.length} dates=${dates[0]}..${dates[dates.length - 1]}`
+  );
   return results;
 }
 
@@ -319,10 +449,12 @@ export const calendarRouter = router({
     // Filter: USD only, Medium+ impact, within next 7 days from today
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
-    const sevenDaysLater = new Date(todayStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const sevenDaysLater = new Date(
+      todayStart.getTime() + 7 * 24 * 60 * 60 * 1000
+    );
 
     const filtered: EconEvent[] = rawEvents
-      .filter((e) => {
+      .filter(e => {
         if (!e.country || e.country.toUpperCase() !== "USD") return false;
         const level = IMPACT_MAP[e.impact] ?? 0;
         if (level < 1) return false; // exclude Holiday and Low by default (frontend can filter further)
@@ -333,7 +465,7 @@ export const calendarRouter = router({
 
         return true;
       })
-      .map((e) => {
+      .map(e => {
         const d = new Date(e.date);
         return {
           id: `${e.date}-${e.title}`,
@@ -412,7 +544,9 @@ export const calendarRouter = router({
       results = [];
     }
 
-    console.log(`[EarningsCalendar] AlphaVantage rows in 7d window=${results.length} window=${utc8Today}..${utc8End}`);
+    console.log(
+      `[EarningsCalendar] AlphaVantage rows in 7d window=${results.length} window=${utc8Today}..${utc8End}`
+    );
     const topResults = sortAndLimitEarnings(
       results.length > 0 ? results : await fetchNasdaqEarningsFallback(dates)
     );

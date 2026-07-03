@@ -8,7 +8,11 @@ vi.mock("./deribit", () => ({
   getAllUserTrades: vi.fn(() => []),
   getUserTradesByCurrency: vi.fn(() => []),
   getIndexPrice: vi.fn(() => 80000),
-  deribitWs: { isConnected: () => false, connect: vi.fn(), disconnect: vi.fn() },
+  deribitWs: {
+    isConnected: () => false,
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+  },
 }));
 
 vi.mock("./db", () => ({
@@ -58,7 +62,10 @@ describe("pnlHistory – time range semantics", () => {
 
   it("explicit startDate overrides default for non-MAX ranges", async () => {
     const caller = appRouter.createCaller(createPublicContext());
-    await caller.deribit.pnlHistory({ denomination: "USDC", startDate: "2026-03-10" });
+    await caller.deribit.pnlHistory({
+      denomination: "USDC",
+      startDate: "2026-03-10",
+    });
 
     expect(getCombinedPnlSnapshots).toHaveBeenCalledWith(
       expect.objectContaining({ startDate: "2026-03-10" })
@@ -135,7 +142,11 @@ describe("tradeHistory – reads from DB", () => {
 
   it("calls getTradesFromDb (not Deribit API) for trade history", async () => {
     const caller = appRouter.createCaller(createPublicContext());
-    const result = await caller.deribit.tradeHistory({ currency: "ALL", page: 0, pageSize: 20 });
+    const result = await caller.deribit.tradeHistory({
+      currency: "ALL",
+      page: 0,
+      pageSize: 20,
+    });
 
     expect(getTradesFromDb).toHaveBeenCalled();
     expect(result.trades).toHaveLength(2);
@@ -144,7 +155,11 @@ describe("tradeHistory – reads from DB", () => {
 
   it("maps DB fields to expected response shape", async () => {
     const caller = appRouter.createCaller(createPublicContext());
-    const result = await caller.deribit.tradeHistory({ currency: "ALL", page: 0, pageSize: 20 });
+    const result = await caller.deribit.tradeHistory({
+      currency: "ALL",
+      page: 0,
+      pageSize: 20,
+    });
 
     const first = result.trades[0];
     expect(first.tradeId).toBe("T001");
@@ -158,7 +173,11 @@ describe("tradeHistory – reads from DB", () => {
 
   it("passes currency filter to DB query (ALL → undefined)", async () => {
     const caller = appRouter.createCaller(createPublicContext());
-    await caller.deribit.tradeHistory({ currency: "ALL", page: 0, pageSize: 20 });
+    await caller.deribit.tradeHistory({
+      currency: "ALL",
+      page: 0,
+      pageSize: 20,
+    });
 
     expect(getTradesFromDb).toHaveBeenCalledWith(
       expect.objectContaining({ currency: undefined })
@@ -167,7 +186,11 @@ describe("tradeHistory – reads from DB", () => {
 
   it("passes specific currency filter to DB query", async () => {
     const caller = appRouter.createCaller(createPublicContext());
-    await caller.deribit.tradeHistory({ currency: "BTC", page: 0, pageSize: 20 });
+    await caller.deribit.tradeHistory({
+      currency: "BTC",
+      page: 0,
+      pageSize: 20,
+    });
 
     expect(getTradesFromDb).toHaveBeenCalledWith(
       expect.objectContaining({ currency: "BTC" })
@@ -184,14 +207,23 @@ describe("tradeHistory – reads from DB", () => {
       pageSize: 20,
     });
 
-    const callArgs = (getTradesFromDb as ReturnType<typeof vi.fn>).mock.calls[0][0];
-    expect(callArgs.startTimestamp).toBe(new Date("2026-03-09T00:00:00Z").getTime());
-    expect(callArgs.endTimestamp).toBe(new Date("2026-03-13T23:59:59Z").getTime());
+    const callArgs = (getTradesFromDb as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+    expect(callArgs.startTimestamp).toBe(
+      new Date("2026-03-09T00:00:00Z").getTime()
+    );
+    expect(callArgs.endTimestamp).toBe(
+      new Date("2026-03-13T23:59:59Z").getTime()
+    );
   });
 
   it("uses pageSize as limit and computes offset from page", async () => {
     const caller = appRouter.createCaller(createPublicContext());
-    await caller.deribit.tradeHistory({ currency: "ALL", page: 3, pageSize: 20 });
+    await caller.deribit.tradeHistory({
+      currency: "ALL",
+      page: 3,
+      pageSize: 20,
+    });
 
     expect(getTradesFromDb).toHaveBeenCalledWith(
       expect.objectContaining({ limit: 20, offset: 60 })
@@ -200,7 +232,11 @@ describe("tradeHistory – reads from DB", () => {
 
   it("returns page and pageSize in response", async () => {
     const caller = appRouter.createCaller(createPublicContext());
-    const result = await caller.deribit.tradeHistory({ currency: "ALL", page: 2, pageSize: 10 });
+    const result = await caller.deribit.tradeHistory({
+      currency: "ALL",
+      page: 2,
+      pageSize: 10,
+    });
 
     expect(result.page).toBe(2);
     expect(result.pageSize).toBe(10);

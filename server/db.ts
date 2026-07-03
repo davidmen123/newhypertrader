@@ -1,8 +1,16 @@
 import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, InsertTrade, InsertPnlSnapshot, pnlSnapshots, trades, users, pageViews } from "../drizzle/schema.js";
-import { ENV } from './_core/env.js';
-import { getIndexPrice } from './deribit.js';
+import {
+  InsertUser,
+  InsertTrade,
+  InsertPnlSnapshot,
+  pnlSnapshots,
+  trades,
+  users,
+  pageViews,
+} from "../drizzle/schema.js";
+import { ENV } from "./_core/env.js";
+import { getIndexPrice } from "./deribit.js";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -57,8 +65,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       values.role = user.role;
       updateSet.role = user.role;
     } else if (user.openId === ENV.ownerOpenId) {
-      values.role = 'admin';
-      updateSet.role = 'admin';
+      values.role = "admin";
+      updateSet.role = "admin";
     }
 
     if (!values.lastSignedIn) {
@@ -85,7 +93,11 @@ export async function getUserByOpenId(openId: string) {
     return undefined;
   }
 
-  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+  const result = await db
+    .select()
+    .from(users)
+    .where(eq(users.openId, openId))
+    .limit(1);
 
   return result.length > 0 ? result[0] : undefined;
 }
@@ -95,13 +107,16 @@ export async function getUserByOpenId(openId: string) {
 export async function upsertTrade(trade: InsertTrade): Promise<void> {
   const db = await getDb();
   if (!db) return;
-  await db.insert(trades).values(trade).onDuplicateKeyUpdate({
-    set: {
-      price: trade.price,
-      profit: trade.profit,
-      state: trade.state,
-    },
-  });
+  await db
+    .insert(trades)
+    .values(trade)
+    .onDuplicateKeyUpdate({
+      set: {
+        price: trade.price,
+        profit: trade.profit,
+        state: trade.state,
+      },
+    });
 }
 
 export async function upsertTrades(tradeList: InsertTrade[]): Promise<void> {
@@ -123,8 +138,10 @@ export async function getTradesFromDb(params: {
 
   const conditions = [];
   if (params.currency) conditions.push(eq(trades.currency, params.currency));
-  if (params.startTimestamp) conditions.push(gte(trades.tradeTimestamp, params.startTimestamp));
-  if (params.endTimestamp) conditions.push(lte(trades.tradeTimestamp, params.endTimestamp));
+  if (params.startTimestamp)
+    conditions.push(gte(trades.tradeTimestamp, params.startTimestamp));
+  if (params.endTimestamp)
+    conditions.push(lte(trades.tradeTimestamp, params.endTimestamp));
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -149,24 +166,29 @@ export async function getTradesFromDb(params: {
 
 // ─── PnL Snapshots ───────────────────────────────────────────────────────────
 
-export async function upsertPnlSnapshot(snapshot: InsertPnlSnapshot): Promise<void> {
+export async function upsertPnlSnapshot(
+  snapshot: InsertPnlSnapshot
+): Promise<void> {
   const db = await getDb();
   if (!db) return;
-  await db.insert(pnlSnapshots).values(snapshot).onDuplicateKeyUpdate({
-    set: {
-      equity: snapshot.equity,
-      balance: snapshot.balance,
-      unrealizedPnl: snapshot.unrealizedPnl,
-      sessionPnl: snapshot.sessionPnl,
-      totalPnl: snapshot.totalPnl,
-      btcPrice: snapshot.btcPrice ?? null,
-      deltaTotal: snapshot.deltaTotal ?? null,
-      optionsTheta: snapshot.optionsTheta ?? null,
-      optionsVega: snapshot.optionsVega ?? null,
-      optionsGamma: snapshot.optionsGamma ?? null,
-      snapshotAt: snapshot.snapshotAt,
-    },
-  });
+  await db
+    .insert(pnlSnapshots)
+    .values(snapshot)
+    .onDuplicateKeyUpdate({
+      set: {
+        equity: snapshot.equity,
+        balance: snapshot.balance,
+        unrealizedPnl: snapshot.unrealizedPnl,
+        sessionPnl: snapshot.sessionPnl,
+        totalPnl: snapshot.totalPnl,
+        btcPrice: snapshot.btcPrice ?? null,
+        deltaTotal: snapshot.deltaTotal ?? null,
+        optionsTheta: snapshot.optionsTheta ?? null,
+        optionsVega: snapshot.optionsVega ?? null,
+        optionsGamma: snapshot.optionsGamma ?? null,
+        snapshotAt: snapshot.snapshotAt,
+      },
+    });
 }
 
 export async function getPnlSnapshots(params: {
@@ -179,7 +201,8 @@ export async function getPnlSnapshots(params: {
   if (!db) return [];
 
   const conditions = [eq(pnlSnapshots.currency, params.currency)];
-  if (params.startDate) conditions.push(gte(pnlSnapshots.date, params.startDate));
+  if (params.startDate)
+    conditions.push(gte(pnlSnapshots.date, params.startDate));
   if (params.endDate) conditions.push(lte(pnlSnapshots.date, params.endDate));
 
   return db
@@ -206,17 +229,28 @@ export async function incrementPageViews(): Promise<number> {
   const db = await getDb();
   if (!db) return 0;
   // Ensure row id=1 exists, then increment
-  await db.insert(pageViews).values({ id: 1, count: 1 }).onDuplicateKeyUpdate({
-    set: { count: sql`count + 1` },
-  });
-  const rows = await db.select().from(pageViews).where(eq(pageViews.id, 1)).limit(1);
+  await db
+    .insert(pageViews)
+    .values({ id: 1, count: 1 })
+    .onDuplicateKeyUpdate({
+      set: { count: sql`count + 1` },
+    });
+  const rows = await db
+    .select()
+    .from(pageViews)
+    .where(eq(pageViews.id, 1))
+    .limit(1);
   return rows[0]?.count ?? 1;
 }
 
 export async function getPageViews(): Promise<number> {
   const db = await getDb();
   if (!db) return 0;
-  const rows = await db.select().from(pageViews).where(eq(pageViews.id, 1)).limit(1);
+  const rows = await db
+    .select()
+    .from(pageViews)
+    .where(eq(pageViews.id, 1))
+    .limit(1);
   return rows[0]?.count ?? 0;
 }
 
@@ -232,22 +266,24 @@ export async function getEarliestPnlSnapshots(): Promise<{
   if (!db) return { btc: null, usdc: null };
 
   const [btcRows, usdcRows] = await Promise.all([
-    db.select({
-      balance: pnlSnapshots.balance,
-      equity: pnlSnapshots.equity,
-      snapshotAt: pnlSnapshots.snapshotAt,
-    })
+    db
+      .select({
+        balance: pnlSnapshots.balance,
+        equity: pnlSnapshots.equity,
+        snapshotAt: pnlSnapshots.snapshotAt,
+      })
       .from(pnlSnapshots)
-      .where(eq(pnlSnapshots.currency, 'BTC'))
+      .where(eq(pnlSnapshots.currency, "BTC"))
       .orderBy(asc(pnlSnapshots.snapshotAt))
       .limit(1),
-    db.select({
-      balance: pnlSnapshots.balance,
-      equity: pnlSnapshots.equity,
-      snapshotAt: pnlSnapshots.snapshotAt,
-    })
+    db
+      .select({
+        balance: pnlSnapshots.balance,
+        equity: pnlSnapshots.equity,
+        snapshotAt: pnlSnapshots.snapshotAt,
+      })
       .from(pnlSnapshots)
-      .where(eq(pnlSnapshots.currency, 'USDC'))
+      .where(eq(pnlSnapshots.currency, "USDC"))
       .orderBy(asc(pnlSnapshots.snapshotAt))
       .limit(1),
   ]);
@@ -259,7 +295,7 @@ export async function getEarliestPnlSnapshots(): Promise<{
 }
 
 export async function getCombinedPnlSnapshots(params: {
-  denomination: 'USDC' | 'BTC';
+  denomination: "USDC" | "BTC";
   startDate?: string;
   endDate?: string;
   limit?: number;
@@ -272,53 +308,73 @@ export async function getCombinedPnlSnapshots(params: {
   // Fetch current BTC price as fallback for rows with btcPrice = 0 or null
   let liveBtcPrice: number | null = null;
   try {
-    liveBtcPrice = await getIndexPrice('btc_usdc');
-  } catch { /* ignore */ }
+    liveBtcPrice = await getIndexPrice("btc_usdc");
+  } catch {
+    /* ignore */
+  }
 
   // Fetch both currencies
   const [btcRows, usdcRows] = await Promise.all([
-    db.select().from(pnlSnapshots)
-      .where(and(
-        eq(pnlSnapshots.currency, 'BTC'),
-        ...(params.startDate ? [gte(pnlSnapshots.date, params.startDate)] : []),
-        ...(params.endDate ? [lte(pnlSnapshots.date, params.endDate)] : []),
-      ))
+    db
+      .select()
+      .from(pnlSnapshots)
+      .where(
+        and(
+          eq(pnlSnapshots.currency, "BTC"),
+          ...(params.startDate
+            ? [gte(pnlSnapshots.date, params.startDate)]
+            : []),
+          ...(params.endDate ? [lte(pnlSnapshots.date, params.endDate)] : [])
+        )
+      )
       .orderBy(desc(pnlSnapshots.snapshotAt))
       .limit(limit),
-    db.select().from(pnlSnapshots)
-      .where(and(
-        eq(pnlSnapshots.currency, 'USDC'),
-        ...(params.startDate ? [gte(pnlSnapshots.date, params.startDate)] : []),
-        ...(params.endDate ? [lte(pnlSnapshots.date, params.endDate)] : []),
-      ))
+    db
+      .select()
+      .from(pnlSnapshots)
+      .where(
+        and(
+          eq(pnlSnapshots.currency, "USDC"),
+          ...(params.startDate
+            ? [gte(pnlSnapshots.date, params.startDate)]
+            : []),
+          ...(params.endDate ? [lte(pnlSnapshots.date, params.endDate)] : [])
+        )
+      )
       .orderBy(desc(pnlSnapshots.snapshotAt))
       .limit(limit),
   ]);
 
   // Build maps keyed by date (keep latest snapshot per date)
-  const btcMap = new Map<string, typeof btcRows[0]>();
-  for (const r of btcRows) { if (!btcMap.has(r.date)) btcMap.set(r.date, r); }
-  const usdcMap = new Map<string, typeof usdcRows[0]>();
-  for (const r of usdcRows) { if (!usdcMap.has(r.date)) usdcMap.set(r.date, r); }
+  const btcMap = new Map<string, (typeof btcRows)[0]>();
+  for (const r of btcRows) {
+    if (!btcMap.has(r.date)) btcMap.set(r.date, r);
+  }
+  const usdcMap = new Map<string, (typeof usdcRows)[0]>();
+  for (const r of usdcRows) {
+    if (!usdcMap.has(r.date)) usdcMap.set(r.date, r);
+  }
 
   // Merge: use dates present in either map (fill missing side with 0)
-  const allDates = Array.from(new Set([...Array.from(btcMap.keys()), ...Array.from(usdcMap.keys())])).sort();
+  const allDates = Array.from(
+    new Set([...Array.from(btcMap.keys()), ...Array.from(usdcMap.keys())])
+  ).sort();
 
-  return allDates.map((date) => {
+  return allDates.map(date => {
     const btc = btcMap.get(date);
     const usdc = usdcMap.get(date);
 
-    const btcEquity = parseFloat(btc?.equity ?? '0');
-    const usdcEquity = parseFloat(usdc?.equity ?? '0');
-    const btcBalance = parseFloat(btc?.balance ?? '0');
-    const usdcBalance = parseFloat(usdc?.balance ?? '0');
-    const btcPnl = parseFloat(btc?.totalPnl ?? '0');
-    const usdcPnl = parseFloat(usdc?.totalPnl ?? '0');
-    const btcUnrealized = parseFloat(btc?.unrealizedPnl ?? '0');
-    const usdcUnrealized = parseFloat(usdc?.unrealizedPnl ?? '0');
+    const btcEquity = parseFloat(btc?.equity ?? "0");
+    const usdcEquity = parseFloat(usdc?.equity ?? "0");
+    const btcBalance = parseFloat(btc?.balance ?? "0");
+    const usdcBalance = parseFloat(usdc?.balance ?? "0");
+    const btcPnl = parseFloat(btc?.totalPnl ?? "0");
+    const usdcPnl = parseFloat(usdc?.totalPnl ?? "0");
+    const btcUnrealized = parseFloat(btc?.unrealizedPnl ?? "0");
+    const usdcUnrealized = parseFloat(usdc?.unrealizedPnl ?? "0");
 
     // BTC price: prefer the snapshot's recorded price (must be > 0), fall back to live price
-    const storedPrice = parseFloat(btc?.btcPrice ?? usdc?.btcPrice ?? '0');
+    const storedPrice = parseFloat(btc?.btcPrice ?? usdc?.btcPrice ?? "0");
     const btcPrice = storedPrice > 0 ? storedPrice : (liveBtcPrice ?? 0);
 
     let equity: number;
@@ -326,7 +382,7 @@ export async function getCombinedPnlSnapshots(params: {
     let totalPnl: number;
     let unrealizedPnl: number;
 
-    if (params.denomination === 'USDC') {
+    if (params.denomination === "USDC") {
       const rate = btcPrice > 0 ? btcPrice : 0;
       equity = btcEquity * rate + usdcEquity;
       balance = btcBalance * rate + usdcBalance;
@@ -382,12 +438,15 @@ export async function getPnlAttributionSnapshots(params: {
   // Fetch current BTC price as fallback
   let liveBtcPrice: number | null = null;
   try {
-    liveBtcPrice = await getIndexPrice('btc_usdc');
-  } catch { /* ignore */ }
+    liveBtcPrice = await getIndexPrice("btc_usdc");
+  } catch {
+    /* ignore */
+  }
 
   // Fetch USDC snapshots (options account — has Greeks)
-  const conditions = [eq(pnlSnapshots.currency, 'USDC')];
-  if (params.startDate) conditions.push(gte(pnlSnapshots.date, params.startDate));
+  const conditions = [eq(pnlSnapshots.currency, "USDC")];
+  if (params.startDate)
+    conditions.push(gte(pnlSnapshots.date, params.startDate));
   if (params.endDate) conditions.push(lte(pnlSnapshots.date, params.endDate));
 
   const usdcRows = await db
@@ -398,9 +457,11 @@ export async function getPnlAttributionSnapshots(params: {
     .limit(limit + 1); // fetch one extra for diff calculation
 
   // Also fetch BTC snapshots to compute combined equity
-  const btcConditions = [eq(pnlSnapshots.currency, 'BTC')];
-  if (params.startDate) btcConditions.push(gte(pnlSnapshots.date, params.startDate));
-  if (params.endDate) btcConditions.push(lte(pnlSnapshots.date, params.endDate));
+  const btcConditions = [eq(pnlSnapshots.currency, "BTC")];
+  if (params.startDate)
+    btcConditions.push(gte(pnlSnapshots.date, params.startDate));
+  if (params.endDate)
+    btcConditions.push(lte(pnlSnapshots.date, params.endDate));
 
   const btcRows = await db
     .select()
@@ -410,24 +471,27 @@ export async function getPnlAttributionSnapshots(params: {
     .limit(limit + 1);
 
   // Build maps keyed by date (keep latest snapshot per date)
-  const usdcMap = new Map<string, typeof usdcRows[0]>();
-  for (const r of usdcRows) { if (!usdcMap.has(r.date)) usdcMap.set(r.date, r); }
-  const btcMap = new Map<string, typeof btcRows[0]>();
-  for (const r of btcRows) { if (!btcMap.has(r.date)) btcMap.set(r.date, r); }
+  const usdcMap = new Map<string, (typeof usdcRows)[0]>();
+  for (const r of usdcRows) {
+    if (!usdcMap.has(r.date)) usdcMap.set(r.date, r);
+  }
+  const btcMap = new Map<string, (typeof btcRows)[0]>();
+  for (const r of btcRows) {
+    if (!btcMap.has(r.date)) btcMap.set(r.date, r);
+  }
 
   // Get all dates sorted ascending
-  const allDates = Array.from(new Set([
-    ...Array.from(usdcMap.keys()),
-    ...Array.from(btcMap.keys()),
-  ])).sort();
+  const allDates = Array.from(
+    new Set([...Array.from(usdcMap.keys()), ...Array.from(btcMap.keys())])
+  ).sort();
 
   // Helper: compute combined USDC equity for a date
   const combinedEquity = (date: string): number => {
     const usdc = usdcMap.get(date);
     const btc = btcMap.get(date);
-    const usdcEq = parseFloat(usdc?.equity ?? '0');
-    const btcEq = parseFloat(btc?.equity ?? '0');
-    const storedPrice = parseFloat(usdc?.btcPrice ?? btc?.btcPrice ?? '0');
+    const usdcEq = parseFloat(usdc?.equity ?? "0");
+    const btcEq = parseFloat(btc?.equity ?? "0");
+    const storedPrice = parseFloat(usdc?.btcPrice ?? btc?.btcPrice ?? "0");
     const price = storedPrice > 0 ? storedPrice : (liveBtcPrice ?? 0);
     return usdcEq + btcEq * price;
   };
@@ -460,22 +524,25 @@ export async function getPnlAttributionSnapshots(params: {
     const totalPnl = currEquity - prevEquity;
 
     // BTC price at each snapshot
-    const prevBtcPrice = parseFloat(prev?.btcPrice ?? btcMap.get(prevDate)?.btcPrice ?? '0') || (liveBtcPrice ?? 0);
-    const currBtcPrice = parseFloat(curr?.btcPrice ?? btcMap.get(currDate)?.btcPrice ?? '0') || (liveBtcPrice ?? 0);
+    const prevBtcPrice =
+      parseFloat(prev?.btcPrice ?? btcMap.get(prevDate)?.btcPrice ?? "0") ||
+      (liveBtcPrice ?? 0);
+    const currBtcPrice =
+      parseFloat(curr?.btcPrice ?? btcMap.get(currDate)?.btcPrice ?? "0") ||
+      (liveBtcPrice ?? 0);
     const deltaBtcPrice = currBtcPrice - prevBtcPrice;
 
     // Greeks at previous snapshot (used to estimate contribution over the period)
-    const prevTheta = parseFloat(prev?.optionsTheta ?? '0');
-    const prevVega = parseFloat(prev?.optionsVega ?? '0');
-    const prevDelta = parseFloat(prev?.deltaTotal ?? '0');
-    const currVega = parseFloat(curr?.optionsVega ?? '0');
+    const prevTheta = parseFloat(prev?.optionsTheta ?? "0");
+    const prevVega = parseFloat(prev?.optionsVega ?? "0");
+    const prevDelta = parseFloat(prev?.deltaTotal ?? "0");
+    const currVega = parseFloat(curr?.optionsVega ?? "0");
 
     // Time elapsed in days
     const prevTs = prev?.snapshotAt ?? 0;
     const currTs = curr?.snapshotAt ?? 0;
-    const dtDays = prevTs > 0 && currTs > 0
-      ? (currTs - prevTs) / (24 * 3600 * 1000)
-      : 1; // default 1 day
+    const dtDays =
+      prevTs > 0 && currTs > 0 ? (currTs - prevTs) / (24 * 3600 * 1000) : 1; // default 1 day
 
     // Theta contribution: theta (per day in currency) × elapsed days
     // Deribit options_theta is in the settlement currency per day
@@ -499,10 +566,10 @@ export async function getPnlAttributionSnapshots(params: {
       deltaPnl,
       vegaPnl,
       residual,
-      deltaTotal: parseFloat(curr?.deltaTotal ?? '0'),
-      optionsTheta: parseFloat(curr?.optionsTheta ?? '0'),
-      optionsVega: parseFloat(curr?.optionsVega ?? '0'),
-      optionsGamma: parseFloat(curr?.optionsGamma ?? '0'),
+      deltaTotal: parseFloat(curr?.deltaTotal ?? "0"),
+      optionsTheta: parseFloat(curr?.optionsTheta ?? "0"),
+      optionsVega: parseFloat(curr?.optionsVega ?? "0"),
+      optionsGamma: parseFloat(curr?.optionsGamma ?? "0"),
       btcPrice: currBtcPrice,
     });
   }

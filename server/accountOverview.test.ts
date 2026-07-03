@@ -4,7 +4,11 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 vi.mock("./deribit", () => ({
   getAccountSummaries: vi.fn(),
   getIndexPrice: vi.fn(),
-  deribitWs: { isConnected: () => false, connect: vi.fn(), disconnect: vi.fn() },
+  deribitWs: {
+    isConnected: () => false,
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+  },
 }));
 
 vi.mock("./db", () => ({
@@ -74,14 +78,19 @@ const mockSummaries = [
 describe("accountOverview – totalPnl computation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (getAccountSummaries as ReturnType<typeof vi.fn>).mockResolvedValue(mockSummaries);
+    (getAccountSummaries as ReturnType<typeof vi.fn>).mockResolvedValue(
+      mockSummaries
+    );
     (getIndexPrice as ReturnType<typeof vi.fn>).mockResolvedValue(80000);
     // Default: no snapshots for max drawdown
     (getCombinedPnlSnapshots as ReturnType<typeof vi.fn>).mockResolvedValue([]);
   });
 
   it("returns null totalPnlUsdc when no snapshots exist", async () => {
-    (getEarliestPnlSnapshots as ReturnType<typeof vi.fn>).mockResolvedValue({ btc: null, usdc: null });
+    (getEarliestPnlSnapshots as ReturnType<typeof vi.fn>).mockResolvedValue({
+      btc: null,
+      usdc: null,
+    });
 
     const caller = appRouter.createCaller(createPublicContext());
     const result = await caller.deribit.accountOverview();
@@ -98,7 +107,11 @@ describe("accountOverview – totalPnl computation", () => {
     // totalPnl = 900 - 730 = 170
     // totalPnlPct = 170 / 730 * 100 ≈ 23.29%
     (getEarliestPnlSnapshots as ReturnType<typeof vi.fn>).mockResolvedValue({
-      btc: { balance: "0.005", equity: "0.008", snapshotAt: Date.now() - 86400000 },
+      btc: {
+        balance: "0.005",
+        equity: "0.008",
+        snapshotAt: Date.now() - 86400000,
+      },
       usdc: { balance: "40", equity: "90", snapshotAt: Date.now() - 86400000 },
     });
 
@@ -117,8 +130,16 @@ describe("accountOverview – totalPnl computation", () => {
     // earliestTotal = 0.015 * 80000 + 150 = 1200 + 150 = 1350
     // Current: 0.01 * 80000 + 100 = 900 → pnl = 900 - 1350 = -450
     (getEarliestPnlSnapshots as ReturnType<typeof vi.fn>).mockResolvedValue({
-      btc: { balance: "0.01", equity: "0.015", snapshotAt: Date.now() - 86400000 },
-      usdc: { balance: "100", equity: "150", snapshotAt: Date.now() - 86400000 },
+      btc: {
+        balance: "0.01",
+        equity: "0.015",
+        snapshotAt: Date.now() - 86400000,
+      },
+      usdc: {
+        balance: "100",
+        equity: "150",
+        snapshotAt: Date.now() - 86400000,
+      },
     });
 
     const caller = appRouter.createCaller(createPublicContext());
@@ -145,7 +166,10 @@ describe("accountOverview – totalPnl computation", () => {
   });
 
   it("includes all required fields in response", async () => {
-    (getEarliestPnlSnapshots as ReturnType<typeof vi.fn>).mockResolvedValue({ btc: null, usdc: null });
+    (getEarliestPnlSnapshots as ReturnType<typeof vi.fn>).mockResolvedValue({
+      btc: null,
+      usdc: null,
+    });
 
     const caller = appRouter.createCaller(createPublicContext());
     const result = await caller.deribit.accountOverview();
@@ -162,14 +186,57 @@ describe("accountOverview – totalPnl computation", () => {
   });
 
   it("computes maxDrawdown correctly from snapshot history", async () => {
-    (getEarliestPnlSnapshots as ReturnType<typeof vi.fn>).mockResolvedValue({ btc: null, usdc: null });
+    (getEarliestPnlSnapshots as ReturnType<typeof vi.fn>).mockResolvedValue({
+      btc: null,
+      usdc: null,
+    });
     // Simulate: equity goes 1000 -> 1200 (peak) -> 900 (trough) -> 1100
     // maxDD = 1200 - 900 = 300, maxDDPct = 300/1200 * 100 = 25%
     (getCombinedPnlSnapshots as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { date: "2026-03-09", equity: "1000", balance: "1000", btcBalance: "0", usdcBalance: "1000", totalPnl: "0", unrealizedPnl: "0", btcPrice: "80000", snapshotAt: 1 },
-      { date: "2026-03-10", equity: "1200", balance: "1200", btcBalance: "0", usdcBalance: "1200", totalPnl: "200", unrealizedPnl: "0", btcPrice: "80000", snapshotAt: 2 },
-      { date: "2026-03-11", equity: "900",  balance: "900",  btcBalance: "0", usdcBalance: "900",  totalPnl: "-100", unrealizedPnl: "0", btcPrice: "80000", snapshotAt: 3 },
-      { date: "2026-03-12", equity: "1100", balance: "1100", btcBalance: "0", usdcBalance: "1100", totalPnl: "100", unrealizedPnl: "0", btcPrice: "80000", snapshotAt: 4 },
+      {
+        date: "2026-03-09",
+        equity: "1000",
+        balance: "1000",
+        btcBalance: "0",
+        usdcBalance: "1000",
+        totalPnl: "0",
+        unrealizedPnl: "0",
+        btcPrice: "80000",
+        snapshotAt: 1,
+      },
+      {
+        date: "2026-03-10",
+        equity: "1200",
+        balance: "1200",
+        btcBalance: "0",
+        usdcBalance: "1200",
+        totalPnl: "200",
+        unrealizedPnl: "0",
+        btcPrice: "80000",
+        snapshotAt: 2,
+      },
+      {
+        date: "2026-03-11",
+        equity: "900",
+        balance: "900",
+        btcBalance: "0",
+        usdcBalance: "900",
+        totalPnl: "-100",
+        unrealizedPnl: "0",
+        btcPrice: "80000",
+        snapshotAt: 3,
+      },
+      {
+        date: "2026-03-12",
+        equity: "1100",
+        balance: "1100",
+        btcBalance: "0",
+        usdcBalance: "1100",
+        totalPnl: "100",
+        unrealizedPnl: "0",
+        btcPrice: "80000",
+        snapshotAt: 4,
+      },
     ]);
 
     const caller = appRouter.createCaller(createPublicContext());
@@ -180,10 +247,33 @@ describe("accountOverview – totalPnl computation", () => {
   });
 
   it("returns zero maxDrawdown when equity only goes up", async () => {
-    (getEarliestPnlSnapshots as ReturnType<typeof vi.fn>).mockResolvedValue({ btc: null, usdc: null });
+    (getEarliestPnlSnapshots as ReturnType<typeof vi.fn>).mockResolvedValue({
+      btc: null,
+      usdc: null,
+    });
     (getCombinedPnlSnapshots as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { date: "2026-03-09", equity: "1000", balance: "1000", btcBalance: "0", usdcBalance: "1000", totalPnl: "0", unrealizedPnl: "0", btcPrice: "80000", snapshotAt: 1 },
-      { date: "2026-03-10", equity: "1100", balance: "1100", btcBalance: "0", usdcBalance: "1100", totalPnl: "100", unrealizedPnl: "0", btcPrice: "80000", snapshotAt: 2 },
+      {
+        date: "2026-03-09",
+        equity: "1000",
+        balance: "1000",
+        btcBalance: "0",
+        usdcBalance: "1000",
+        totalPnl: "0",
+        unrealizedPnl: "0",
+        btcPrice: "80000",
+        snapshotAt: 1,
+      },
+      {
+        date: "2026-03-10",
+        equity: "1100",
+        balance: "1100",
+        btcBalance: "0",
+        usdcBalance: "1100",
+        totalPnl: "100",
+        unrealizedPnl: "0",
+        btcPrice: "80000",
+        snapshotAt: 2,
+      },
     ]);
 
     const caller = appRouter.createCaller(createPublicContext());
@@ -194,7 +284,10 @@ describe("accountOverview – totalPnl computation", () => {
   });
 
   it("returns null maxDrawdown when fewer than 2 snapshots", async () => {
-    (getEarliestPnlSnapshots as ReturnType<typeof vi.fn>).mockResolvedValue({ btc: null, usdc: null });
+    (getEarliestPnlSnapshots as ReturnType<typeof vi.fn>).mockResolvedValue({
+      btc: null,
+      usdc: null,
+    });
     (getCombinedPnlSnapshots as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
     const caller = appRouter.createCaller(createPublicContext());

@@ -18,7 +18,15 @@ function fmt(n: number | null | undefined, decimals = 2): string {
 function ChangeTag({ pct }: { pct: number | null }) {
   if (pct == null || isNaN(pct))
     return (
-      <span style={{ color: "var(--text-faint)", fontFamily: "DM Mono, monospace", fontSize: "0.72rem" }}>—</span>
+      <span
+        style={{
+          color: "var(--text-faint)",
+          fontFamily: "DM Mono, monospace",
+          fontSize: "0.72rem",
+        }}
+      >
+        —
+      </span>
     );
   const up = pct >= 0;
   return (
@@ -48,14 +56,26 @@ interface VolCardProps {
   compact?: boolean;
 }
 
-function VolCard({ label, sublabel, current, prevDay, prevLabel, decimals = 2, lang, compact = false }: VolCardProps) {
+function VolCard({
+  label,
+  sublabel,
+  current,
+  prevDay,
+  prevLabel,
+  decimals = 2,
+  lang,
+  compact = false,
+}: VolCardProps) {
   const change =
     current != null && prevDay != null && prevDay !== 0
       ? ((current - prevDay) / prevDay) * 100
       : null;
 
   return (
-    <div className="glass-card fade-in" style={{ padding: compact ? "0.5rem 0.6rem" : "1rem 1.25rem" }}>
+    <div
+      className="glass-card fade-in"
+      style={{ padding: compact ? "0.5rem 0.6rem" : "1rem 1.25rem" }}
+    >
       {/* Header */}
       <div className="mb-1.5">
         <span
@@ -88,14 +108,20 @@ function VolCard({ label, sublabel, current, prevDay, prevLabel, decimals = 2, l
       <div
         style={{
           fontFamily: "DM Mono, monospace",
-          fontSize: compact ? "clamp(0.85rem, 1.4vw, 1.15rem)" : "clamp(1.4rem, 2.4vw, 2.1rem)",
+          fontSize: compact
+            ? "clamp(0.85rem, 1.4vw, 1.15rem)"
+            : "clamp(1.4rem, 2.4vw, 2.1rem)",
           fontWeight: 300,
           letterSpacing: "-0.02em",
           color: "var(--metric-neutral)",
           lineHeight: 1.05,
         }}
       >
-        {current != null ? fmt(current, decimals) : <span style={{ color: "var(--text-faint)" }}>—</span>}
+        {current != null ? (
+          fmt(current, decimals)
+        ) : (
+          <span style={{ color: "var(--text-faint)" }}>—</span>
+        )}
       </div>
 
       {/* Previous day (small, below) */}
@@ -108,8 +134,7 @@ function VolCard({ label, sublabel, current, prevDay, prevLabel, decimals = 2, l
             letterSpacing: "0.04em",
           }}
         >
-          {prevLabel ?? (lang === "zh" ? "昨收" : "Prev")}
-          {" "}
+          {prevLabel ?? (lang === "zh" ? "昨收" : "Prev")}{" "}
           {prevDay != null ? fmt(prevDay, decimals) : "—"}
         </span>
         <ChangeTag pct={change} />
@@ -132,12 +157,38 @@ export default function LiveTicker() {
       {/* BTC · VIX · GOLD · NAS100 · SSE */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
         {[
-          { label: "BTC", sub: lang === "zh" ? "永续" : "Perp", cur: volData?.btc ?? null, prev: volData?.btcPrevClose ?? null },
-          { label: "VIX", sub: lang === "zh" ? "恐慌指数" : "Fear Index", cur: volData?.vix ?? null, prev: volData?.vixPrevClose ?? null },
-          { label: "GOLD", sub: lang === "zh" ? "黄金" : "Gold", cur: volData?.gold ?? null, prev: volData?.goldPrevClose ?? null },
-          { label: "NAS100", sub: lang === "zh" ? "纳斯达克100指数" : "Nasdaq 100", cur: volData?.nas100 ?? null, prev: volData?.nas100PrevClose ?? null, prevLabel: lang === "zh" ? "24h前" : "24h Ago" },
-          { label: "SSE", sub: lang === "zh" ? "上证指数" : "Shanghai Composite", cur: volData?.shanghai ?? null, prev: volData?.shanghaiPrevClose ?? null },
-        ].map((v) => (
+          {
+            label: "BTC",
+            sub: lang === "zh" ? "永续" : "Perp",
+            cur: volData?.btc ?? null,
+            prev: volData?.btcPrevClose ?? null,
+          },
+          {
+            label: "VIX",
+            sub: lang === "zh" ? "恐慌指数" : "Fear Index",
+            cur: volData?.vix ?? null,
+            prev: volData?.vixPrevClose ?? null,
+          },
+          {
+            label: "GOLD",
+            sub: lang === "zh" ? "黄金" : "Gold",
+            cur: volData?.gold ?? null,
+            prev: volData?.goldPrevClose ?? null,
+          },
+          {
+            label: "NAS100",
+            sub: lang === "zh" ? "纳斯达克100指数" : "Nasdaq 100",
+            cur: volData?.nas100 ?? null,
+            prev: volData?.nas100PrevClose ?? null,
+            prevLabel: lang === "zh" ? "24h前" : "24h Ago",
+          },
+          {
+            label: "SSE",
+            sub: lang === "zh" ? "上证指数" : "Shanghai Composite",
+            cur: volData?.shanghai ?? null,
+            prev: volData?.shanghaiPrevClose ?? null,
+          },
+        ].map(v => (
           <VolCard
             key={v.label}
             label={v.label}

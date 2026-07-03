@@ -59,9 +59,11 @@ async function fetchTrades() {
       losingTrades++;
       totalLoss += Math.abs(profitLoss);
     }
-    
+
     if (i < 5) {
-        console.log(`Trade ${i+1}: ${t.instrument_name}, PnL: ${t.profit_loss}, Fee: ${t.fee} ${t.fee_currency}`);
+      console.log(
+        `Trade ${i + 1}: ${t.instrument_name}, PnL: ${t.profit_loss}, Fee: ${t.fee} ${t.fee_currency}`
+      );
     }
   });
 
@@ -73,8 +75,12 @@ async function fetchTrades() {
 
   console.log("\n--- Metrics Calculation ---");
   console.log(`Total Trades (with PnL): ${totalTrades}`);
-  console.log(`Winning Trades: ${winningTrades}, Total Profit: ${totalProfit.toFixed(8)} BTC`);
-  console.log(`Losing Trades: ${losingTrades}, Total Loss: ${totalLoss.toFixed(8)} BTC`);
+  console.log(
+    `Winning Trades: ${winningTrades}, Total Profit: ${totalProfit.toFixed(8)} BTC`
+  );
+  console.log(
+    `Losing Trades: ${losingTrades}, Total Loss: ${totalLoss.toFixed(8)} BTC`
+  );
   console.log(`Avg Profit: ${avgProfit.toFixed(8)} BTC`);
   console.log(`Avg Loss: ${avgLoss.toFixed(8)} BTC`);
   console.log(`Win Rate: ${winRate.toFixed(2)}%`);

@@ -17,18 +17,18 @@ function ImportanceBadge({ level }: { level: number }) {
           label: "HIGH",
         }
       : level === 2
-      ? {
-          bg: "oklch(70% 0.14 80 / 15%)",
-          border: "oklch(70% 0.14 80 / 50%)",
-          text: "oklch(78% 0.12 80)",
-          label: "MED",
-        }
-      : {
-          bg: "oklch(50% 0.01 200 / 10%)",
-          border: "oklch(50% 0.01 200 / 30%)",
-          text: "oklch(55% 0.01 200)",
-          label: "LOW",
-        };
+        ? {
+            bg: "oklch(70% 0.14 80 / 15%)",
+            border: "oklch(70% 0.14 80 / 50%)",
+            text: "oklch(78% 0.12 80)",
+            label: "MED",
+          }
+        : {
+            bg: "oklch(50% 0.01 200 / 10%)",
+            border: "oklch(50% 0.01 200 / 30%)",
+            text: "oklch(55% 0.01 200)",
+            label: "LOW",
+          };
 
   return (
     <span
@@ -59,7 +59,7 @@ export default function EconomicCalendar() {
     });
 
   const events = data ?? [];
-  const filtered = events.filter((e) => e.importance >= minImportance);
+  const filtered = events.filter(e => e.importance >= minImportance);
 
   const filterLabels = {
     1: { zh: "全部", en: "All" },
@@ -102,7 +102,7 @@ export default function EconomicCalendar() {
         </div>
         <div className="flex items-center gap-3">
           <div className="flex gap-1">
-            {([1, 2, 3] as const).map((level) => (
+            {([1, 2, 3] as const).map(level => (
               <button
                 key={level}
                 onClick={() => setMinImportance(level)}
@@ -169,7 +169,7 @@ export default function EconomicCalendar() {
                   borderBottom: "1px solid var(--panel-border)",
                 }}
               >
-                {colHeaders.map((h) => (
+                {colHeaders.map(h => (
                   <th
                     key={h}
                     style={{
@@ -195,20 +195,16 @@ export default function EconomicCalendar() {
                   style={{
                     borderBottom: "1px solid var(--panel-border)",
                     background:
-                      idx % 2 === 0
-                        ? "transparent"
-                        : "var(--surface-hover)",
+                      idx % 2 === 0 ? "transparent" : "var(--surface-hover)",
                     transition: "background 0.15s",
                   }}
-                  onMouseEnter={(e) => {
+                  onMouseEnter={e => {
                     (e.currentTarget as HTMLTableRowElement).style.background =
                       "rgb(31 107 79 / 12%)";
                   }}
-                  onMouseLeave={(e) => {
+                  onMouseLeave={e => {
                     (e.currentTarget as HTMLTableRowElement).style.background =
-                      idx % 2 === 0
-                        ? "transparent"
-                        : "var(--surface-hover)";
+                      idx % 2 === 0 ? "transparent" : "var(--surface-hover)";
                   }}
                 >
                   <td
@@ -224,7 +220,10 @@ export default function EconomicCalendar() {
                   <td
                     style={{
                       padding: "8px 10px",
-                      color: event.importance === 3 ? "var(--metric-neutral)" : "var(--text-soft)",
+                      color:
+                        event.importance === 3
+                          ? "var(--metric-neutral)"
+                          : "var(--text-soft)",
                       fontWeight: event.importance === 3 ? 500 : 400,
                       maxWidth: 300,
                     }}

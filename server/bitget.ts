@@ -26,7 +26,9 @@ export function getBitgetConfigStatus() {
   };
 }
 
-function buildQuery(params?: Record<string, string | number | boolean | undefined>) {
+function buildQuery(
+  params?: Record<string, string | number | boolean | undefined>
+) {
   if (!params) return "";
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -35,10 +37,21 @@ function buildQuery(params?: Record<string, string | number | boolean | undefine
   return query.toString();
 }
 
-function sign(timestamp: string, method: Method, requestPath: string, queryString: string, body: string) {
-  const pathWithQuery = queryString ? `${requestPath}?${queryString}` : requestPath;
+function sign(
+  timestamp: string,
+  method: Method,
+  requestPath: string,
+  queryString: string,
+  body: string
+) {
+  const pathWithQuery = queryString
+    ? `${requestPath}?${queryString}`
+    : requestPath;
   const preHash = `${timestamp}${method.toUpperCase()}${pathWithQuery}${body}`;
-  return crypto.createHmac("sha256", SECRET_KEY).update(preHash).digest("base64");
+  return crypto
+    .createHmac("sha256", SECRET_KEY)
+    .update(preHash)
+    .digest("base64");
 }
 
 function getProxyUrl() {
@@ -54,7 +67,7 @@ function readJsonResponse<T>(response: http.IncomingMessage): Promise<T> {
   return new Promise((resolve, reject) => {
     let text = "";
     response.setEncoding("utf8");
-    response.on("data", (chunk) => {
+    response.on("data", chunk => {
       text += chunk;
     });
     response.on("end", () => {
@@ -62,14 +75,23 @@ function readJsonResponse<T>(response: http.IncomingMessage): Promise<T> {
         const payload = text ? JSON.parse(text) : null;
         resolve(payload as T);
       } catch {
-        reject(new Error(`Bitget returned a non-JSON response: ${text.slice(0, 120)}`));
+        reject(
+          new Error(
+            `Bitget returned a non-JSON response: ${text.slice(0, 120)}`
+          )
+        );
       }
     });
     response.on("error", reject);
   });
 }
 
-function requestJson<T>(url: string, method: Method, headers: Record<string, string>, body: string): Promise<T> {
+function requestJson<T>(
+  url: string,
+  method: Method,
+  headers: Record<string, string>,
+  body: string
+): Promise<T> {
   const target = new URL(url);
   const proxy = getProxyUrl();
 
@@ -83,7 +105,7 @@ function requestJson<T>(url: string, method: Method, headers: Record<string, str
           headers,
           timeout: 20000,
         },
-        async (response) => {
+        async response => {
           try {
             resolve(await readJsonResponse<T>(response));
           } catch (error) {
@@ -91,7 +113,9 @@ function requestJson<T>(url: string, method: Method, headers: Record<string, str
           }
         }
       );
-      request.on("timeout", () => request.destroy(new Error("Bitget request timed out")));
+      request.on("timeout", () =>
+        request.destroy(new Error("Bitget request timed out"))
+      );
       request.on("error", reject);
       if (body) request.write(body);
       request.end();
@@ -113,41 +137,50 @@ function requestJson<T>(url: string, method: Method, headers: Record<string, str
     connect.on("connect", (response, socket) => {
       if (response.statusCode !== 200) {
         socket.destroy();
-        reject(new Error(`Bitget proxy connection failed: ${response.statusCode}`));
+        reject(
+          new Error(`Bitget proxy connection failed: ${response.statusCode}`)
+        );
         return;
       }
 
-      const tlsSocket = tls.connect({ socket, servername: target.hostname }, () => {
-        const request = http.request(
-          {
-            method,
-            host: target.hostname,
-            path: `${target.pathname}${target.search}`,
-            headers: {
-              Host: target.hostname,
-              ...headers,
+      const tlsSocket = tls.connect(
+        { socket, servername: target.hostname },
+        () => {
+          const request = http.request(
+            {
+              method,
+              host: target.hostname,
+              path: `${target.pathname}${target.search}`,
+              headers: {
+                Host: target.hostname,
+                ...headers,
+              },
+              createConnection: () => tlsSocket,
+              timeout: 20000,
             },
-            createConnection: () => tlsSocket,
-            timeout: 20000,
-          },
-          async (bitgetResponse) => {
-            try {
-              resolve(await readJsonResponse<T>(bitgetResponse));
-            } catch (error) {
-              reject(error);
+            async bitgetResponse => {
+              try {
+                resolve(await readJsonResponse<T>(bitgetResponse));
+              } catch (error) {
+                reject(error);
+              }
             }
-          }
-        );
-        request.on("timeout", () => request.destroy(new Error("Bitget request timed out")));
-        request.on("error", reject);
-        if (body) request.write(body);
-        request.end();
-      });
+          );
+          request.on("timeout", () =>
+            request.destroy(new Error("Bitget request timed out"))
+          );
+          request.on("error", reject);
+          if (body) request.write(body);
+          request.end();
+        }
+      );
 
       tlsSocket.on("error", reject);
     });
 
-    connect.on("timeout", () => connect.destroy(new Error("Bitget proxy connection timed out")));
+    connect.on("timeout", () =>
+      connect.destroy(new Error("Bitget proxy connection timed out"))
+    );
     connect.on("error", reject);
     connect.end();
   });
@@ -161,7 +194,9 @@ async function callPrivate<T>(
 ): Promise<T> {
   const status = getBitgetConfigStatus();
   if (!status.configured) {
-    throw new Error(`Bitget API is not configured: missing ${status.missing.join(", ")}`);
+    throw new Error(
+      `Bitget API is not configured: missing ${status.missing.join(", ")}`
+    );
   }
 
   const queryString = buildQuery(params);
@@ -184,7 +219,9 @@ async function callPrivate<T>(
   );
 
   if (payload?.code && payload.code !== "00000") {
-    throw new Error(`Bitget API error [${requestPath}]: ${payload.code} ${payload.msg ?? ""}`);
+    throw new Error(
+      `Bitget API error [${requestPath}]: ${payload.code} ${payload.msg ?? ""}`
+    );
   }
 
   return payload?.data as T;
@@ -296,7 +333,10 @@ function toNumber(value: string | number | null | undefined) {
 }
 
 export async function getUnifiedAccountAssets() {
-  return callPrivate<BitgetUnifiedAccountAssets>("GET", "/api/v3/account/assets");
+  return callPrivate<BitgetUnifiedAccountAssets>(
+    "GET",
+    "/api/v3/account/assets"
+  );
 }
 
 export async function getCurrentPositions(category = "USDT-FUTURES") {
@@ -310,8 +350,12 @@ export async function getCurrentPositions(category = "USDT-FUTURES") {
 
 export async function getAllCurrentPositions() {
   const categories = ["USDT-FUTURES", "COIN-FUTURES", "USDC-FUTURES"];
-  const results = await Promise.allSettled(categories.map((category) => getCurrentPositions(category)));
-  return results.flatMap((result) => (result.status === "fulfilled" ? result.value : []));
+  const results = await Promise.allSettled(
+    categories.map(category => getCurrentPositions(category))
+  );
+  return results.flatMap(result =>
+    result.status === "fulfilled" ? result.value : []
+  );
 }
 
 export async function getFillHistory(params: {
@@ -346,15 +390,21 @@ export async function getSpotAssets() {
 }
 
 export async function getFuturesAccounts(productType = "USDT-FUTURES") {
-  return callPrivate<BitgetFuturesAccount[]>("GET", "/api/v2/mix/account/accounts", {
-    productType,
-  });
+  return callPrivate<BitgetFuturesAccount[]>(
+    "GET",
+    "/api/v2/mix/account/accounts",
+    {
+      productType,
+    }
+  );
 }
 
 export async function getBitgetAccountOverview() {
   try {
     const unifiedAccount = await getUnifiedAccountAssets();
-    const totalEquityUsdt = toNumber(unifiedAccount.usdtEquity || unifiedAccount.accountEquity);
+    const totalEquityUsdt = toNumber(
+      unifiedAccount.usdtEquity || unifiedAccount.accountEquity
+    );
     const futuresUnrealizedPnl = toNumber(
       unifiedAccount.usdtUnrealisedPnl || unifiedAccount.unrealisedPnl
     );
@@ -380,7 +430,9 @@ export async function getBitgetAccountOverview() {
       getFuturesAccounts("USDT-FUTURES"),
     ]);
 
-    const spotUsdt = spotAssets.find((asset) => asset.coin?.toUpperCase() === "USDT");
+    const spotUsdt = spotAssets.find(
+      asset => asset.coin?.toUpperCase() === "USDT"
+    );
     const spotUsdtEquity =
       toNumber(spotUsdt?.available) +
       toNumber(spotUsdt?.frozen) +
@@ -388,7 +440,8 @@ export async function getBitgetAccountOverview() {
       toNumber(spotUsdt?.limitAvailable);
 
     const futuresEquityUsdt = futuresAccounts.reduce(
-      (sum, account) => sum + toNumber(account.usdtEquity || account.accountEquity),
+      (sum, account) =>
+        sum + toNumber(account.usdtEquity || account.accountEquity),
       0
     );
     const futuresUnrealizedPnl = futuresAccounts.reduce(

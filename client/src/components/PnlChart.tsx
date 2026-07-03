@@ -2,7 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLang } from "@/contexts/LangContext";
 import {
-  ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceArea, ReferenceLine,
+  ComposedChart,
+  Line,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ReferenceArea,
+  ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
 import { RefreshCw, Database } from "lucide-react";
@@ -35,7 +43,12 @@ const PNL_START_DATE = "2026-06-27";
 // ─── Tooltip ─────────────────────────────────────────────────────────────────
 interface TooltipProps {
   active?: boolean;
-  payload?: Array<{ value: number | null; dataKey: string; color?: string; payload?: ChartPoint }>;
+  payload?: Array<{
+    value: number | null;
+    dataKey: string;
+    color?: string;
+    payload?: ChartPoint;
+  }>;
   label?: string;
   labels: Record<SeriesKey, string>;
   visible: Record<SeriesKey, boolean>;
@@ -109,77 +122,161 @@ function makeValueGridTicks(values: number[], preferredCount = 6) {
   const rawStep = (max - min) / Math.max(preferredCount - 1, 1);
   const magnitude = 10 ** Math.floor(Math.log10(Math.max(rawStep, 0.000001)));
   const residual = rawStep / magnitude;
-  const niceStep = residual > 5 ? 10 * magnitude : residual > 2 ? 5 * magnitude : residual > 1 ? 2 * magnitude : magnitude;
+  const niceStep =
+    residual > 5
+      ? 10 * magnitude
+      : residual > 2
+        ? 5 * magnitude
+        : residual > 1
+          ? 2 * magnitude
+          : magnitude;
   const niceMin = Math.floor(min / niceStep) * niceStep;
   const niceMax = Math.ceil(max / niceStep) * niceStep;
   const ticks: number[] = [];
 
-  for (let value = niceMin; value <= niceMax + niceStep * 0.5; value += niceStep) {
+  for (
+    let value = niceMin;
+    value <= niceMax + niceStep * 0.5;
+    value += niceStep
+  ) {
     ticks.push(Number(value.toFixed(6)));
   }
 
   return ticks.length > 0 ? ticks : [0];
 }
 
-function CustomTooltip({ active, payload, label, labels, visible }: TooltipProps) {
+function CustomTooltip({
+  active,
+  payload,
+  label,
+  labels,
+  visible,
+}: TooltipProps) {
   if (!active || !payload?.length) return null;
   const seen = new Set<SeriesKey>();
 
   return (
-    <div style={{
-      background: "rgb(2 15 14 / 94%)",
-      border: "1px solid rgb(92 211 184 / 18%)",
-      borderRadius: 10, padding: "12px 14px", backdropFilter: "blur(16px)",
-      boxShadow: "0 16px 40px rgb(0 0 0 / 42%)",
-      minWidth: 190,
-    }}>
-      <div style={{ fontSize: "0.66rem", color: "rgb(209 231 226 / 62%)", letterSpacing: "0.08em", marginBottom: 8 }}>
+    <div
+      style={{
+        background: "rgb(2 15 14 / 94%)",
+        border: "1px solid rgb(92 211 184 / 18%)",
+        borderRadius: 10,
+        padding: "12px 14px",
+        backdropFilter: "blur(16px)",
+        boxShadow: "0 16px 40px rgb(0 0 0 / 42%)",
+        minWidth: 190,
+      }}
+    >
+      <div
+        style={{
+          fontSize: "0.66rem",
+          color: "rgb(209 231 226 / 62%)",
+          letterSpacing: "0.08em",
+          marginBottom: 8,
+        }}
+      >
         {label}
       </div>
-      {payload.map((p) => {
+      {payload.map(p => {
         const seriesKey = p.dataKey as SeriesKey;
         if (seen.has(seriesKey)) return null;
         seen.add(seriesKey);
         if (!visible[seriesKey]) return null;
         const val = Number(p.value);
         if (!Number.isFinite(val)) return null;
-        const formatted = seriesKey === "assetTrend"
-          ? `${val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC`
-          : `${formatSigned(val)}%`;
+        const formatted =
+          seriesKey === "assetTrend"
+            ? `${val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC`
+            : `${formatSigned(val)}%`;
         const accountPnl =
           seriesKey === "accountPerformance" && p.payload
             ? `${formatSigned(p.payload.pnl)} USDC`
             : null;
         const btcPrice =
-          seriesKey === "btcBenchmark" && p.payload?.btcPrice != null && Number.isFinite(p.payload.btcPrice)
+          seriesKey === "btcBenchmark" &&
+          p.payload?.btcPrice != null &&
+          Number.isFinite(p.payload.btcPrice)
             ? `$${p.payload.btcPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
             : null;
         return (
-          <div key={`${p.dataKey}-${label}`} style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: "0.78rem", marginBottom: 6 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
-              <span style={{ color: "rgb(209 231 226 / 62%)", letterSpacing: "0.04em" }}>
+          <div
+            key={`${p.dataKey}-${label}`}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 2,
+              fontSize: "0.78rem",
+              marginBottom: 6,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 16,
+              }}
+            >
+              <span
+                style={{
+                  color: "rgb(209 231 226 / 62%)",
+                  letterSpacing: "0.04em",
+                }}
+              >
                 {labels[seriesKey]}
               </span>
-              <span style={{ color: val >= 0 ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)", fontFamily: "DM Mono, monospace" }}>
+              <span
+                style={{
+                  color:
+                    val >= 0 ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)",
+                  fontFamily: "DM Mono, monospace",
+                }}
+              >
                 {formatted}
               </span>
             </div>
             {accountPnl && (
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 16, fontSize: "0.72rem" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 16,
+                  fontSize: "0.72rem",
+                }}
+              >
                 <span style={{ color: "rgb(209 231 226 / 46%)" }}>
                   {labels.accountPerformance.replace("(%)", "")}
                 </span>
-                <span style={{ color: val >= 0 ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)", fontFamily: "DM Mono, monospace" }}>
+                <span
+                  style={{
+                    color:
+                      val >= 0 ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)",
+                    fontFamily: "DM Mono, monospace",
+                  }}
+                >
                   {accountPnl}
                 </span>
               </div>
             )}
             {btcPrice && (
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 16, fontSize: "0.72rem" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 16,
+                  fontSize: "0.72rem",
+                }}
+              >
                 <span style={{ color: "rgb(209 231 226 / 46%)" }}>
-                  {labels.btcBenchmark.includes("BTC 涨跌幅") ? "BTC价格" : "BTC Price"}
+                  {labels.btcBenchmark.includes("BTC 涨跌幅")
+                    ? "BTC价格"
+                    : "BTC Price"}
                 </span>
-                <span style={{ color: "rgb(209 231 226 / 78%)", fontFamily: "DM Mono, monospace" }}>
+                <span
+                  style={{
+                    color: "rgb(209 231 226 / 78%)",
+                    fontFamily: "DM Mono, monospace",
+                  }}
+                >
                   {btcPrice}
                 </span>
               </div>
@@ -220,7 +317,8 @@ function SeriesToggle({
       <span
         style={{
           display: "inline-block",
-          width: 8, height: 8,
+          width: 8,
+          height: 8,
           borderRadius: "50%",
           background: active ? color : "oklch(35% 0.02 200 / 60%)",
           flexShrink: 0,
@@ -271,10 +369,11 @@ export default function PnlChart() {
 
   const snapshotMutation = trpc.hyperliquid.snapshotPnl.useMutation();
 
-  const { data, isLoading, error, refetch, isFetching } = trpc.hyperliquid.pnlHistory.useQuery(
-    { startDate, limit: queryLimit },
-    { refetchInterval: 60_000 }
-  );
+  const { data, isLoading, error, refetch, isFetching } =
+    trpc.hyperliquid.pnlHistory.useQuery(
+      { startDate, limit: queryLimit },
+      { refetchInterval: 60_000 }
+    );
 
   // Backend already returns data in ascending date order (earliest → latest)
   const snapshots = data || [];
@@ -288,21 +387,27 @@ export default function PnlChart() {
 
   // Build chart data: account performance follows PnL, while BTC benchmark
   // follows BTC price change. Both are percentages on one axis.
-  const baseEquity = snapshots.length > 0 ? parseFloat(snapshots[0].equity) : null;
+  const baseEquity =
+    snapshots.length > 0 ? parseFloat(snapshots[0].equity) : null;
   const validBtcPrices = snapshots
-    .map((s) => parseFloat(String(s.btcPrice ?? "")))
-    .filter((price) => Number.isFinite(price) && price > 0);
+    .map(s => parseFloat(String(s.btcPrice ?? "")))
+    .filter(price => Number.isFinite(price) && price > 0);
   const baseBtcPrice = validBtcPrices.length > 0 ? validBtcPrices[0] : null;
-  const chartData = snapshots.map((s) => {
+  const chartData = snapshots.map(s => {
     const eq = parseFloat(s.equity);
     const btcPrice = parseFloat(String(s.btcPrice ?? ""));
-    const btcBenchmark = baseBtcPrice && baseBtcPrice !== 0 && Number.isFinite(btcPrice) && btcPrice > 0
-      ? ((btcPrice - baseBtcPrice) / baseBtcPrice) * 100
-      : null;
+    const btcBenchmark =
+      baseBtcPrice &&
+      baseBtcPrice !== 0 &&
+      Number.isFinite(btcPrice) &&
+      btcPrice > 0
+        ? ((btcPrice - baseBtcPrice) / baseBtcPrice) * 100
+        : null;
     const pnl = s.totalPnl ? parseFloat(s.totalPnl) : 0;
-    const accountPerformance = baseEquity && baseEquity !== 0 && isFinite(pnl)
-      ? (pnl / baseEquity) * 100
-      : 0;
+    const accountPerformance =
+      baseEquity && baseEquity !== 0 && isFinite(pnl)
+        ? (pnl / baseEquity) * 100
+        : 0;
     return {
       date: s.date,
       equity: eq,
@@ -321,29 +426,36 @@ export default function PnlChart() {
     }
     return ticks;
   }, []);
-  const assetValues = chartData.map((d) => d.assetTrend).filter(Number.isFinite);
+  const assetValues = chartData.map(d => d.assetTrend).filter(Number.isFinite);
   const assetMin = assetValues.length > 0 ? Math.min(...assetValues) : 0;
   const assetMax = assetValues.length > 0 ? Math.max(...assetValues) : 0;
-  const assetPadding = Math.max((assetMax - assetMin) * 0.18, Math.abs(assetMax || 1) * 0.002, 1);
+  const assetPadding = Math.max(
+    (assetMax - assetMin) * 0.18,
+    Math.abs(assetMax || 1) * 0.002,
+    1
+  );
   const assetDomain: [number, number] = [
     Math.max(0, assetMin - assetPadding),
     assetMax + assetPadding,
   ];
   const percentVisible = visible.accountPerformance || visible.btcBenchmark;
   const assetTrendVisible = visible.assetTrend;
-  const percentGridValues = chartData.flatMap((d) => [
-    visible.accountPerformance ? d.accountPerformance : null,
-    visible.btcBenchmark ? d.btcBenchmark : null,
-  ]).filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+  const percentGridValues = chartData
+    .flatMap(d => [
+      visible.accountPerformance ? d.accountPerformance : null,
+      visible.btcBenchmark ? d.btcBenchmark : null,
+    ])
+    .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
   const percentGridTicks = makeValueGridTicks(percentGridValues);
   const assetGridTicks = makeValueGridTicks(assetValues);
   const gridMode = assetTrendVisible && !percentVisible ? "asset" : "percent";
 
   const toggleSeries = (key: SeriesKey) => {
-    setVisible((prev) => {
+    setVisible(prev => {
       // Prevent hiding all series
       const nextActive = !prev[key];
-      const wouldAllBeHidden = !nextActive && Object.entries(prev).every(([k, v]) => k === key || !v);
+      const wouldAllBeHidden =
+        !nextActive && Object.entries(prev).every(([k, v]) => k === key || !v);
       if (wouldAllBeHidden) return prev;
       return { ...prev, [key]: nextActive };
     });
@@ -354,10 +466,20 @@ export default function PnlChart() {
       {/* Header */}
       <div className="flex items-center justify-between mb-5 sm:mb-6">
         <div>
-          <h2 className="text-xl sm:text-2xl font-light" style={{ fontFamily: "Cormorant Garamond, serif" }}>
+          <h2
+            className="text-xl sm:text-2xl font-light"
+            style={{ fontFamily: "Cormorant Garamond, serif" }}
+          >
             {lang === "zh" ? "损益历史" : "PnL History"}
           </h2>
-          <div className="mt-2" style={{ width: 40, height: 1, background: "rgb(215 187 114 / 62%)" }} />
+          <div
+            className="mt-2"
+            style={{
+              width: 40,
+              height: 1,
+              background: "rgb(215 187 114 / 62%)",
+            }}
+          />
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -369,9 +491,20 @@ export default function PnlChart() {
             className="text-muted-foreground hover:text-foreground transition-colors text-xs tracking-widest uppercase border border-border/40 rounded-full px-3 py-1 disabled:opacity-40"
             style={{ fontSize: "0.65rem" }}
           >
-            {snapshotMutation.isPending ? (lang === "zh" ? "保存中" : "Saving") : (lang === "zh" ? "快照" : "Snapshot")}
+            {snapshotMutation.isPending
+              ? lang === "zh"
+                ? "保存中"
+                : "Saving"
+              : lang === "zh"
+                ? "快照"
+                : "Snapshot"}
           </button>
-          <button onClick={() => { refetch(); }} className="text-muted-foreground hover:text-foreground transition-colors p-1">
+          <button
+            onClick={() => {
+              refetch();
+            }}
+            className="text-muted-foreground hover:text-foreground transition-colors p-1"
+          >
             <RefreshCw size={13} className={isFetching ? "animate-spin" : ""} />
           </button>
         </div>
@@ -380,30 +513,53 @@ export default function PnlChart() {
       {/* Hyperliquid snapshot status bar */}
       <div
         className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-5 px-4 py-3 rounded-lg"
-        style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}
+        style={{
+          background: "var(--surface-subtle)",
+          border: "1px solid var(--panel-border)",
+        }}
       >
         <div className="flex items-center gap-1.5">
           <Database size={12} className="text-profit" />
-          <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.62rem" }}>
+          <span
+            className="text-muted-foreground tracking-widest uppercase"
+            style={{ fontSize: "0.62rem" }}
+          >
             {lang === "zh" ? "数据源" : "Source"}
           </span>
-          <span className="text-profit tracking-widest" style={{ fontSize: "0.62rem" }}>
-            {lang === "zh" ? "Hyperliquid 实盘账户 · USDC" : "Hyperliquid Live · USDC"}
+          <span
+            className="text-profit tracking-widest"
+            style={{ fontSize: "0.62rem" }}
+          >
+            {lang === "zh"
+              ? "Hyperliquid 实盘账户 · USDC"
+              : "Hyperliquid Live · USDC"}
           </span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.62rem" }}>
+          <span
+            className="text-muted-foreground tracking-widest uppercase"
+            style={{ fontSize: "0.62rem" }}
+          >
             {lang === "zh" ? "快照数量" : "Snapshots"}
           </span>
-          <span className="num-display text-foreground/80" style={{ fontSize: "0.72rem" }}>
+          <span
+            className="num-display text-foreground/80"
+            style={{ fontSize: "0.72rem" }}
+          >
             {snapshots.length}
           </span>
         </div>
         <div className="flex items-center gap-1.5 ml-auto">
-          <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.62rem" }}>
+          <span
+            className="text-muted-foreground tracking-widest uppercase"
+            style={{ fontSize: "0.62rem" }}
+          >
             {lang === "zh" ? "快照时间" : "Snapshot Time"}
           </span>
-          <span className="num-display text-foreground/70" style={{ fontSize: "0.72rem" }}>
+          <span
+            className="num-display text-foreground/70"
+            style={{ fontSize: "0.72rem" }}
+          >
             {utc8Now} UTC+8
           </span>
         </div>
@@ -413,11 +569,14 @@ export default function PnlChart() {
       <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-4 mb-5 sm:mb-6">
         {/* Time range */}
         <div className="flex items-center gap-2">
-          <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.62rem" }}>
+          <span
+            className="text-muted-foreground tracking-widest uppercase"
+            style={{ fontSize: "0.62rem" }}
+          >
             {lang === "zh" ? "周期" : "Range"}
           </span>
           <div className="flex gap-1">
-            {(["7D", "30D", "90D", "MAX"] as const).map((r) => (
+            {(["7D", "30D", "90D", "MAX"] as const).map(r => (
               <button
                 key={r}
                 onClick={() => setTimeRange(r)}
@@ -430,15 +589,21 @@ export default function PnlChart() {
         </div>
 
         {/* Divider — hidden on mobile */}
-        <div className="hidden sm:block" style={{ width: 1, height: 16, background: "var(--panel-border)" }} />
+        <div
+          className="hidden sm:block"
+          style={{ width: 1, height: 16, background: "var(--panel-border)" }}
+        />
 
         {/* Series toggles */}
         <div className="flex items-center gap-2">
-          <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.62rem" }}>
+          <span
+            className="text-muted-foreground tracking-widest uppercase"
+            style={{ fontSize: "0.62rem" }}
+          >
             {lang === "zh" ? "显示" : "Show"}
           </span>
           <div className="flex gap-2">
-            {SERIES.map((s) => (
+            {SERIES.map(s => (
               <SeriesToggle
                 key={s.key}
                 label={labels[s.key]}
@@ -451,15 +616,25 @@ export default function PnlChart() {
         </div>
       </div>
 
-      {isLoading && <div className="text-muted-foreground text-sm animate-pulse py-8 text-center">{lang === "zh" ? "加载中..." : "Loading..."}</div>}
+      {isLoading && (
+        <div className="text-muted-foreground text-sm animate-pulse py-8 text-center">
+          {lang === "zh" ? "加载中..." : "Loading..."}
+        </div>
+      )}
       {error && <div className="text-loss text-sm py-4">{error.message}</div>}
 
       {!isLoading && snapshots.length === 0 && (
         <div className="py-12 text-center space-y-2">
-          <div className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.75rem" }}>
+          <div
+            className="text-muted-foreground tracking-widest uppercase"
+            style={{ fontSize: "0.75rem" }}
+          >
             {lang === "zh" ? "暂无快照数据" : "No snapshot data"}
           </div>
-          <div className="text-muted-foreground/50" style={{ fontSize: "0.7rem" }}>
+          <div
+            className="text-muted-foreground/50"
+            style={{ fontSize: "0.7rem" }}
+          >
             {lang === "zh"
               ? "Hyperliquid Portfolio 暂未返回该周期的历史曲线"
               : "Hyperliquid Portfolio has not returned history for this range"}
@@ -475,75 +650,140 @@ export default function PnlChart() {
           }}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 14, right: assetTrendVisible ? 78 : 62, left: 8, bottom: 10 }}>
+            <ComposedChart
+              data={chartData}
+              margin={{
+                top: 14,
+                right: assetTrendVisible ? 78 : 62,
+                left: 8,
+                bottom: 10,
+              }}
+            >
               <defs>
-                <linearGradient id="accountPerformanceGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="oklch(68% 0.15 145)" stopOpacity={0.28} />
-                  <stop offset="92%" stopColor="oklch(68% 0.15 145)" stopOpacity={0.02} />
+                <linearGradient
+                  id="accountPerformanceGrad"
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="1"
+                >
+                  <stop
+                    offset="5%"
+                    stopColor="oklch(68% 0.15 145)"
+                    stopOpacity={0.28}
+                  />
+                  <stop
+                    offset="92%"
+                    stopColor="oklch(68% 0.15 145)"
+                    stopOpacity={0.02}
+                  />
                 </linearGradient>
-                {SERIES.slice(1).map((s) => (
-                  <linearGradient key={s.gradId} id={s.gradId} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={s.gradColor} stopOpacity={0.2} />
-                    <stop offset="95%" stopColor={s.gradColor} stopOpacity={0} />
+                {SERIES.slice(1).map(s => (
+                  <linearGradient
+                    key={s.gradId}
+                    id={s.gradId}
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop
+                      offset="5%"
+                      stopColor={s.gradColor}
+                      stopOpacity={0.2}
+                    />
+                    <stop
+                      offset="95%"
+                      stopColor={s.gradColor}
+                      stopOpacity={0}
+                    />
                   </linearGradient>
                 ))}
               </defs>
-              <CartesianGrid strokeDasharray="1 12" stroke="rgb(117 160 148 / 10%)" vertical horizontal={false} />
-              {gridMode === "percent" && percentVisible && percentGridTicks.slice(0, -1).map((tick, index) => {
-                const nextTick = percentGridTicks[index + 1];
-                const midpoint = (tick + nextTick) / 2;
-                const fill = midpoint >= 0
-                  ? index % 2 === 0 ? "rgb(41 185 116 / 9%)" : "rgb(41 185 116 / 5%)"
-                  : index % 2 === 0 ? "rgb(214 80 80 / 8%)" : "rgb(214 80 80 / 4%)";
-                return (
-                  <ReferenceArea
-                    key={`percent-band-${tick}-${nextTick}`}
+              <CartesianGrid
+                strokeDasharray="1 12"
+                stroke="rgb(117 160 148 / 10%)"
+                vertical
+                horizontal={false}
+              />
+              {gridMode === "percent" &&
+                percentVisible &&
+                percentGridTicks.slice(0, -1).map((tick, index) => {
+                  const nextTick = percentGridTicks[index + 1];
+                  const midpoint = (tick + nextTick) / 2;
+                  const fill =
+                    midpoint >= 0
+                      ? index % 2 === 0
+                        ? "rgb(41 185 116 / 9%)"
+                        : "rgb(41 185 116 / 5%)"
+                      : index % 2 === 0
+                        ? "rgb(214 80 80 / 8%)"
+                        : "rgb(214 80 80 / 4%)";
+                  return (
+                    <ReferenceArea
+                      key={`percent-band-${tick}-${nextTick}`}
+                      yAxisId="left"
+                      y1={tick}
+                      y2={nextTick}
+                      fill={fill}
+                      strokeOpacity={0}
+                      ifOverflow="extendDomain"
+                    />
+                  );
+                })}
+              {gridMode === "asset" &&
+                assetGridTicks.slice(0, -1).map((tick, index) => {
+                  const nextTick = assetGridTicks[index + 1];
+                  return (
+                    <ReferenceArea
+                      key={`asset-band-${tick}-${nextTick}`}
+                      yAxisId="right"
+                      y1={tick}
+                      y2={nextTick}
+                      fill={
+                        index % 2 === 0
+                          ? "rgb(87 150 190 / 9%)"
+                          : "rgb(87 150 190 / 5%)"
+                      }
+                      strokeOpacity={0}
+                      ifOverflow="extendDomain"
+                    />
+                  );
+                })}
+              {gridMode === "percent" &&
+                percentVisible &&
+                percentGridTicks.map(tick => (
+                  <ReferenceLine
+                    key={`percent-grid-${tick}`}
                     yAxisId="left"
-                    y1={tick}
-                    y2={nextTick}
-                    fill={fill}
-                    strokeOpacity={0}
+                    y={tick}
+                    stroke={
+                      tick === 0
+                        ? "rgb(117 160 148 / 42%)"
+                        : "rgb(117 160 148 / 20%)"
+                    }
+                    strokeDasharray={tick === 0 ? "4 6" : "1 10"}
                     ifOverflow="extendDomain"
                   />
-                );
-              })}
-              {gridMode === "asset" && assetGridTicks.slice(0, -1).map((tick, index) => {
-                const nextTick = assetGridTicks[index + 1];
-                return (
-                  <ReferenceArea
-                    key={`asset-band-${tick}-${nextTick}`}
+                ))}
+              {gridMode === "asset" &&
+                assetGridTicks.map(tick => (
+                  <ReferenceLine
+                    key={`asset-grid-${tick}`}
                     yAxisId="right"
-                    y1={tick}
-                    y2={nextTick}
-                    fill={index % 2 === 0 ? "rgb(87 150 190 / 9%)" : "rgb(87 150 190 / 5%)"}
-                    strokeOpacity={0}
+                    y={tick}
+                    stroke="rgb(117 160 148 / 20%)"
+                    strokeDasharray="1 10"
                     ifOverflow="extendDomain"
                   />
-                );
-              })}
-              {gridMode === "percent" && percentVisible && percentGridTicks.map((tick) => (
-                <ReferenceLine
-                  key={`percent-grid-${tick}`}
-                  yAxisId="left"
-                  y={tick}
-                  stroke={tick === 0 ? "rgb(117 160 148 / 42%)" : "rgb(117 160 148 / 20%)"}
-                  strokeDasharray={tick === 0 ? "4 6" : "1 10"}
-                  ifOverflow="extendDomain"
-                />
-              ))}
-              {gridMode === "asset" && assetGridTicks.map((tick) => (
-                <ReferenceLine
-                  key={`asset-grid-${tick}`}
-                  yAxisId="right"
-                  y={tick}
-                  stroke="rgb(117 160 148 / 20%)"
-                  strokeDasharray="1 10"
-                  ifOverflow="extendDomain"
-                />
-              ))}
+                ))}
               <XAxis
                 dataKey="date"
-                tick={{ fill: "rgb(160 190 182 / 42%)", fontSize: 11, fontFamily: "DM Mono" }}
+                tick={{
+                  fill: "rgb(160 190 182 / 42%)",
+                  fontSize: 11,
+                  fontFamily: "DM Mono",
+                }}
                 tickLine={false}
                 axisLine={{ stroke: "rgb(117 160 148 / 12%)" }}
                 minTickGap={34}
@@ -553,12 +793,16 @@ export default function PnlChart() {
               {percentVisible && (
                 <YAxis
                   yAxisId="left"
-                  tick={{ fill: "oklch(72% 0.14 55 / 72%)", fontSize: 11, fontFamily: "DM Mono" }}
+                  tick={{
+                    fill: "oklch(72% 0.14 55 / 72%)",
+                    fontSize: 11,
+                    fontFamily: "DM Mono",
+                  }}
                   tickLine={false}
                   axisLine={false}
                   width={62}
                   ticks={percentGridTicks}
-                  tickFormatter={(v) => `${v.toFixed(2)}%`}
+                  tickFormatter={v => `${v.toFixed(2)}%`}
                 />
               )}
               {assetTrendVisible && (
@@ -566,21 +810,22 @@ export default function PnlChart() {
                   yAxisId="right"
                   orientation="right"
                   domain={assetDomain}
-                  tick={{ fill: "oklch(72% 0.08 230 / 72%)", fontSize: 11, fontFamily: "DM Mono" }}
+                  tick={{
+                    fill: "oklch(72% 0.08 230 / 72%)",
+                    fontSize: 11,
+                    fontFamily: "DM Mono",
+                  }}
                   tickLine={false}
                   axisLine={false}
                   width={72}
                   ticks={assetGridTicks}
-                  tickFormatter={(v) => v.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                  tickFormatter={v =>
+                    v.toLocaleString("en-US", { maximumFractionDigits: 0 })
+                  }
                 />
               )}
               <Tooltip
-                content={
-                  <CustomTooltip
-                    labels={labels}
-                    visible={visible}
-                  />
-                }
+                content={<CustomTooltip labels={labels} visible={visible} />}
               />
               {visible.accountPerformance && (
                 <Area

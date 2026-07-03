@@ -11,7 +11,7 @@ async function debug() {
 
   console.log("--- Fetching last 10 BTC trades ---");
   const result = await getTradesFromDb({ currency: "BTC", limit: 10 });
-  
+
   result.trades.forEach((t, i) => {
     console.log(`Trade ${i + 1}:`);
     console.log(`  Instrument: ${t.instrument}`);
@@ -20,7 +20,9 @@ async function debug() {
     console.log(`  Price: ${t.price}`);
     console.log(`  Profit: ${t.profit}`);
     console.log(`  Fee: ${t.fee} ${t.feeCurrency}`);
-    console.log(`  Timestamp: ${new Date(t.tradeTimestamp || 0).toISOString()}`);
+    console.log(
+      `  Timestamp: ${new Date(t.tradeTimestamp || 0).toISOString()}`
+    );
     console.log("--------------------");
   });
 

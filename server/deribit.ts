@@ -48,7 +48,10 @@ export async function getAccessToken(): Promise<string> {
   return cachedToken!.access_token;
 }
 
-async function callPrivate<T>(method: string, params: Record<string, unknown> = {}): Promise<T> {
+async function callPrivate<T>(
+  method: string,
+  params: Record<string, unknown> = {}
+): Promise<T> {
   const token = await getAccessToken();
   const response = await axios.post(
     `${DERIBIT_BASE_URL}/${method}`,
@@ -64,13 +67,18 @@ async function callPrivate<T>(method: string, params: Record<string, unknown> = 
   );
 
   if (response.data?.error) {
-    throw new Error(`Deribit API error [${method}]: ${JSON.stringify(response.data.error)}`);
+    throw new Error(
+      `Deribit API error [${method}]: ${JSON.stringify(response.data.error)}`
+    );
   }
 
   return response.data?.result as T;
 }
 
-async function callPublic<T>(method: string, params: Record<string, unknown> = {}): Promise<T> {
+async function callPublic<T>(
+  method: string,
+  params: Record<string, unknown> = {}
+): Promise<T> {
   const response = await axios.post(`${DERIBIT_BASE_URL}/${method}`, {
     jsonrpc: "2.0",
     method,
@@ -79,7 +87,9 @@ async function callPublic<T>(method: string, params: Record<string, unknown> = {
   });
 
   if (response.data?.error) {
-    throw new Error(`Deribit API error [${method}]: ${JSON.stringify(response.data.error)}`);
+    throw new Error(
+      `Deribit API error [${method}]: ${JSON.stringify(response.data.error)}`
+    );
   }
 
   return response.data?.result as T;
@@ -115,7 +125,9 @@ export interface AccountSummary {
   projected_maintenance_margin: number;
 }
 
-export async function getAccountSummary(currency: string): Promise<AccountSummary> {
+export async function getAccountSummary(
+  currency: string
+): Promise<AccountSummary> {
   return callPrivate<AccountSummary>("private/get_account_summary", {
     currency,
     extended: true,
@@ -165,7 +177,10 @@ export interface Position {
   expiration_timestamp?: number;
 }
 
-export async function getPositions(currency: string, kind?: string): Promise<Position[]> {
+export async function getPositions(
+  currency: string,
+  kind?: string
+): Promise<Position[]> {
   const params: Record<string, unknown> = { currency };
   if (kind) params.kind = kind;
   return callPrivate<Position[]>("private/get_positions", params);
@@ -174,12 +189,14 @@ export async function getPositions(currency: string, kind?: string): Promise<Pos
 export async function getAllPositions(): Promise<Position[]> {
   const currencies = ["BTC", "ETH", "USDC", "USDT", "SOL"];
   const results = await Promise.allSettled(
-    currencies.map((c) => getPositions(c))
+    currencies.map(c => getPositions(c))
   );
   return results
-    .filter((r): r is PromiseFulfilledResult<Position[]> => r.status === "fulfilled")
-    .flatMap((r) => r.value)
-    .filter((p) => p.size !== 0);
+    .filter(
+      (r): r is PromiseFulfilledResult<Position[]> => r.status === "fulfilled"
+    )
+    .flatMap(r => r.value)
+    .filter(p => p.size !== 0);
 }
 
 // ─── Trades ─────────────────────────────────────────────────────────────────
@@ -234,20 +251,28 @@ export async function getAllUserTrades(
 ): Promise<DeribitTrade[]> {
   const currencies = ["BTC", "ETH", "USDC", "USDT", "SOL"];
   const results = await Promise.allSettled(
-    currencies.map((c) => getUserTradesByCurrency(c, count, startTimestamp, endTimestamp))
+    currencies.map(c =>
+      getUserTradesByCurrency(c, count, startTimestamp, endTimestamp)
+    )
   );
   return results
-    .filter((r): r is PromiseFulfilledResult<DeribitTrade[]> => r.status === "fulfilled")
-    .flatMap((r) => r.value)
+    .filter(
+      (r): r is PromiseFulfilledResult<DeribitTrade[]> =>
+        r.status === "fulfilled"
+    )
+    .flatMap(r => r.value)
     .sort((a, b) => b.timestamp - a.timestamp);
 }
 
 // ─── Index Price ─────────────────────────────────────────────────────────────
 
 export async function getIndexPrice(indexName: string): Promise<number> {
-  const result = await callPublic<{ index_price: number }>("public/get_index_price", {
-    index_name: indexName,
-  });
+  const result = await callPublic<{ index_price: number }>(
+    "public/get_index_price",
+    {
+      index_name: indexName,
+    }
+  );
   return result.index_price;
 }
 
@@ -264,7 +289,11 @@ class DeribitWebSocketManager {
   private pendingSubscriptions: string[] = [];
 
   connect() {
-    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+    if (
+      this.ws &&
+      (this.ws.readyState === WebSocket.OPEN ||
+        this.ws.readyState === WebSocket.CONNECTING)
+    ) {
       return;
     }
 
@@ -331,19 +360,19 @@ class DeribitWebSocketManager {
       const data = params.data;
       const listeners = this.listeners.get(channel);
       if (listeners) {
-        listeners.forEach((fn) => fn(data));
+        listeners.forEach(fn => fn(data));
       }
       // Also broadcast to wildcard listeners
       const wildcardListeners = this.listeners.get("*");
       if (wildcardListeners) {
-        wildcardListeners.forEach((fn) => fn({ channel, data }));
+        wildcardListeners.forEach(fn => fn({ channel, data }));
       }
     }
   }
 
   private subscribeChannels(channels: string[]) {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
-    const hasPrivate = channels.some((c) => c.startsWith("user."));
+    const hasPrivate = channels.some(c => c.startsWith("user."));
     const method = hasPrivate ? "private/subscribe" : "public/subscribe";
     this.send({
       jsonrpc: "2.0",

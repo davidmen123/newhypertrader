@@ -18,21 +18,34 @@ interface CollapsibleSectionProps {
   children: React.ReactNode;
 }
 
-function CollapsibleSection({ label, defaultOpen = true, children }: CollapsibleSectionProps) {
+function CollapsibleSection({
+  label,
+  defaultOpen = true,
+  children,
+}: CollapsibleSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
     <section>
       {/* Section header — clickable on mobile, static on desktop */}
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(v => !v)}
         className="w-full flex items-center gap-4 mb-5 group"
-        style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}
+        style={{
+          background: "none",
+          border: "none",
+          padding: 0,
+          cursor: "pointer",
+        }}
         aria-expanded={open}
       >
         <span
           className="text-xs tracking-[0.25em] uppercase"
-          style={{ color: "var(--muted-foreground)", fontFamily: "Inter, sans-serif", whiteSpace: "nowrap" }}
+          style={{
+            color: "var(--muted-foreground)",
+            fontFamily: "Inter, sans-serif",
+            whiteSpace: "nowrap",
+          }}
         >
           {label}
         </span>
@@ -72,9 +85,14 @@ export default function Home() {
   const [pageViewCount, setPageViewCount] = useState<number | null>(null);
 
   useEffect(() => {
-    incrementMutation.mutateAsync().then((res) => {
-      setPageViewCount(res.count);
-    }).catch(() => { /* silently ignore */ });
+    incrementMutation
+      .mutateAsync()
+      .then(res => {
+        setPageViewCount(res.count);
+      })
+      .catch(() => {
+        /* silently ignore */
+      });
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -83,10 +101,18 @@ export default function Home() {
     ? "#000000"
     : "linear-gradient(180deg, #fbfcfa 0%, #f4f6f2 46%, #eef1ed 100%)";
   const heroTitleColor = isDark ? "#fffef8" : "#101214";
-  const heroAccentColor = isDark ? "rgb(242 231 201 / 88%)" : "rgb(31 107 79 / 86%)";
-  const heroMetaColor = isDark ? "rgb(255 255 255 / 82%)" : "rgb(42 47 52 / 76%)";
-  const subtleTextColor = isDark ? "rgb(230 230 224 / 76%)" : "rgb(75 82 89 / 72%)";
-  const panelBackground = isDark ? "rgb(255 255 255 / 4%)" : "rgb(255 255 255 / 82%)";
+  const heroAccentColor = isDark
+    ? "rgb(242 231 201 / 88%)"
+    : "rgb(31 107 79 / 86%)";
+  const heroMetaColor = isDark
+    ? "rgb(255 255 255 / 82%)"
+    : "rgb(42 47 52 / 76%)";
+  const subtleTextColor = isDark
+    ? "rgb(230 230 224 / 76%)"
+    : "rgb(75 82 89 / 72%)";
+  const panelBackground = isDark
+    ? "rgb(255 255 255 / 4%)"
+    : "rgb(255 255 255 / 82%)";
   const panelBorder = isDark ? "rgb(255 255 255 / 9%)" : "rgb(17 19 21 / 10%)";
   const heroRule = isDark ? "rgb(242 231 201 / 42%)" : "rgb(17 19 21 / 18%)";
 
@@ -139,12 +165,15 @@ export default function Home() {
                   }}
                   className="hidden sm:block"
                 >
-                  {new Date().toLocaleDateString(lang === "zh" ? "zh-CN" : "en-US", {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
+                  {new Date().toLocaleDateString(
+                    lang === "zh" ? "zh-CN" : "en-US",
+                    {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    }
+                  )}
                 </div>
               </div>
             </div>
@@ -153,13 +182,16 @@ export default function Home() {
               <div>
                 <h1
                   style={{
-                    fontFamily: '"Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif',
+                    fontFamily:
+                      '"Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif',
                     fontSize: "clamp(3rem, 6.6vw, 5.05rem)",
                     fontWeight: 300,
                     letterSpacing: "0.015em",
                     lineHeight: 0.98,
                     color: heroTitleColor,
-                    textShadow: isDark ? "0 12px 42px rgb(0 0 0 / 55%)" : "none",
+                    textShadow: isDark
+                      ? "0 12px 42px rgb(0 0 0 / 55%)"
+                      : "none",
                   }}
                 >
                   以交易为生
@@ -172,7 +204,8 @@ export default function Home() {
                 >
                   <span
                     style={{
-                      fontFamily: '"Bodoni 72", Didot, "Cormorant Garamond", Georgia, serif',
+                      fontFamily:
+                        '"Bodoni 72", Didot, "Cormorant Garamond", Georgia, serif',
                       fontSize: "clamp(1.08rem, 1.45vw, 1.28rem)",
                       fontWeight: 400,
                       letterSpacing: "0.015em",
@@ -181,13 +214,17 @@ export default function Home() {
                   >
                     Trading for a living
                   </span>
-                  <span className="hidden sm:block" style={{ width: 76, height: 1, background: heroRule }} />
+                  <span
+                    className="hidden sm:block"
+                    style={{ width: 76, height: 1, background: heroRule }}
+                  />
                 </div>
               </div>
 
               <div
                 style={{
-                  fontFamily: '"Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif',
+                  fontFamily:
+                    '"Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif',
                   color: heroMetaColor,
                   fontSize: "clamp(0.92rem, 1.1vw, 1.04rem)",
                   fontWeight: 300,
@@ -208,10 +245,9 @@ export default function Home() {
           <div
             style={{
               height: 1,
-              background:
-                isDark
-                  ? "linear-gradient(to right, transparent, rgb(215 187 114 / 34%), transparent)"
-                  : "linear-gradient(to right, transparent, rgb(17 19 21 / 16%), transparent)",
+              background: isDark
+                ? "linear-gradient(to right, transparent, rgb(215 187 114 / 34%), transparent)"
+                : "linear-gradient(to right, transparent, rgb(17 19 21 / 16%), transparent)",
               marginTop: "1.5rem",
             }}
           />
@@ -221,14 +257,16 @@ export default function Home() {
       {/* ── Main Content ── */}
       <main className="px-4 sm:px-12 pb-16">
         <div className="max-w-6xl mx-auto space-y-8 sm:space-y-10">
-
           {/* 0. Live Market — always open */}
           <CollapsibleSection label={tr.liveMarket} defaultOpen={true}>
             <LiveTicker />
           </CollapsibleSection>
 
           {/* 1. Account Overview — always open */}
-          <CollapsibleSection label={lang === "zh" ? "账户概览" : "Account Overview"} defaultOpen={true}>
+          <CollapsibleSection
+            label={lang === "zh" ? "账户概览" : "Account Overview"}
+            defaultOpen={true}
+          >
             <AccountOverview />
           </CollapsibleSection>
 
@@ -238,7 +276,10 @@ export default function Home() {
           </CollapsibleSection>
 
           {/* 3. Open Orders — default open */}
-          <CollapsibleSection label={lang === "zh" ? "当前委托" : "Open Orders"} defaultOpen={true}>
+          <CollapsibleSection
+            label={lang === "zh" ? "当前委托" : "Open Orders"}
+            defaultOpen={true}
+          >
             <OpenOrdersTable />
           </CollapsibleSection>
 
@@ -248,7 +289,10 @@ export default function Home() {
           </CollapsibleSection>
 
           {/* 5. Trade History — default collapsed */}
-          <CollapsibleSection label={lang === "zh" ? "历史成交" : "Trade History"} defaultOpen={false}>
+          <CollapsibleSection
+            label={lang === "zh" ? "历史成交" : "Trade History"}
+            defaultOpen={false}
+          >
             <TradeHistory />
           </CollapsibleSection>
 
@@ -261,7 +305,6 @@ export default function Home() {
           <CollapsibleSection label={tr.earningsCalendar} defaultOpen={false}>
             <EarningsCalendar />
           </CollapsibleSection>
-
         </div>
       </main>
 
@@ -286,52 +329,54 @@ export default function Home() {
               : "This page displays live account data only and does not constitute investment advice. Trading involves risk; please make independent decisions."}
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <span
-            style={{
-              fontFamily: "Inter, sans-serif",
-              fontSize: "0.6rem",
-              letterSpacing: "0.18em",
-              textTransform: "uppercase",
-              color: subtleTextColor,
-            }}
-          >
-            以交易为生 Trading for a living
-          </span>
-          <div
-            className="flex flex-wrap items-center gap-x-5 gap-y-2"
-            style={{
-              fontFamily: "Inter, sans-serif",
-              fontSize: "0.62rem",
-              letterSpacing: "0.08em",
-              color: subtleTextColor,
-            }}
-          >
-            <span>公众号：温格笔记</span>
-            <span>X：@mindwingsD</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "1.2rem" }}>
-            {pageViewCount !== null && (
-              <span
-                style={{
-                  fontFamily: "DM Mono, monospace",
-                  fontSize: "0.55rem",
-                  color: subtleTextColor,
-                  letterSpacing: "0.06em",
-                }}
-              >
-                {pageViewCount.toLocaleString()} views
-              </span>
-            )}
             <span
               style={{
-                fontFamily: "DM Mono, monospace",
+                fontFamily: "Inter, sans-serif",
                 fontSize: "0.6rem",
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
                 color: subtleTextColor,
               }}
             >
-              {tr.autoRefresh}
+              以交易为生 Trading for a living
             </span>
-          </div>
+            <div
+              className="flex flex-wrap items-center gap-x-5 gap-y-2"
+              style={{
+                fontFamily: "Inter, sans-serif",
+                fontSize: "0.62rem",
+                letterSpacing: "0.08em",
+                color: subtleTextColor,
+              }}
+            >
+              <span>公众号：温格笔记</span>
+              <span>X：@mindwingsD</span>
+            </div>
+            <div
+              style={{ display: "flex", alignItems: "center", gap: "1.2rem" }}
+            >
+              {pageViewCount !== null && (
+                <span
+                  style={{
+                    fontFamily: "DM Mono, monospace",
+                    fontSize: "0.55rem",
+                    color: subtleTextColor,
+                    letterSpacing: "0.06em",
+                  }}
+                >
+                  {pageViewCount.toLocaleString()} views
+                </span>
+              )}
+              <span
+                style={{
+                  fontFamily: "DM Mono, monospace",
+                  fontSize: "0.6rem",
+                  color: subtleTextColor,
+                }}
+              >
+                {tr.autoRefresh}
+              </span>
+            </div>
           </div>
         </div>
       </footer>

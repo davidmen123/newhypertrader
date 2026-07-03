@@ -22,7 +22,8 @@ export const hyperliquidRouter = router({
   configStatus: publicProcedure.query(() => getHyperliquidConfigStatus()),
 
   marketTicker: publicProcedure.query(async () => {
-    const yahooUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+    const yahooUserAgent =
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
     const readYahooMeta = (payload: unknown) => {
       const meta = (payload as any)?.chart?.result?.[0]?.meta ?? {};
@@ -32,8 +33,13 @@ export const hyperliquidRouter = router({
       };
     };
 
-    async function fetchYahooQuote(symbol: string, baseMode: "prevClose" | "24hAgo" = "prevClose") {
-      const symbolPath = symbol.includes("%") ? symbol : encodeURIComponent(symbol);
+    async function fetchYahooQuote(
+      symbol: string,
+      baseMode: "prevClose" | "24hAgo" = "prevClose"
+    ) {
+      const symbolPath = symbol.includes("%")
+        ? symbol
+        : encodeURIComponent(symbol);
       const urls = [
         `https://query1.finance.yahoo.com/v8/finance/chart/${symbolPath}?interval=1m&range=1d`,
         `https://query1.finance.yahoo.com/v8/finance/chart/${symbolPath}?interval=1h&range=5d`,
@@ -51,18 +57,25 @@ export const hyperliquidRouter = router({
             },
             signal: AbortSignal.timeout(10000),
           });
-          if (!response.ok) throw new Error(`Yahoo returned ${response.status}`);
+          if (!response.ok)
+            throw new Error(`Yahoo returned ${response.status}`);
           const payload = await response.json();
           const quote = readYahooMeta(payload);
           if (baseMode === "24hAgo") {
             const result = (payload as any)?.chart?.result?.[0];
             const timestamps: number[] = result?.timestamp ?? [];
-            const closes: Array<number | null> = result?.indicators?.quote?.[0]?.close ?? [];
+            const closes: Array<number | null> =
+              result?.indicators?.quote?.[0]?.close ?? [];
             const targetSeconds = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
             let best: { distance: number; close: number } | null = null;
             timestamps.forEach((timestamp, index) => {
               const close = Number(closes[index]);
-              if (!Number.isFinite(timestamp) || !Number.isFinite(close) || close <= 0) return;
+              if (
+                !Number.isFinite(timestamp) ||
+                !Number.isFinite(close) ||
+                close <= 0
+              )
+                return;
               const distance = Math.abs(timestamp - targetSeconds);
               if (!best || distance < best.distance) best = { distance, close };
             });
@@ -74,34 +87,54 @@ export const hyperliquidRouter = router({
             const { execFile } = await import("child_process");
             const { promisify } = await import("util");
             const execFileAsync = promisify(execFile);
-            const { stdout } = await execFileAsync("curl", [
-              "-sS",
-              "-L",
-              "--max-time", "10",
-              "-A", yahooUserAgent,
-              "-H", "Accept: application/json",
-              "-H", "Referer: https://finance.yahoo.com/",
-              url,
-            ], { timeout: 12000 });
+            const { stdout } = await execFileAsync(
+              "curl",
+              [
+                "-sS",
+                "-L",
+                "--max-time",
+                "10",
+                "-A",
+                yahooUserAgent,
+                "-H",
+                "Accept: application/json",
+                "-H",
+                "Referer: https://finance.yahoo.com/",
+                url,
+              ],
+              { timeout: 12000 }
+            );
             const payload = JSON.parse(stdout);
             const quote = readYahooMeta(payload);
             if (baseMode === "24hAgo") {
               const result = payload?.chart?.result?.[0];
               const timestamps: number[] = result?.timestamp ?? [];
-              const closes: Array<number | null> = result?.indicators?.quote?.[0]?.close ?? [];
-              const targetSeconds = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
+              const closes: Array<number | null> =
+                result?.indicators?.quote?.[0]?.close ?? [];
+              const targetSeconds =
+                Math.floor(Date.now() / 1000) - 24 * 60 * 60;
               let best: { distance: number; close: number } | null = null;
               timestamps.forEach((timestamp, index) => {
                 const close = Number(closes[index]);
-                if (!Number.isFinite(timestamp) || !Number.isFinite(close) || close <= 0) return;
+                if (
+                  !Number.isFinite(timestamp) ||
+                  !Number.isFinite(close) ||
+                  close <= 0
+                )
+                  return;
                 const distance = Math.abs(timestamp - targetSeconds);
-                if (!best || distance < best.distance) best = { distance, close };
+                if (!best || distance < best.distance)
+                  best = { distance, close };
               });
               if (best) quote.prevClose = best.close;
             }
             if (quote.current != null) return quote;
           } catch (fallbackError) {
-            console.warn(`[MarketTicker] Yahoo quote failed for ${symbol}:`, error, fallbackError);
+            console.warn(
+              `[MarketTicker] Yahoo quote failed for ${symbol}:`,
+              error,
+              fallbackError
+            );
           }
         }
       }
@@ -122,7 +155,8 @@ export const hyperliquidRouter = router({
       for (const candle of candles) {
         const time = candle.t ?? candle.T ?? 0;
         const close = Number(candle.c);
-        if (!Number.isFinite(time) || !Number.isFinite(close) || close <= 0) continue;
+        if (!Number.isFinite(time) || !Number.isFinite(close) || close <= 0)
+          continue;
         if (!best || Math.abs(time - target) < Math.abs(best.time - target)) {
           best = { time, close };
         }
@@ -130,7 +164,15 @@ export const hyperliquidRouter = router({
       return best?.close ?? null;
     }
 
-    const [hyperliquidRes, btcYahooRes, goldYahooRes, vixRes, nas100FuturesRes, nas100Prev24hRes, shanghaiRes] = await Promise.allSettled([
+    const [
+      hyperliquidRes,
+      btcYahooRes,
+      goldYahooRes,
+      vixRes,
+      nas100FuturesRes,
+      nas100Prev24hRes,
+      shanghaiRes,
+    ] = await Promise.allSettled([
       getHyperliquidMarketPrices(),
       fetchYahooQuote("BTC-USD"),
       fetchYahooQuote("GC=F"),
@@ -140,15 +182,32 @@ export const hyperliquidRouter = router({
       fetchYahooQuote("000001.SS"),
     ]);
 
-    const hyperliquid = hyperliquidRes.status === "fulfilled"
-      ? hyperliquidRes.value
-      : { btc: null, gold: null, nas100: null, sp500: null };
-    const btcYahoo = btcYahooRes.status === "fulfilled" ? btcYahooRes.value : { current: null, prevClose: null };
-    const goldYahoo = goldYahooRes.status === "fulfilled" ? goldYahooRes.value : { current: null, prevClose: null };
-    const vix = vixRes.status === "fulfilled" ? vixRes.value : { current: null, prevClose: null };
-    const nas100Futures = nas100FuturesRes.status === "fulfilled" ? nas100FuturesRes.value : { current: null, prevClose: null };
-    const nas100Prev24h = nas100Prev24hRes.status === "fulfilled" ? nas100Prev24hRes.value : null;
-    const shanghai = shanghaiRes.status === "fulfilled" ? shanghaiRes.value : { current: null, prevClose: null };
+    const hyperliquid =
+      hyperliquidRes.status === "fulfilled"
+        ? hyperliquidRes.value
+        : { btc: null, gold: null, nas100: null, sp500: null };
+    const btcYahoo =
+      btcYahooRes.status === "fulfilled"
+        ? btcYahooRes.value
+        : { current: null, prevClose: null };
+    const goldYahoo =
+      goldYahooRes.status === "fulfilled"
+        ? goldYahooRes.value
+        : { current: null, prevClose: null };
+    const vix =
+      vixRes.status === "fulfilled"
+        ? vixRes.value
+        : { current: null, prevClose: null };
+    const nas100Futures =
+      nas100FuturesRes.status === "fulfilled"
+        ? nas100FuturesRes.value
+        : { current: null, prevClose: null };
+    const nas100Prev24h =
+      nas100Prev24hRes.status === "fulfilled" ? nas100Prev24hRes.value : null;
+    const shanghai =
+      shanghaiRes.status === "fulfilled"
+        ? shanghaiRes.value
+        : { current: null, prevClose: null };
 
     return {
       btc: hyperliquid.btc ?? btcYahoo.current,
@@ -197,7 +256,11 @@ export const hyperliquidRouter = router({
       const endTime = input.endDate
         ? new Date(`${input.endDate}T23:59:59`).getTime()
         : Date.now();
-      return getHyperliquidTradeHistory({ startTime, endTime, limit: input.limit });
+      return getHyperliquidTradeHistory({
+        startTime,
+        endTime,
+        limit: input.limit,
+      });
     }),
 
   pnlHistory: publicProcedure
@@ -217,7 +280,10 @@ export const hyperliquidRouter = router({
         });
         if (portfolioRows.length > 0) return portfolioRows;
       } catch (error) {
-        console.warn("[Hyperliquid] Failed to read portfolio history, falling back to local snapshots:", error);
+        console.warn(
+          "[Hyperliquid] Failed to read portfolio history, falling back to local snapshots:",
+          error
+        );
       }
 
       const rows = await getPnlSnapshots({
@@ -232,23 +298,34 @@ export const hyperliquidRouter = router({
   snapshotPnl: publicProcedure.mutation(async () => {
     const now = Date.now();
     const date = new Date(now + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    const [perpStates, spotState, btcPrice, officialBalanceUsdc] = await Promise.all([
-      getHyperliquidPerpStates(),
-      getHyperliquidSpotState().catch(() => ({ balances: [] })),
-      getHyperliquidBtcPrice().catch(() => null),
-      getHyperliquidOfficialBalanceUsdc().catch(() => null),
-    ]);
+    const [perpStates, spotState, btcPrice, officialBalanceUsdc] =
+      await Promise.all([
+        getHyperliquidPerpStates(),
+        getHyperliquidSpotState().catch(() => ({ balances: [] })),
+        getHyperliquidBtcPrice().catch(() => null),
+        getHyperliquidOfficialBalanceUsdc().catch(() => null),
+      ]);
     const activePerpStates = getActiveHyperliquidPerpStates(perpStates);
-    const summaries = activePerpStates.map(({ state }) => state.marginSummary ?? state.crossMarginSummary ?? {});
-    const perpEquity = summaries.reduce((sum, summary) => sum + Number(summary.accountValue ?? 0), 0);
+    const summaries = activePerpStates.map(
+      ({ state }) => state.marginSummary ?? state.crossMarginSummary ?? {}
+    );
+    const perpEquity = summaries.reduce(
+      (sum, summary) => sum + Number(summary.accountValue ?? 0),
+      0
+    );
     const spotEquity = getHyperliquidSpotEquityUsdc(spotState);
-    const fallbackEquity = officialBalanceUsdc && officialBalanceUsdc > 0 ? officialBalanceUsdc : perpEquity;
+    const fallbackEquity =
+      officialBalanceUsdc && officialBalanceUsdc > 0
+        ? officialBalanceUsdc
+        : perpEquity;
     const equity = String(spotEquity > 0 ? spotEquity : fallbackEquity);
     const unrealizedPnl = String(
-      activePerpStates.flatMap(({ state }) => state.assetPositions ?? []).reduce(
-        (sum, item) => sum + Number(item.position.unrealizedPnl ?? 0),
-        0
-      )
+      activePerpStates
+        .flatMap(({ state }) => state.assetPositions ?? [])
+        .reduce(
+          (sum, item) => sum + Number(item.position.unrealizedPnl ?? 0),
+          0
+        )
     );
 
     await upsertPnlSnapshot({
