@@ -71,9 +71,9 @@ export const pnlSnapshots = mysqlTable("pnl_snapshots", {
   totalPnl: decimal("totalPnl", { precision: 20, scale: 8 }),
   btcPrice: decimal("btcPrice", { precision: 20, scale: 2 }), // BTC/USD price at snapshot time
   // Greeks at snapshot time (from Deribit account summary)
-  deltaTotal: decimal("deltaTotal", { precision: 20, scale: 8 }),     // portfolio delta (BTC)
+  deltaTotal: decimal("deltaTotal", { precision: 20, scale: 8 }), // portfolio delta (BTC)
   optionsTheta: decimal("optionsTheta", { precision: 20, scale: 8 }), // options theta (per day, in currency)
-  optionsVega: decimal("optionsVega", { precision: 20, scale: 8 }),   // options vega
+  optionsVega: decimal("optionsVega", { precision: 20, scale: 8 }), // options vega
   optionsGamma: decimal("optionsGamma", { precision: 20, scale: 8 }), // options gamma
   snapshotAt: bigint("snapshotAt", { mode: "number" }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

@@ -60,35 +60,65 @@ function formatTime(value: string | number | null | undefined, lang: string) {
 export default function PositionsTable() {
   const { tr, lang } = useLang();
   const t = (zh: string, en: string) => (lang === "zh" ? zh : en);
-  const { data, isLoading, error, refetch, isFetching } = trpc.hyperliquid.positions.useQuery(
-    undefined,
-    { refetchInterval: 15_000 }
-  );
+  const { data, isLoading, error, refetch, isFetching } =
+    trpc.hyperliquid.positions.useQuery(undefined, { refetchInterval: 15_000 });
 
-  const positions = ((data ?? []) as HyperliquidPosition[]).filter((p) => Math.abs(num(p.total)) > 0);
-  const totalUnrealized = positions.reduce((sum, p) => sum + num(p.unrealisedPnl), 0);
-  const totalFundingFee = positions.reduce((sum, p) => sum + num(p.fundingFee), 0);
+  const positions = ((data ?? []) as HyperliquidPosition[]).filter(
+    p => Math.abs(num(p.total)) > 0
+  );
+  const totalUnrealized = positions.reduce(
+    (sum, p) => sum + num(p.unrealisedPnl),
+    0
+  );
+  const totalFundingFee = positions.reduce(
+    (sum, p) => sum + num(p.fundingFee),
+    0
+  );
 
   return (
     <div className="glass-card px-4 sm:px-8 py-5 sm:py-7 fade-in">
       <div className="flex items-center justify-between mb-5 sm:mb-6">
         <div>
-          <h2 className="text-xl sm:text-2xl font-light" style={{ fontFamily: "Cormorant Garamond, serif" }}>
+          <h2
+            className="text-xl sm:text-2xl font-light"
+            style={{ fontFamily: "Cormorant Garamond, serif" }}
+          >
             {tr.positions}
-            {positions.length > 0 && <span className="ml-2 text-muted-foreground text-lg">({positions.length})</span>}
+            {positions.length > 0 && (
+              <span className="ml-2 text-muted-foreground text-lg">
+                ({positions.length})
+              </span>
+            )}
           </h2>
-          <div className="mt-2" style={{ width: 40, height: 1, background: "rgb(215 187 114 / 62%)" }} />
+          <div
+            className="mt-2"
+            style={{
+              width: 40,
+              height: 1,
+              background: "rgb(215 187 114 / 62%)",
+            }}
+          />
         </div>
-        <button onClick={() => refetch()} className="text-muted-foreground hover:text-foreground transition-colors p-1">
+        <button
+          onClick={() => refetch()}
+          className="text-muted-foreground hover:text-foreground transition-colors p-1"
+        >
           <RefreshCw size={13} className={isFetching ? "animate-spin" : ""} />
         </button>
       </div>
 
-      {isLoading && <div className="text-muted-foreground text-sm animate-pulse py-4">{tr.loading}</div>}
+      {isLoading && (
+        <div className="text-muted-foreground text-sm animate-pulse py-4">
+          {tr.loading}
+        </div>
+      )}
       {error && <div className="text-loss text-sm py-2">{error.message}</div>}
 
       {!isLoading && !error && positions.length === 0 && (
-        <div className="text-muted-foreground text-center py-10 tracking-widest uppercase" style={{ fontSize: "0.75rem" }}>
+        <div
+          className="text-muted-foreground text-center py-10 tracking-widest uppercase"
+          style={{ fontSize: "0.75rem" }}
+        >
           {tr.noPositions}
         </div>
       )}
@@ -97,21 +127,36 @@ export default function PositionsTable() {
         <>
           <div
             className="flex flex-wrap gap-x-6 gap-y-2 mb-4 px-4 py-2.5 rounded-lg"
-            style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}
+            style={{
+              background: "var(--surface-subtle)",
+              border: "1px solid var(--panel-border)",
+            }}
           >
             <div>
-              <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.6rem" }}>
+              <span
+                className="text-muted-foreground tracking-widest uppercase"
+                style={{ fontSize: "0.6rem" }}
+              >
                 {t("未实现盈亏", "Unrealized PnL")}
               </span>
-              <div className={`num-display ${pnlColor(totalUnrealized)}`} style={{ fontSize: "0.9rem" }}>
+              <div
+                className={`num-display ${pnlColor(totalUnrealized)}`}
+                style={{ fontSize: "0.9rem" }}
+              >
                 {signed(totalUnrealized, 2)}
               </div>
             </div>
             <div>
-              <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.6rem" }}>
+              <span
+                className="text-muted-foreground tracking-widest uppercase"
+                style={{ fontSize: "0.6rem" }}
+              >
                 {t("资金费", "Funding Fee")}
               </span>
-              <div className={`num-display ${pnlColor(totalFundingFee)}`} style={{ fontSize: "0.9rem" }}>
+              <div
+                className={`num-display ${pnlColor(totalFundingFee)}`}
+                style={{ fontSize: "0.9rem" }}
+              >
                 {signed(totalFundingFee, 2)}
               </div>
             </div>
@@ -136,11 +181,13 @@ export default function PositionsTable() {
                 </tr>
               </thead>
               <tbody>
-                {positions.map((p) => {
+                {positions.map(p => {
                   const isLong = p.posSide === "long";
                   return (
                     <tr key={`${p.category}-${p.symbol}-${p.posSide}`}>
-                      <td className="text-foreground font-medium">{p.symbol}</td>
+                      <td className="text-foreground font-medium">
+                        {p.symbol}
+                      </td>
                       <td>
                         <span className={isLong ? "text-profit" : "text-loss"}>
                           {isLong ? t("多", "Long") : t("空", "Short")}
@@ -151,11 +198,23 @@ export default function PositionsTable() {
                       <td>{fmt(p.avgPrice, 2)}</td>
                       <td>{fmt(p.markPrice, 2)}</td>
                       <td>{fmt(p.leverage, 2)}x</td>
-                      <td className={pnlColor(p.unrealisedPnl)}>{signed(p.unrealisedPnl, 2)}</td>
-                      <td className={pnlColor(p.profitRate)}>{signed(num(p.profitRate) * 100, 2)}%</td>
-                      <td className={pnlColor(p.fundingFee)}>{signed(p.fundingFee, 2)}</td>
-                      <td>{num(p.liquidationPrice) > 0 ? fmt(p.liquidationPrice, 2) : "—"}</td>
-                      <td className="text-muted-foreground">{formatTime(p.updatedTime, lang)}</td>
+                      <td className={pnlColor(p.unrealisedPnl)}>
+                        {signed(p.unrealisedPnl, 2)}
+                      </td>
+                      <td className={pnlColor(p.profitRate)}>
+                        {signed(num(p.profitRate) * 100, 2)}%
+                      </td>
+                      <td className={pnlColor(p.fundingFee)}>
+                        {signed(p.fundingFee, 2)}
+                      </td>
+                      <td>
+                        {num(p.liquidationPrice) > 0
+                          ? fmt(p.liquidationPrice, 2)
+                          : "—"}
+                      </td>
+                      <td className="text-muted-foreground">
+                        {formatTime(p.updatedTime, lang)}
+                      </td>
                     </tr>
                   );
                 })}
@@ -164,24 +223,39 @@ export default function PositionsTable() {
           </div>
 
           <div className="sm:hidden flex flex-col gap-2">
-            {positions.map((p) => {
+            {positions.map(p => {
               const isLong = p.posSide === "long";
               return (
                 <div
                   key={`${p.category}-${p.symbol}-${p.posSide}`}
                   className="rounded-lg px-4 py-3"
-                  style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}
+                  style={{
+                    background: "var(--surface-subtle)",
+                    border: "1px solid var(--panel-border)",
+                  }}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium">{p.symbol}</span>
-                    <span className={isLong ? "text-profit" : "text-loss"}>{isLong ? t("多", "Long") : t("空", "Short")}</span>
+                    <span className={isLong ? "text-profit" : "text-loss"}>
+                      {isLong ? t("多", "Long") : t("空", "Short")}
+                    </span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    <span>{t("数量", "Size")}: {fmt(p.total, 2)}</span>
-                    <span>{t("均价", "Avg")}: {fmt(p.avgPrice, 2)}</span>
-                    <span>{t("标记价", "Mark")}: {fmt(p.markPrice, 2)}</span>
-                    <span className={pnlColor(p.unrealisedPnl)}>{t("盈亏", "PnL")}: {signed(p.unrealisedPnl, 2)}</span>
-                    <span className={pnlColor(p.fundingFee)}>{t("资金费", "Funding")}: {signed(p.fundingFee, 2)}</span>
+                    <span>
+                      {t("数量", "Size")}: {fmt(p.total, 2)}
+                    </span>
+                    <span>
+                      {t("均价", "Avg")}: {fmt(p.avgPrice, 2)}
+                    </span>
+                    <span>
+                      {t("标记价", "Mark")}: {fmt(p.markPrice, 2)}
+                    </span>
+                    <span className={pnlColor(p.unrealisedPnl)}>
+                      {t("盈亏", "PnL")}: {signed(p.unrealisedPnl, 2)}
+                    </span>
+                    <span className={pnlColor(p.fundingFee)}>
+                      {t("资金费", "Funding")}: {signed(p.fundingFee, 2)}
+                    </span>
                   </div>
                 </div>
               );

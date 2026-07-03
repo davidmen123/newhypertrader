@@ -69,7 +69,9 @@ export const bitgetRouter = router({
       currency: "USDT",
       date,
       equity: toStr(account.usdtEquity || account.accountEquity),
-      balance: toStr(account.effEquity || account.usdtEquity || account.accountEquity),
+      balance: toStr(
+        account.effEquity || account.usdtEquity || account.accountEquity
+      ),
       unrealizedPnl: toStr(account.usdtUnrealisedPnl || account.unrealisedPnl),
       sessionPnl: toStr(account.usdtUnrealisedPnl || account.unrealisedPnl),
       totalPnl: toStr(account.usdtUnrealisedPnl || account.unrealisedPnl),
@@ -98,7 +100,16 @@ export const bitgetRouter = router({
   tradeHistory: publicProcedure
     .input(
       z.object({
-        category: z.enum(["ALL", "SPOT", "MARGIN", "USDT-FUTURES", "COIN-FUTURES", "USDC-FUTURES"]).default("ALL"),
+        category: z
+          .enum([
+            "ALL",
+            "SPOT",
+            "MARGIN",
+            "USDT-FUTURES",
+            "COIN-FUTURES",
+            "USDC-FUTURES",
+          ])
+          .default("ALL"),
         startDate: z.string().optional(),
         endDate: z.string().optional(),
         limit: z.number().min(1).max(100).default(100),
@@ -120,7 +131,7 @@ export const bitgetRouter = router({
           : [input.category];
 
       const results = await Promise.allSettled(
-        categories.map((category) =>
+        categories.map(category =>
           getFillHistory({
             category,
             startTime,
@@ -132,13 +143,19 @@ export const bitgetRouter = router({
       );
 
       const fills = results
-        .flatMap((result) => (result.status === "fulfilled" ? result.value.list : []))
-        .sort((a, b) => Number(b.createdTime || 0) - Number(a.createdTime || 0));
+        .flatMap(result =>
+          result.status === "fulfilled" ? result.value.list : []
+        )
+        .sort(
+          (a, b) => Number(b.createdTime || 0) - Number(a.createdTime || 0)
+        );
 
       return {
         trades: fills,
         total: fills.length,
-        cursor: results.find((result) => result.status === "fulfilled")?.value.cursor ?? null,
+        cursor:
+          results.find(result => result.status === "fulfilled")?.value.cursor ??
+          null,
       };
     }),
 });

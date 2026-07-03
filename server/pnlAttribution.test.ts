@@ -58,7 +58,9 @@ describe("deribit.pnlAttribution router", () => {
   });
 
   it("returns attribution data with default params", async () => {
-    (getPnlAttributionSnapshots as ReturnType<typeof vi.fn>).mockResolvedValue(sampleAttribution);
+    (getPnlAttributionSnapshots as ReturnType<typeof vi.fn>).mockResolvedValue(
+      sampleAttribution
+    );
 
     const ctx = createPublicContext();
     const caller = appRouter.createCaller(ctx);
@@ -77,7 +79,9 @@ describe("deribit.pnlAttribution router", () => {
   });
 
   it("passes startDate and limit to getPnlAttributionSnapshots", async () => {
-    (getPnlAttributionSnapshots as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (getPnlAttributionSnapshots as ReturnType<typeof vi.fn>).mockResolvedValue(
+      []
+    );
 
     const ctx = createPublicContext();
     const caller = appRouter.createCaller(ctx);
@@ -91,7 +95,9 @@ describe("deribit.pnlAttribution router", () => {
   });
 
   it("returns empty array when no snapshots available", async () => {
-    (getPnlAttributionSnapshots as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (getPnlAttributionSnapshots as ReturnType<typeof vi.fn>).mockResolvedValue(
+      []
+    );
 
     const ctx = createPublicContext();
     const caller = appRouter.createCaller(ctx);
@@ -109,20 +115,24 @@ describe("deribit.pnlAttribution router", () => {
   });
 
   it("handles attribution data with all-zero Greeks gracefully", async () => {
-    const zeroGreeks = [{
-      date: "2026-03-11",
-      totalPnl: 0,
-      thetaPnl: 0,
-      deltaPnl: 0,
-      vegaPnl: 0,
-      residual: 0,
-      deltaTotal: 0,
-      optionsTheta: 0,
-      optionsVega: 0,
-      optionsGamma: 0,
-      btcPrice: 0,
-    }];
-    (getPnlAttributionSnapshots as ReturnType<typeof vi.fn>).mockResolvedValue(zeroGreeks);
+    const zeroGreeks = [
+      {
+        date: "2026-03-11",
+        totalPnl: 0,
+        thetaPnl: 0,
+        deltaPnl: 0,
+        vegaPnl: 0,
+        residual: 0,
+        deltaTotal: 0,
+        optionsTheta: 0,
+        optionsVega: 0,
+        optionsGamma: 0,
+        btcPrice: 0,
+      },
+    ];
+    (getPnlAttributionSnapshots as ReturnType<typeof vi.fn>).mockResolvedValue(
+      zeroGreeks
+    );
 
     const ctx = createPublicContext();
     const caller = appRouter.createCaller(ctx);

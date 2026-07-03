@@ -11,14 +11,18 @@ function TimeOfDayBadge({ time, lang }: { time: string | null; lang: string }) {
   const color = isPre
     ? "oklch(72% 0.12 210)"
     : isPost
-    ? "oklch(72% 0.12 280)"
-    : "oklch(65% 0.01 200)";
+      ? "oklch(72% 0.12 280)"
+      : "oklch(65% 0.01 200)";
 
   const label = isPre
-    ? lang === "zh" ? "盘前" : "Pre-Mkt"
+    ? lang === "zh"
+      ? "盘前"
+      : "Pre-Mkt"
     : isPost
-    ? lang === "zh" ? "盘后" : "Post-Mkt"
-    : time;
+      ? lang === "zh"
+        ? "盘后"
+        : "Post-Mkt"
+      : time;
 
   return (
     <span
@@ -157,7 +161,10 @@ export default function EarningsCalendar() {
               {/* Date header */}
               <div
                 className="flex items-center gap-3 mb-3"
-                style={{ borderBottom: "1px solid var(--panel-border)", paddingBottom: 6 }}
+                style={{
+                  borderBottom: "1px solid var(--panel-border)",
+                  paddingBottom: 6,
+                }}
               >
                 <span
                   style={{
@@ -177,13 +184,24 @@ export default function EarningsCalendar() {
                     letterSpacing: "0.08em",
                   }}
                 >
-                  {items.length} {lang === "zh" ? "家" : items.length === 1 ? "company" : "companies"}
+                  {items.length}{" "}
+                  {lang === "zh"
+                    ? "家"
+                    : items.length === 1
+                      ? "company"
+                      : "companies"}
                 </span>
               </div>
 
               {/* Earnings table */}
               <div className="overflow-x-auto">
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.72rem" }}>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: "0.72rem",
+                  }}
+                >
                   <thead>
                     <tr>
                       {[
@@ -192,7 +210,7 @@ export default function EarningsCalendar() {
                         lang === "zh" ? "EPS 预期" : "EPS Est.",
                         lang === "zh" ? "发布时间" : "Time",
                         lang === "zh" ? "UTC+8 说明" : "UTC+8 Note",
-                      ].map((h) => (
+                      ].map(h => (
                         <th
                           key={h}
                           style={{
@@ -218,16 +236,23 @@ export default function EarningsCalendar() {
                         style={{
                           borderBottom: "1px solid var(--panel-border)",
                           background:
-                            idx % 2 === 0 ? "transparent" : "var(--surface-hover)",
+                            idx % 2 === 0
+                              ? "transparent"
+                              : "var(--surface-hover)",
                           transition: "background 0.15s",
                         }}
-                        onMouseEnter={(e) => {
-                          (e.currentTarget as HTMLTableRowElement).style.background =
-                            "rgb(31 107 79 / 12%)";
+                        onMouseEnter={e => {
+                          (
+                            e.currentTarget as HTMLTableRowElement
+                          ).style.background = "rgb(31 107 79 / 12%)";
                         }}
-                        onMouseLeave={(e) => {
-                          (e.currentTarget as HTMLTableRowElement).style.background =
-                            idx % 2 === 0 ? "transparent" : "var(--surface-hover)";
+                        onMouseLeave={e => {
+                          (
+                            e.currentTarget as HTMLTableRowElement
+                          ).style.background =
+                            idx % 2 === 0
+                              ? "transparent"
+                              : "var(--surface-hover)";
                         }}
                       >
                         <td
@@ -293,11 +318,17 @@ export default function EarningsCalendar() {
         {[
           {
             color: "oklch(72% 0.12 210)",
-            label: lang === "zh" ? "盘前 = 美东 ~09:30 = UTC+8 ~21:30（前一日）" : "Pre-Mkt = ~09:30 ET = ~21:30 UTC+8 (prev day)",
+            label:
+              lang === "zh"
+                ? "盘前 = 美东 ~09:30 = UTC+8 ~21:30（前一日）"
+                : "Pre-Mkt = ~09:30 ET = ~21:30 UTC+8 (prev day)",
           },
           {
             color: "oklch(72% 0.12 280)",
-            label: lang === "zh" ? "盘后 = 美东 ~16:00 = UTC+8 ~04:00（次日）" : "Post-Mkt = ~16:00 ET = ~04:00 UTC+8 (next day)",
+            label:
+              lang === "zh"
+                ? "盘后 = 美东 ~16:00 = UTC+8 ~04:00（次日）"
+                : "Post-Mkt = ~16:00 ET = ~04:00 UTC+8 (next day)",
           },
         ].map(({ color, label }) => (
           <div key={label} className="flex items-center gap-2">
@@ -310,7 +341,13 @@ export default function EarningsCalendar() {
                 flexShrink: 0,
               }}
             />
-            <span style={{ fontSize: "0.62rem", color: "var(--text-soft)", letterSpacing: "0.04em" }}>
+            <span
+              style={{
+                fontSize: "0.62rem",
+                color: "var(--text-soft)",
+                letterSpacing: "0.04em",
+              }}
+            >
               {label}
             </span>
           </div>

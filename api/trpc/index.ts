@@ -23,6 +23,6 @@ export default async function handler(req: any, res: any) {
     res,
     path,
     router: appRouter,
-    createContext: (opts) => createContext(opts as any),
+    createContext: opts => createContext(opts as any),
   });
 }

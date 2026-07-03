@@ -91,9 +91,7 @@
       "compositePrimaryKeys": {
         "pnl_snapshots_id": {
           "name": "pnl_snapshots_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -235,17 +233,13 @@
       "compositePrimaryKeys": {
         "trades_id": {
           "name": "trades_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "trades_tradeId_unique": {
           "name": "trades_tradeId_unique",
-          "columns": [
-            "tradeId"
-          ]
+          "columns": ["tradeId"]
         }
       },
       "checkConstraint": {}
@@ -327,17 +321,13 @@
       "compositePrimaryKeys": {
         "users_id": {
           "name": "users_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "users_openId_unique": {
           "name": "users_openId_unique",
-          "columns": [
-            "openId"
-          ]
+          "columns": ["openId"]
         }
       },
       "checkConstraint": {}

@@ -57,7 +57,8 @@ function sideClass(side: string) {
 }
 
 function displayPrice(order: HyperliquidOpenOrder) {
-  if (order.isTrigger || order.triggerCondition || num(order.triggerPrice) > 0) return "—";
+  if (order.isTrigger || order.triggerCondition || num(order.triggerPrice) > 0)
+    return "—";
   return num(order.limitPrice) > 0 ? fmt(order.limitPrice, 2) : "—";
 }
 
@@ -80,32 +81,40 @@ function localizeTriggerCondition(condition: string, lang: string) {
 }
 
 function displayTriggerCondition(order: HyperliquidOpenOrder, lang: string) {
-  if (order.triggerCondition) return localizeTriggerCondition(order.triggerCondition, lang);
+  if (order.triggerCondition)
+    return localizeTriggerCondition(order.triggerCondition, lang);
   return num(order.triggerPrice) > 0 ? fmt(order.triggerPrice, 2) : "—";
 }
 
 function isClosePositionOrder(order: HyperliquidOpenOrder) {
   const type = order.orderType.toLowerCase();
-  return num(order.size) === 0 && (type.includes("market") || order.isTrigger || Boolean(order.triggerCondition));
+  return (
+    num(order.size) === 0 &&
+    (type.includes("market") ||
+      order.isTrigger ||
+      Boolean(order.triggerCondition))
+  );
 }
 
 function displaySize(order: HyperliquidOpenOrder, lang: string) {
-  if (isClosePositionOrder(order)) return lang === "zh" ? "平仓" : "close position";
+  if (isClosePositionOrder(order))
+    return lang === "zh" ? "平仓" : "close position";
   return fmt(order.size, 2);
 }
 
 function displayOriginalSize(order: HyperliquidOpenOrder, lang: string) {
-  if (isClosePositionOrder(order)) return lang === "zh" ? "平仓" : "close position";
+  if (isClosePositionOrder(order))
+    return lang === "zh" ? "平仓" : "close position";
   return fmt(order.originalSize, 2);
 }
 
 export default function OpenOrdersTable() {
   const { lang } = useLang();
   const t = (zh: string, en: string) => (lang === "zh" ? zh : en);
-  const { data, isLoading, error, refetch, isFetching } = trpc.hyperliquid.openOrders.useQuery(
-    undefined,
-    { refetchInterval: 10_000 }
-  );
+  const { data, isLoading, error, refetch, isFetching } =
+    trpc.hyperliquid.openOrders.useQuery(undefined, {
+      refetchInterval: 10_000,
+    });
 
   const orders = (data ?? []) as HyperliquidOpenOrder[];
 
@@ -113,22 +122,46 @@ export default function OpenOrdersTable() {
     <div className="glass-card px-4 sm:px-8 py-5 sm:py-7 fade-in">
       <div className="flex items-center justify-between mb-5 sm:mb-6">
         <div>
-          <h2 className="text-xl sm:text-2xl font-light" style={{ fontFamily: "Cormorant Garamond, serif" }}>
+          <h2
+            className="text-xl sm:text-2xl font-light"
+            style={{ fontFamily: "Cormorant Garamond, serif" }}
+          >
             {t("当前委托", "Open Orders")}
-            {orders.length > 0 && <span className="ml-2 text-muted-foreground text-lg">({orders.length})</span>}
+            {orders.length > 0 && (
+              <span className="ml-2 text-muted-foreground text-lg">
+                ({orders.length})
+              </span>
+            )}
           </h2>
-          <div className="mt-2" style={{ width: 40, height: 1, background: "rgb(215 187 114 / 62%)" }} />
+          <div
+            className="mt-2"
+            style={{
+              width: 40,
+              height: 1,
+              background: "rgb(215 187 114 / 62%)",
+            }}
+          />
         </div>
-        <button onClick={() => refetch()} className="text-muted-foreground hover:text-foreground transition-colors p-1">
+        <button
+          onClick={() => refetch()}
+          className="text-muted-foreground hover:text-foreground transition-colors p-1"
+        >
           <RefreshCw size={13} className={isFetching ? "animate-spin" : ""} />
         </button>
       </div>
 
-      {isLoading && <div className="text-muted-foreground text-sm animate-pulse py-4">{t("加载中…", "Loading…")}</div>}
+      {isLoading && (
+        <div className="text-muted-foreground text-sm animate-pulse py-4">
+          {t("加载中…", "Loading…")}
+        </div>
+      )}
       {error && <div className="text-loss text-sm py-2">{error.message}</div>}
 
       {!isLoading && !error && orders.length === 0 && (
-        <div className="text-muted-foreground text-center py-10 tracking-widest uppercase" style={{ fontSize: "0.75rem" }}>
+        <div
+          className="text-muted-foreground text-center py-10 tracking-widest uppercase"
+          style={{ fontSize: "0.75rem" }}
+        >
           {t("暂无当前委托", "No open orders")}
         </div>
       )}
@@ -151,17 +184,25 @@ export default function OpenOrdersTable() {
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order) => (
-                  <tr key={`${order.timestamp}-${order.symbol}-${order.side}-${order.size}`}>
-                    <td className="text-foreground font-medium">{order.symbol}</td>
-                    <td className={sideClass(order.side)}>{sideLabel(order.side, lang)}</td>
+                {orders.map(order => (
+                  <tr
+                    key={`${order.timestamp}-${order.symbol}-${order.side}-${order.size}`}
+                  >
+                    <td className="text-foreground font-medium">
+                      {order.symbol}
+                    </td>
+                    <td className={sideClass(order.side)}>
+                      {sideLabel(order.side, lang)}
+                    </td>
                     <td>{displayOrderType(order, lang)}</td>
                     <td>{displayPrice(order)}</td>
                     <td>{displaySize(order, lang)}</td>
                     <td>{displayOriginalSize(order, lang)}</td>
                     <td>{order.tif || "—"}</td>
                     <td>{displayTriggerCondition(order, lang)}</td>
-                    <td className="text-muted-foreground">{formatTime(order.timestamp, lang)}</td>
+                    <td className="text-muted-foreground">
+                      {formatTime(order.timestamp, lang)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -169,23 +210,41 @@ export default function OpenOrdersTable() {
           </div>
 
           <div className="sm:hidden flex flex-col gap-2">
-            {orders.map((order) => (
+            {orders.map(order => (
               <div
                 key={`${order.timestamp}-${order.symbol}-${order.side}-${order.size}`}
                 className="rounded-lg px-4 py-3"
-                style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}
+                style={{
+                  background: "var(--surface-subtle)",
+                  border: "1px solid var(--panel-border)",
+                }}
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-medium">{order.symbol}</span>
-                  <span className={sideClass(order.side)}>{sideLabel(order.side, lang)}</span>
+                  <span className={sideClass(order.side)}>
+                    {sideLabel(order.side, lang)}
+                  </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  <span>{t("类型", "Type")}: {displayOrderType(order, lang)}</span>
-                  <span>{t("价格", "Price")}: {displayPrice(order)}</span>
-                  <span>{t("数量", "Size")}: {displaySize(order, lang)}</span>
-                  <span>{t("有效期", "TIF")}: {order.tif || "—"}</span>
-                  <span>{t("触发条件", "Trigger")}: {displayTriggerCondition(order, lang)}</span>
-                  <span>{t("时间", "Time")}: {formatTime(order.timestamp, lang)}</span>
+                  <span>
+                    {t("类型", "Type")}: {displayOrderType(order, lang)}
+                  </span>
+                  <span>
+                    {t("价格", "Price")}: {displayPrice(order)}
+                  </span>
+                  <span>
+                    {t("数量", "Size")}: {displaySize(order, lang)}
+                  </span>
+                  <span>
+                    {t("有效期", "TIF")}: {order.tif || "—"}
+                  </span>
+                  <span>
+                    {t("触发条件", "Trigger")}:{" "}
+                    {displayTriggerCondition(order, lang)}
+                  </span>
+                  <span>
+                    {t("时间", "Time")}: {formatTime(order.timestamp, lang)}
+                  </span>
                 </div>
               </div>
             ))}

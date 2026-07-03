@@ -31,18 +31,20 @@ export const deribitRouter = router({
     let totalProfit = 0;
     let totalLoss = 0;
 
-    const processedTrades = allTrades.trades.map(trade => {
-      let convertedProfit = trade.profit ? parseFloat(trade.profit) : 0;
-      let convertedFee = trade.fee ? parseFloat(trade.fee) : 0;
+    const processedTrades = allTrades.trades
+      .map(trade => {
+        let convertedProfit = trade.profit ? parseFloat(trade.profit) : 0;
+        let convertedFee = trade.fee ? parseFloat(trade.fee) : 0;
 
-      // Convert BTC denominated trades to USDC
-      if (trade.currency === "BTC" && btcPrice) {
-        convertedProfit *= btcPrice;
-        convertedFee *= btcPrice;
-      }
-      const netProfit = convertedProfit - convertedFee;
-      return { ...trade, netProfit };
-    }).filter(trade => trade.netProfit !== 0); // Filter out trades with 0 net profit after conversion
+        // Convert BTC denominated trades to USDC
+        if (trade.currency === "BTC" && btcPrice) {
+          convertedProfit *= btcPrice;
+          convertedFee *= btcPrice;
+        }
+        const netProfit = convertedProfit - convertedFee;
+        return { ...trade, netProfit };
+      })
+      .filter(trade => trade.netProfit !== 0); // Filter out trades with 0 net profit after conversion
 
     for (const trade of processedTrades) {
       if (trade.netProfit > 0) {
@@ -97,7 +99,7 @@ export const deribitRouter = router({
       }
 
       // Sync to DB
-      const insertList = apiTrades.map((t) => ({
+      const insertList = apiTrades.map(t => ({
         tradeId: t.trade_id,
         orderId: t.order_id,
         instrument: t.instrument_name,
@@ -142,7 +144,7 @@ export const deribitRouter = router({
             startTimestamp,
             undefined
           );
-          const insertList = apiTrades.map((t) => ({
+          const insertList = apiTrades.map(t => ({
             tradeId: t.trade_id,
             orderId: t.order_id,
             instrument: t.instrument_name,
@@ -195,7 +197,11 @@ export const deribitRouter = router({
       })
     )
     .query(async ({ input }) => {
-      const result = await getTradesFromDb({ ...input, limit: 10000, offset: 0 });
+      const result = await getTradesFromDb({
+        ...input,
+        limit: 10000,
+        offset: 0,
+      });
       return { total: result.total };
     }),
 
@@ -222,7 +228,10 @@ export const deribitRouter = router({
     .query(async ({ input }) => {
       // For MAX, always start from project launch date
       const effectiveStartDate = input.startDate ?? "2026-03-09";
-      return getCombinedPnlSnapshots({ ...input, startDate: effectiveStartDate });
+      return getCombinedPnlSnapshots({
+        ...input,
+        startDate: effectiveStartDate,
+      });
     }),
 
   // Snapshot current PnL to DB — saves BTC + USDC sub-accounts simultaneously with BTC price
@@ -239,7 +248,9 @@ export const deribitRouter = router({
       let btcSpotPrice: number | null = null;
       try {
         btcSpotPrice = await getIndexPrice("btc_usdc");
-      } catch { /* ignore, btcPrice will be null */ }
+      } catch {
+        /* ignore, btcPrice will be null */
+      }
 
       const results: Record<string, { equity: number; balance: number }> = {};
 
@@ -264,7 +275,10 @@ export const deribitRouter = router({
           optionsGamma: toStr(summary.options_gamma ?? 0),
           snapshotAt: now,
         });
-        results[currency] = { equity: summary.equity ?? 0, balance: summary.balance ?? 0 };
+        results[currency] = {
+          equity: summary.equity ?? 0,
+          balance: summary.balance ?? 0,
+        };
       }
 
       return { success: true, btcPrice: btcSpotPrice, results };
@@ -276,7 +290,8 @@ export const deribitRouter = router({
     const start = now - 2 * 3600 * 1000;
 
     const yahooHeaders = {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       Accept: "application/json",
       Referer: "https://finance.yahoo.com/",
     };
@@ -290,51 +305,95 @@ export const deribitRouter = router({
       const { promisify } = await import("util");
       const execFileAsync = promisify(execFile);
       const cookieJar = `/tmp/yf_cookies_${Date.now()}.txt`;
-      const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+      const ua =
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 
       try {
         // Step 1: visit Yahoo Finance home to get session cookies
-        await execFileAsync("curl", [
-          "-s", "-c", cookieJar,
-          "-A", ua,
-          "-H", "Accept: text/html",
-          "-H", "Accept-Language: en-US,en;q=0.9",
-          "-o", "/dev/null",
-          "https://finance.yahoo.com/",
-        ], { timeout: 15000 });
+        await execFileAsync(
+          "curl",
+          [
+            "-s",
+            "-c",
+            cookieJar,
+            "-A",
+            ua,
+            "-H",
+            "Accept: text/html",
+            "-H",
+            "Accept-Language: en-US,en;q=0.9",
+            "-o",
+            "/dev/null",
+            "https://finance.yahoo.com/",
+          ],
+          { timeout: 15000 }
+        );
 
         // Step 2: get crumb
-        const { stdout: crumbRaw } = await execFileAsync("curl", [
-          "-s", "-b", cookieJar,
-          "-A", ua,
-          "-H", "Accept: */*",
-          "-H", "Referer: https://finance.yahoo.com/",
-          "https://query1.finance.yahoo.com/v1/test/getcrumb",
-        ], { timeout: 8000 });
+        const { stdout: crumbRaw } = await execFileAsync(
+          "curl",
+          [
+            "-s",
+            "-b",
+            cookieJar,
+            "-A",
+            ua,
+            "-H",
+            "Accept: */*",
+            "-H",
+            "Referer: https://finance.yahoo.com/",
+            "https://query1.finance.yahoo.com/v1/test/getcrumb",
+          ],
+          { timeout: 8000 }
+        );
         const crumb = crumbRaw.trim();
         if (!crumb || crumb.includes("error")) return null;
 
         // Step 3: get CRCL options chain
-        const { stdout: optRaw } = await execFileAsync("curl", [
-          "-s", "-b", cookieJar,
-          "-A", ua,
-          "-H", "Accept: application/json",
-          "-H", "Referer: https://finance.yahoo.com/",
-          `https://query2.finance.yahoo.com/v7/finance/options/CRCL?crumb=${encodeURIComponent(crumb)}`,
-        ], { timeout: 10000 });
+        const { stdout: optRaw } = await execFileAsync(
+          "curl",
+          [
+            "-s",
+            "-b",
+            cookieJar,
+            "-A",
+            ua,
+            "-H",
+            "Accept: application/json",
+            "-H",
+            "Referer: https://finance.yahoo.com/",
+            `https://query2.finance.yahoo.com/v7/finance/options/CRCL?crumb=${encodeURIComponent(crumb)}`,
+          ],
+          { timeout: 10000 }
+        );
 
         const optData = JSON.parse(optRaw);
         const result = optData?.optionChain?.result?.[0];
         const spot: number = result?.quote?.regularMarketPrice ?? 0;
         const opts = result?.options?.[0];
-        const calls: Array<{ strike: number; impliedVolatility: number }> = opts?.calls ?? [];
-        const puts: Array<{ strike: number; impliedVolatility: number }> = opts?.puts ?? [];
+        const calls: Array<{ strike: number; impliedVolatility: number }> =
+          opts?.calls ?? [];
+        const puts: Array<{ strike: number; impliedVolatility: number }> =
+          opts?.puts ?? [];
 
         if (spot <= 0 || (calls.length === 0 && puts.length === 0)) return null;
 
-        const atmCall = calls.length > 0 ? calls.reduce((a, b) => Math.abs(a.strike - spot) <= Math.abs(b.strike - spot) ? a : b) : null;
-        const atmPut = puts.length > 0 ? puts.reduce((a, b) => Math.abs(a.strike - spot) <= Math.abs(b.strike - spot) ? a : b) : null;
-        const ivs = [atmCall?.impliedVolatility, atmPut?.impliedVolatility].filter((v): v is number => v != null);
+        const atmCall =
+          calls.length > 0
+            ? calls.reduce((a, b) =>
+                Math.abs(a.strike - spot) <= Math.abs(b.strike - spot) ? a : b
+              )
+            : null;
+        const atmPut =
+          puts.length > 0
+            ? puts.reduce((a, b) =>
+                Math.abs(a.strike - spot) <= Math.abs(b.strike - spot) ? a : b
+              )
+            : null;
+        const ivs = [
+          atmCall?.impliedVolatility,
+          atmPut?.impliedVolatility,
+        ].filter((v): v is number => v != null);
         if (ivs.length === 0) return null;
         return (ivs.reduce((a, b) => a + b, 0) / ivs.length) * 100;
       } finally {
@@ -344,34 +403,50 @@ export const deribitRouter = router({
       }
     }
 
-    const [btcDvolRes, vixRes, crclIvRes, spxRes, ndxRes, qqqRes, goldRes] = await Promise.allSettled([
-      // BTC DVOL
-      fetch(
-        `https://www.deribit.com/api/v2/public/get_volatility_index_data?currency=BTC&start_timestamp=${start}&end_timestamp=${now}&resolution=3600`
-      ).then((r) => r.json()),
-      // VIX
-      fetch("https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=5d", {
-        headers: yahooHeaders,
-      }).then((r) => r.json()),
-      // CRCL IV via curl subprocess (Node.js fetch cannot handle Yahoo's large headers)
-      getCrclIv(),
-      // S&P 500
-      fetch("https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=5d", {
-        headers: yahooHeaders,
-      }).then((r) => r.json()),
-      // NASDAQ Composite
-      fetch("https://query1.finance.yahoo.com/v8/finance/chart/%5EIXIC?interval=1d&range=5d", {
-        headers: yahooHeaders,
-      }).then((r) => r.json()),
-      // QQQ ETF
-      fetch("https://query1.finance.yahoo.com/v8/finance/chart/QQQ?interval=1d&range=5d", {
-        headers: yahooHeaders,
-      }).then((r) => r.json()),
-      // Gold futures
-      fetch("https://query1.finance.yahoo.com/v8/finance/chart/GC%3DF?interval=1d&range=5d", {
-        headers: yahooHeaders,
-      }).then((r) => r.json()),
-    ]);
+    const [btcDvolRes, vixRes, crclIvRes, spxRes, ndxRes, qqqRes, goldRes] =
+      await Promise.allSettled([
+        // BTC DVOL
+        fetch(
+          `https://www.deribit.com/api/v2/public/get_volatility_index_data?currency=BTC&start_timestamp=${start}&end_timestamp=${now}&resolution=3600`
+        ).then(r => r.json()),
+        // VIX
+        fetch(
+          "https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=5d",
+          {
+            headers: yahooHeaders,
+          }
+        ).then(r => r.json()),
+        // CRCL IV via curl subprocess (Node.js fetch cannot handle Yahoo's large headers)
+        getCrclIv(),
+        // S&P 500
+        fetch(
+          "https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=5d",
+          {
+            headers: yahooHeaders,
+          }
+        ).then(r => r.json()),
+        // NASDAQ Composite
+        fetch(
+          "https://query1.finance.yahoo.com/v8/finance/chart/%5EIXIC?interval=1d&range=5d",
+          {
+            headers: yahooHeaders,
+          }
+        ).then(r => r.json()),
+        // QQQ ETF
+        fetch(
+          "https://query1.finance.yahoo.com/v8/finance/chart/QQQ?interval=1d&range=5d",
+          {
+            headers: yahooHeaders,
+          }
+        ).then(r => r.json()),
+        // Gold futures
+        fetch(
+          "https://query1.finance.yahoo.com/v8/finance/chart/GC%3DF?interval=1d&range=5d",
+          {
+            headers: yahooHeaders,
+          }
+        ).then(r => r.json()),
+      ]);
 
     // BTC DVOL
     let btcDvol: number | null = null;
@@ -433,42 +508,66 @@ export const deribitRouter = router({
       goldPrevClose = meta.previousClose ?? meta.chartPreviousClose ?? null;
     }
 
-    return { btcDvol, btcDvolPrev, vix, vixPrevClose, crclIv, spx, spxPrevClose, ndx, ndxPrevClose, qqq, qqqPrevClose, gold, goldPrevClose };
+    return {
+      btcDvol,
+      btcDvolPrev,
+      vix,
+      vixPrevClose,
+      crclIv,
+      spx,
+      spxPrevClose,
+      ndx,
+      ndxPrevClose,
+      qqq,
+      qqqPrevClose,
+      gold,
+      goldPrevClose,
+    };
   }),
 
   // Stock prices: MSTR, COIN, CRCL + HYPE (CoinGecko)
   stockPrices: publicProcedure.query(async () => {
     const yahooHeaders = {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
       Accept: "application/json",
     };
 
     const symbols = ["MSTR", "COIN", "CRCL"];
     const [yahooResults, hypeRes] = await Promise.all([
       Promise.allSettled(
-        symbols.map((sym) =>
-          fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=2d`, {
-            headers: yahooHeaders,
-          }).then((r) => r.json())
+        symbols.map(sym =>
+          fetch(
+            `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=2d`,
+            {
+              headers: yahooHeaders,
+            }
+          ).then(r => r.json())
         )
       ),
       // HYPE from OKX public API (CoinGecko has strict rate limits; Binance is geo-blocked)
-      fetch(
-        "https://www.okx.com/api/v5/market/ticker?instId=HYPE-USDT",
-        { headers: { Accept: "application/json" } }
-      ).then((r) => r.json()).catch(() => null),
+      fetch("https://www.okx.com/api/v5/market/ticker?instId=HYPE-USDT", {
+        headers: { Accept: "application/json" },
+      })
+        .then(r => r.json())
+        .catch(() => null),
     ]);
 
-    const prices: Record<string, { price: number | null; prevClose: number | null; change: number | null }> = {};
+    const prices: Record<
+      string,
+      { price: number | null; prevClose: number | null; change: number | null }
+    > = {};
     symbols.forEach((sym, i) => {
       const res = yahooResults[i];
       if (res.status === "fulfilled") {
         const meta = res.value?.chart?.result?.[0]?.meta ?? {};
         const price: number | null = meta.regularMarketPrice ?? null;
-        const prevClose: number | null = meta.previousClose ?? meta.chartPreviousClose ?? null;
-        const change = price != null && prevClose != null && prevClose !== 0
-          ? ((price - prevClose) / prevClose) * 100
-          : null;
+        const prevClose: number | null =
+          meta.previousClose ?? meta.chartPreviousClose ?? null;
+        const change =
+          price != null && prevClose != null && prevClose !== 0
+            ? ((price - prevClose) / prevClose) * 100
+            : null;
         prices[sym] = { price, prevClose, change };
       } else {
         prices[sym] = { price: null, prevClose: null, change: null };
@@ -477,13 +576,19 @@ export const deribitRouter = router({
 
     // HYPE from OKX: data[0].last = current price, data[0].open24h = 24h open price
     const hypeOkx = hypeRes?.data?.[0];
-    const hypePrice: number | null = hypeOkx?.last != null ? parseFloat(hypeOkx.last) : null;
-    const hypeOpen24h: number | null = hypeOkx?.open24h != null ? parseFloat(hypeOkx.open24h) : null;
+    const hypePrice: number | null =
+      hypeOkx?.last != null ? parseFloat(hypeOkx.last) : null;
+    const hypeOpen24h: number | null =
+      hypeOkx?.open24h != null ? parseFloat(hypeOkx.open24h) : null;
     const hypeChange: number | null =
       hypePrice != null && hypeOpen24h != null && hypeOpen24h !== 0
         ? ((hypePrice - hypeOpen24h) / hypeOpen24h) * 100
         : null;
-    prices["HYPE"] = { price: hypePrice, prevClose: hypeOpen24h, change: hypeChange };
+    prices["HYPE"] = {
+      price: hypePrice,
+      prevClose: hypeOpen24h,
+      change: hypeChange,
+    };
 
     return prices;
   }),
@@ -504,11 +609,15 @@ export const deribitRouter = router({
       getAccountSummaries(),
       getIndexPrice("btc_usdc").catch(() => 0),
       getEarliestPnlSnapshots(),
-      getCombinedPnlSnapshots({ denomination: 'USDC', startDate: '2026-03-09', limit: 2000 }),
+      getCombinedPnlSnapshots({
+        denomination: "USDC",
+        startDate: "2026-03-09",
+        limit: 2000,
+      }),
     ]);
 
-    const btc = summaries.find((s) => s.currency === "BTC");
-    const usdc = summaries.find((s) => s.currency === "USDC");
+    const btc = summaries.find(s => s.currency === "BTC");
+    const usdc = summaries.find(s => s.currency === "USDC");
 
     const price = btcPrice || 0;
 
@@ -523,23 +632,28 @@ export const deribitRouter = router({
     const totalEquityBtc = btcEquity + usdcEquityBtc;
 
     // IM / MM (USDC sub-account has USD-denominated IM/MM; BTC sub-account IM/MM in BTC → convert)
-    const imUsdc = (usdc?.initial_margin ?? 0) + (btc?.initial_margin ?? 0) * price;
-    const mmUsdc = (usdc?.maintenance_margin ?? 0) + (btc?.maintenance_margin ?? 0) * price;
+    const imUsdc =
+      (usdc?.initial_margin ?? 0) + (btc?.initial_margin ?? 0) * price;
+    const mmUsdc =
+      (usdc?.maintenance_margin ?? 0) + (btc?.maintenance_margin ?? 0) * price;
 
     // Available funds (USDC)
-    const availableUsdc = (usdc?.available_funds ?? 0) + (btc?.available_funds ?? 0) * price;
+    const availableUsdc =
+      (usdc?.available_funds ?? 0) + (btc?.available_funds ?? 0) * price;
 
     // Balance (raw, per currency)
     const btcBalance = btc?.balance ?? 0;
     const usdcBalance = usdc?.balance ?? 0;
 
     // Session UPL
-    const sessionUplUsdc = (usdc?.session_upl ?? 0) + (btc?.session_upl ?? 0) * price;
+    const sessionUplUsdc =
+      (usdc?.session_upl ?? 0) + (btc?.session_upl ?? 0) * price;
 
     // Greeks:
     // - delta_total: BTC sub-account is in BTC → convert to USD; USDC sub-account is already in USD
     // - Vega/Theta/Gamma: both sub-accounts are already in USD terms (not per-BTC), just sum
-    const deltaTotal = (usdc?.delta_total ?? 0) + (btc?.delta_total ?? 0) * price;
+    const deltaTotal =
+      (usdc?.delta_total ?? 0) + (btc?.delta_total ?? 0) * price;
     const optionsVega = (usdc?.options_vega ?? 0) + (btc?.options_vega ?? 0);
     const optionsTheta = (usdc?.options_theta ?? 0) + (btc?.options_theta ?? 0);
     const optionsGamma = (usdc?.options_gamma ?? 0) + (btc?.options_gamma ?? 0);
@@ -556,8 +670,8 @@ export const deribitRouter = router({
     let costBasisUsdc: number | null = null;
 
     if (earliest.btc || earliest.usdc) {
-      const earliestBtcEquity = parseFloat(earliest.btc?.equity ?? '0');
-      const earliestUsdcEquity = parseFloat(earliest.usdc?.equity ?? '0');
+      const earliestBtcEquity = parseFloat(earliest.btc?.equity ?? "0");
+      const earliestUsdcEquity = parseFloat(earliest.usdc?.equity ?? "0");
       // Convert earliest BTC equity to USDC using current price
       const earliestTotalUsdc = earliestBtcEquity * price + earliestUsdcEquity;
       costBasisUsdc = earliestTotalUsdc;
@@ -632,7 +746,11 @@ export const deribitRouter = router({
     };
 
     // Calculate Calmar Ratio
-    if (result.totalPnlPct !== null && result.maxDrawdownPct !== null && result.maxDrawdownPct < 0) {
+    if (
+      result.totalPnlPct !== null &&
+      result.maxDrawdownPct !== null &&
+      result.maxDrawdownPct < 0
+    ) {
       // Annualize return: (1 + totalPnlPct/100)^(365/days) - 1
       const projectStartDate = new Date("2026-03-09T00:00:00Z");
       const now = new Date();
@@ -640,7 +758,8 @@ export const deribitRouter = router({
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
       if (diffDays > 0) {
-        const annualizedReturn = (Math.pow(1 + result.totalPnlPct / 100, 365 / diffDays) - 1) * 100;
+        const annualizedReturn =
+          (Math.pow(1 + result.totalPnlPct / 100, 365 / diffDays) - 1) * 100;
         result.calmarRatio = Math.abs(annualizedReturn / result.maxDrawdownPct);
       }
     }
@@ -658,7 +777,7 @@ export const deribitRouter = router({
       z.object({
         currency: z.enum(["ALL", "BTC", "USDC"]).default("ALL"),
         startDate: z.string().optional(), // YYYY-MM-DD
-        endDate: z.string().optional(),   // YYYY-MM-DD
+        endDate: z.string().optional(), // YYYY-MM-DD
         page: z.number().min(0).default(0),
         pageSize: z.number().min(1).max(100).default(20),
       })
@@ -680,7 +799,7 @@ export const deribitRouter = router({
         offset: input.page * input.pageSize,
       });
 
-      const mapped = rows.map((t) => ({
+      const mapped = rows.map(t => ({
         tradeId: t.tradeId,
         orderId: t.orderId,
         instrument: t.instrument,
@@ -698,7 +817,12 @@ export const deribitRouter = router({
         label: t.label ?? "",
       }));
 
-      return { trades: mapped, total, page: input.page, pageSize: input.pageSize };
+      return {
+        trades: mapped,
+        total,
+        page: input.page,
+        pageSize: input.pageSize,
+      };
     }),
 
   // P&L Attribution: break down daily P&L into Theta / Delta / Vega / Residual
