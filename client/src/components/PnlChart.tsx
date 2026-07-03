@@ -176,8 +176,11 @@ function CustomTooltip({ active, payload, label, labels, visible }: TooltipProps
             )}
             {btcPrice && (
               <div style={{ display: "flex", justifyContent: "space-between", gap: 16, fontSize: "0.72rem" }}>
+                <span style={{ color: "rgb(209 231 226 / 46%)" }}>
+                  {labels.btcBenchmark.includes("BTC 涨跌幅") ? "BTC价格" : "BTC Price"}
+                </span>
                 <span style={{ color: "rgb(209 231 226 / 78%)", fontFamily: "DM Mono, monospace" }}>
-                  {labels.btcBenchmark.includes("BTC 涨跌幅") ? `BTC价格：${btcPrice}` : `BTC Price: ${btcPrice}`}
+                  {btcPrice}
                 </span>
               </div>
             )}
