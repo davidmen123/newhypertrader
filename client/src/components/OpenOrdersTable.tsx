@@ -139,7 +139,7 @@ export default function OpenOrdersTable() {
             <table className="minimal-table">
               <thead>
                 <tr>
-                  <th>{t("合约", "Symbol")}</th>
+                  <th>{t("市场", "Market")}</th>
                   <th>{t("方向", "Side")}</th>
                   <th>{t("类型", "Type")}</th>
                   <th>{t("价格", "Price")}</th>
