@@ -837,7 +837,6 @@ export async function getHyperliquidPositions() {
       avgPrice: String(entry),
       markPrice: String(mark),
       unrealisedPnl: String(toNumber(position.unrealizedPnl)),
-      curRealisedPnl: String(toNumber(position.cumFunding?.sinceOpen)),
       fundingFee: String(-toNumber(position.cumFunding?.sinceOpen)),
       liquidationPrice: position.liquidationPx ? String(position.liquidationPx) : "0",
       profitRate: String(toNumber(position.returnOnEquity)),

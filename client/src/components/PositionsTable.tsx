@@ -14,7 +14,6 @@ type HyperliquidPosition = {
   avgPrice: string;
   markPrice: string;
   unrealisedPnl: string;
-  curRealisedPnl: string;
   fundingFee: string;
   liquidationPrice: string;
   profitRate: string;
@@ -68,7 +67,7 @@ export default function PositionsTable() {
 
   const positions = ((data ?? []) as HyperliquidPosition[]).filter((p) => Math.abs(num(p.total)) > 0);
   const totalUnrealized = positions.reduce((sum, p) => sum + num(p.unrealisedPnl), 0);
-  const totalRealized = positions.reduce((sum, p) => sum + num(p.curRealisedPnl), 0);
+  const totalFundingFee = positions.reduce((sum, p) => sum + num(p.fundingFee), 0);
 
   return (
     <div className="glass-card px-4 sm:px-8 py-5 sm:py-7 fade-in">
@@ -110,10 +109,10 @@ export default function PositionsTable() {
             </div>
             <div>
               <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.6rem" }}>
-                {t("已实现盈亏", "Realized PnL")}
+                {t("资金费", "Funding Fee")}
               </span>
-              <div className={`num-display ${pnlColor(totalRealized)}`} style={{ fontSize: "0.9rem" }}>
-                {signed(totalRealized, 2)}
+              <div className={`num-display ${pnlColor(totalFundingFee)}`} style={{ fontSize: "0.9rem" }}>
+                {signed(totalFundingFee, 2)}
               </div>
             </div>
           </div>
