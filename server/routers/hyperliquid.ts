@@ -3,6 +3,7 @@ import { publicProcedure, router } from "../_core/trpc.js";
 import {
   getHyperliquidAccountOverview,
   getHyperliquidBtcPrice,
+  getHyperliquidCandles,
   getHyperliquidConfigStatus,
   getHyperliquidMarketPrices,
   getHyperliquidOpenOrders,
@@ -76,12 +77,33 @@ export const hyperliquidRouter = router({
       return { current: null, prevClose: null };
     }
 
-    const [hyperliquidRes, btcYahooRes, goldYahooRes, vixRes, nas100Res, shanghaiRes] = await Promise.allSettled([
+    async function fetchHyperliquidPrice24hAgo(coin: string) {
+      const now = Date.now();
+      const target = now - 24 * 60 * 60 * 1000;
+      const candles = await getHyperliquidCandles({
+        coin,
+        interval: "1h",
+        startTime: now - 30 * 60 * 60 * 1000,
+        endTime: now,
+      });
+      let best: { time: number; close: number } | null = null;
+      for (const candle of candles) {
+        const time = candle.t ?? candle.T ?? 0;
+        const close = Number(candle.c);
+        if (!Number.isFinite(time) || !Number.isFinite(close) || close <= 0) continue;
+        if (!best || Math.abs(time - target) < Math.abs(best.time - target)) {
+          best = { time, close };
+        }
+      }
+      return best?.close ?? null;
+    }
+
+    const [hyperliquidRes, btcYahooRes, goldYahooRes, vixRes, nas100Prev24hRes, shanghaiRes] = await Promise.allSettled([
       getHyperliquidMarketPrices(),
       fetchYahooQuote("BTC-USD"),
       fetchYahooQuote("GC=F"),
       fetchYahooQuote("%5EVIX"),
-      fetchYahooQuote("%5ENDX"),
+      fetchHyperliquidPrice24hAgo("NAS100"),
       fetchYahooQuote("000001.SS"),
     ]);
 
@@ -91,7 +113,7 @@ export const hyperliquidRouter = router({
     const btcYahoo = btcYahooRes.status === "fulfilled" ? btcYahooRes.value : { current: null, prevClose: null };
     const goldYahoo = goldYahooRes.status === "fulfilled" ? goldYahooRes.value : { current: null, prevClose: null };
     const vix = vixRes.status === "fulfilled" ? vixRes.value : { current: null, prevClose: null };
-    const nas100 = nas100Res.status === "fulfilled" ? nas100Res.value : { current: null, prevClose: null };
+    const nas100Prev24h = nas100Prev24hRes.status === "fulfilled" ? nas100Prev24hRes.value : null;
     const shanghai = shanghaiRes.status === "fulfilled" ? shanghaiRes.value : { current: null, prevClose: null };
 
     return {
@@ -99,8 +121,8 @@ export const hyperliquidRouter = router({
       btcPrevClose: btcYahoo.prevClose,
       gold: hyperliquid.gold ?? goldYahoo.current,
       goldPrevClose: goldYahoo.prevClose,
-      nas100: hyperliquid.nas100 ?? nas100.current,
-      nas100PrevClose: nas100.prevClose,
+      nas100: hyperliquid.nas100,
+      nas100PrevClose: nas100Prev24h,
       shanghai: shanghai.current,
       shanghaiPrevClose: shanghai.prevClose,
       vix: vix.current,

@@ -42,12 +42,13 @@ interface VolCardProps {
   sublabel?: string;
   current: number | null;
   prevDay: number | null;
+  prevLabel?: string;
   decimals?: number;
   lang: string;
   compact?: boolean;
 }
 
-function VolCard({ label, sublabel, current, prevDay, decimals = 2, lang, compact = false }: VolCardProps) {
+function VolCard({ label, sublabel, current, prevDay, prevLabel, decimals = 2, lang, compact = false }: VolCardProps) {
   const change =
     current != null && prevDay != null && prevDay !== 0
       ? ((current - prevDay) / prevDay) * 100
@@ -107,7 +108,7 @@ function VolCard({ label, sublabel, current, prevDay, decimals = 2, lang, compac
             letterSpacing: "0.04em",
           }}
         >
-          {lang === "zh" ? "昨收" : "Prev"}
+          {prevLabel ?? (lang === "zh" ? "昨收" : "Prev")}
           {" "}
           {prevDay != null ? fmt(prevDay, decimals) : "—"}
         </span>
@@ -134,7 +135,7 @@ export default function LiveTicker() {
           { label: "BTC", sub: lang === "zh" ? "永续" : "Perp", cur: volData?.btc ?? null, prev: volData?.btcPrevClose ?? null },
           { label: "VIX", sub: lang === "zh" ? "恐慌指数" : "Fear Index", cur: volData?.vix ?? null, prev: volData?.vixPrevClose ?? null },
           { label: "GOLD", sub: lang === "zh" ? "黄金" : "Gold", cur: volData?.gold ?? null, prev: volData?.goldPrevClose ?? null },
-          { label: "NAS100", sub: lang === "zh" ? "纳斯达克100指数" : "Nasdaq 100", cur: volData?.nas100 ?? null, prev: volData?.nas100PrevClose ?? null },
+          { label: "NAS100", sub: lang === "zh" ? "纳斯达克100指数" : "Nasdaq 100", cur: volData?.nas100 ?? null, prev: volData?.nas100PrevClose ?? null, prevLabel: lang === "zh" ? "24h前" : "24h Ago" },
           { label: "SSE", sub: lang === "zh" ? "上证指数" : "Shanghai Composite", cur: volData?.shanghai ?? null, prev: volData?.shanghaiPrevClose ?? null },
         ].map((v) => (
           <VolCard
@@ -143,6 +144,7 @@ export default function LiveTicker() {
             sublabel={v.sub}
             current={v.cur}
             prevDay={v.prev}
+            prevLabel={v.prevLabel}
             decimals={2}
             lang={lang}
             compact
