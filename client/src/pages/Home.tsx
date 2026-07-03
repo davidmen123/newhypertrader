@@ -116,17 +116,19 @@ export default function Home() {
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={toggleTheme}
-                    className="header-tool-pill inline-flex items-center gap-1.5"
+                    className="header-icon-button"
                     title={isDark ? "切换到白天" : "切换到黑夜"}
+                    aria-label={isDark ? "切换到白天" : "切换到黑夜"}
                   >
-                    {isDark ? <Sun size={11} /> : <Moon size={11} />}
-                    {isDark ? "DAY" : "NIGHT"}
+                    {isDark ? <Sun size={14} /> : <Moon size={14} />}
                   </button>
                   <button
                     onClick={() => setLang(lang === "en" ? "zh" : "en")}
-                    className="header-tool-pill"
+                    className="header-icon-button header-lang-button"
+                    title={lang === "en" ? "切换到中文" : "Switch to English"}
+                    aria-label={lang === "en" ? "切换到中文" : "Switch to English"}
                   >
-                    {tr.langSwitch}
+                    {lang === "en" ? "CN" : "EN"}
                   </button>
                 </div>
                 <div

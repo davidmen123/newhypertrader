@@ -260,33 +260,41 @@
   color: #fffef8;
 }
 
-.header-tool-pill {
-  min-height: 1.85rem;
-  min-width: 3.25rem;
-  padding: 0.24rem 0.68rem;
-  border-radius: 99px;
+.header-icon-button {
+  width: 1.85rem;
+  height: 1.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  padding: 0;
+  border-radius: 999px;
   border: 1px solid rgb(17 19 21 / 15%);
   background: rgb(255 255 255 / 34%);
   color: rgb(35 41 47 / 70%);
   font-family: "DM Mono", monospace;
-  font-size: 0.62rem;
-  font-weight: 400;
-  letter-spacing: 0.11em;
+  font-size: 0.58rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   line-height: 1;
   text-transform: uppercase;
-  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease, transform 0.2s ease;
 }
-.header-tool-pill:hover {
+.header-icon-button:hover {
   background: rgb(255 255 255 / 58%);
   border-color: rgb(31 107 79 / 46%);
   color: #111315;
+  transform: translateY(-1px);
 }
-.dark .header-tool-pill {
+.header-lang-button {
+  font-size: 0.57rem;
+}
+.dark .header-icon-button {
   border-color: rgb(255 255 255 / 16%);
   background: rgb(255 255 255 / 3%);
   color: rgb(240 240 232 / 76%);
 }
-.dark .header-tool-pill:hover {
+.dark .header-icon-button:hover {
   background: rgb(255 255 255 / 7%);
   border-color: rgb(215 187 114 / 54%);
   color: #fffef8;
