@@ -1,7 +1,7 @@
 /*
  * LiveTicker
  * Row 1 (Prices): BTC
- * Row 2 (Indices): VIX · GOLD · NAS100
+ * Row 2 (Indices): VIX · GOLD · NAS100 · SSE
  */
 import { useLang } from "@/contexts/LangContext";
 import { trpc } from "@/lib/trpc";
@@ -128,13 +128,14 @@ export default function LiveTicker() {
 
   return (
     <div>
-      {/* BTC · VIX · GOLD · NAS100 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+      {/* BTC · VIX · GOLD · NAS100 · SSE */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
         {[
           { label: "BTC", sub: lang === "zh" ? "永续" : "Perp", cur: volData?.btc ?? null, prev: volData?.btcPrevClose ?? null },
           { label: "VIX", sub: lang === "zh" ? "恐慌指数" : "Fear Index", cur: volData?.vix ?? null, prev: volData?.vixPrevClose ?? null },
           { label: "GOLD", sub: lang === "zh" ? "黄金" : "Gold", cur: volData?.gold ?? null, prev: volData?.goldPrevClose ?? null },
           { label: "NAS100", sub: lang === "zh" ? "纳斯达克100指数" : "Nasdaq 100", cur: volData?.nas100 ?? null, prev: volData?.nas100PrevClose ?? null },
+          { label: "SSE", sub: lang === "zh" ? "上证指数" : "Shanghai Composite", cur: volData?.shanghai ?? null, prev: volData?.shanghaiPrevClose ?? null },
         ].map((v) => (
           <VolCard
             key={v.label}
