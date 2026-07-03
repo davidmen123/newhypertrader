@@ -47,6 +47,7 @@ type ChartPoint = {
   pnl: number;
   accountPerformance: number;
   btcBenchmark: number | null;
+  btcPrice: number | null;
   assetTrend: number;
 };
 
@@ -149,6 +150,10 @@ function CustomTooltip({ active, payload, label, labels, visible }: TooltipProps
           seriesKey === "accountPerformance" && p.payload
             ? `${formatSigned(p.payload.pnl)} USDC`
             : null;
+        const btcPrice =
+          seriesKey === "btcBenchmark" && p.payload?.btcPrice != null && Number.isFinite(p.payload.btcPrice)
+            ? `$${p.payload.btcPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : null;
         return (
           <div key={`${p.dataKey}-${label}`} style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: "0.78rem", marginBottom: 6 }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
@@ -166,6 +171,14 @@ function CustomTooltip({ active, payload, label, labels, visible }: TooltipProps
                 </span>
                 <span style={{ color: val >= 0 ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)", fontFamily: "DM Mono, monospace" }}>
                   {accountPnl}
+                </span>
+              </div>
+            )}
+            {btcPrice && (
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 16, fontSize: "0.72rem" }}>
+                <span style={{ color: "rgb(209 231 226 / 46%)" }}>BTC</span>
+                <span style={{ color: "rgb(209 231 226 / 78%)", fontFamily: "DM Mono, monospace" }}>
+                  {btcPrice}
                 </span>
               </div>
             )}
@@ -294,6 +307,7 @@ export default function PnlChart() {
       pnl,
       accountPerformance,
       btcBenchmark,
+      btcPrice: Number.isFinite(btcPrice) && btcPrice > 0 ? btcPrice : null,
       assetTrend: eq,
     };
   });
