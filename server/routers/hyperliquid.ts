@@ -32,11 +32,13 @@ export const hyperliquidRouter = router({
       };
     };
 
-    async function fetchYahooQuote(symbol: string) {
+    async function fetchYahooQuote(symbol: string, baseMode: "prevClose" | "24hAgo" = "prevClose") {
+      const symbolPath = symbol.includes("%") ? symbol : encodeURIComponent(symbol);
       const urls = [
-        `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1m&range=1d`,
-        `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=5m&range=5d`,
-        `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`,
+        `https://query1.finance.yahoo.com/v8/finance/chart/${symbolPath}?interval=1m&range=1d`,
+        `https://query1.finance.yahoo.com/v8/finance/chart/${symbolPath}?interval=1h&range=5d`,
+        `https://query1.finance.yahoo.com/v8/finance/chart/${symbolPath}?interval=5m&range=5d`,
+        `https://query1.finance.yahoo.com/v8/finance/chart/${symbolPath}?interval=1d&range=5d`,
       ];
 
       for (const url of urls) {
@@ -50,7 +52,22 @@ export const hyperliquidRouter = router({
             signal: AbortSignal.timeout(10000),
           });
           if (!response.ok) throw new Error(`Yahoo returned ${response.status}`);
-          const quote = readYahooMeta(await response.json());
+          const payload = await response.json();
+          const quote = readYahooMeta(payload);
+          if (baseMode === "24hAgo") {
+            const result = (payload as any)?.chart?.result?.[0];
+            const timestamps: number[] = result?.timestamp ?? [];
+            const closes: Array<number | null> = result?.indicators?.quote?.[0]?.close ?? [];
+            const targetSeconds = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
+            let best: { distance: number; close: number } | null = null;
+            timestamps.forEach((timestamp, index) => {
+              const close = Number(closes[index]);
+              if (!Number.isFinite(timestamp) || !Number.isFinite(close) || close <= 0) return;
+              const distance = Math.abs(timestamp - targetSeconds);
+              if (!best || distance < best.distance) best = { distance, close };
+            });
+            if (best) quote.prevClose = best.close;
+          }
           if (quote.current != null) return quote;
         } catch (error) {
           try {
@@ -66,7 +83,22 @@ export const hyperliquidRouter = router({
               "-H", "Referer: https://finance.yahoo.com/",
               url,
             ], { timeout: 12000 });
-            const quote = readYahooMeta(JSON.parse(stdout));
+            const payload = JSON.parse(stdout);
+            const quote = readYahooMeta(payload);
+            if (baseMode === "24hAgo") {
+              const result = payload?.chart?.result?.[0];
+              const timestamps: number[] = result?.timestamp ?? [];
+              const closes: Array<number | null> = result?.indicators?.quote?.[0]?.close ?? [];
+              const targetSeconds = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
+              let best: { distance: number; close: number } | null = null;
+              timestamps.forEach((timestamp, index) => {
+                const close = Number(closes[index]);
+                if (!Number.isFinite(timestamp) || !Number.isFinite(close) || close <= 0) return;
+                const distance = Math.abs(timestamp - targetSeconds);
+                if (!best || distance < best.distance) best = { distance, close };
+              });
+              if (best) quote.prevClose = best.close;
+            }
             if (quote.current != null) return quote;
           } catch (fallbackError) {
             console.warn(`[MarketTicker] Yahoo quote failed for ${symbol}:`, error, fallbackError);
@@ -98,11 +130,12 @@ export const hyperliquidRouter = router({
       return best?.close ?? null;
     }
 
-    const [hyperliquidRes, btcYahooRes, goldYahooRes, vixRes, nas100Prev24hRes, shanghaiRes] = await Promise.allSettled([
+    const [hyperliquidRes, btcYahooRes, goldYahooRes, vixRes, nas100FuturesRes, nas100Prev24hRes, shanghaiRes] = await Promise.allSettled([
       getHyperliquidMarketPrices(),
       fetchYahooQuote("BTC-USD"),
       fetchYahooQuote("GC=F"),
       fetchYahooQuote("%5EVIX"),
+      fetchYahooQuote("NQ=F", "24hAgo"),
       fetchHyperliquidPrice24hAgo("NAS100"),
       fetchYahooQuote("000001.SS"),
     ]);
@@ -113,6 +146,7 @@ export const hyperliquidRouter = router({
     const btcYahoo = btcYahooRes.status === "fulfilled" ? btcYahooRes.value : { current: null, prevClose: null };
     const goldYahoo = goldYahooRes.status === "fulfilled" ? goldYahooRes.value : { current: null, prevClose: null };
     const vix = vixRes.status === "fulfilled" ? vixRes.value : { current: null, prevClose: null };
+    const nas100Futures = nas100FuturesRes.status === "fulfilled" ? nas100FuturesRes.value : { current: null, prevClose: null };
     const nas100Prev24h = nas100Prev24hRes.status === "fulfilled" ? nas100Prev24hRes.value : null;
     const shanghai = shanghaiRes.status === "fulfilled" ? shanghaiRes.value : { current: null, prevClose: null };
 
@@ -121,8 +155,8 @@ export const hyperliquidRouter = router({
       btcPrevClose: btcYahoo.prevClose,
       gold: hyperliquid.gold ?? goldYahoo.current,
       goldPrevClose: goldYahoo.prevClose,
-      nas100: hyperliquid.nas100,
-      nas100PrevClose: nas100Prev24h,
+      nas100: hyperliquid.nas100 ?? nas100Futures.current,
+      nas100PrevClose: nas100Prev24h ?? nas100Futures.prevClose,
       shanghai: shanghai.current,
       shanghaiPrevClose: shanghai.prevClose,
       vix: vix.current,
