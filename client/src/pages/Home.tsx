@@ -113,20 +113,18 @@ export default function Home() {
               </div>
 
               <div className="flex flex-col items-end gap-2.5">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <button
                     onClick={toggleTheme}
-                    className="pill-tab text-xs inline-flex items-center gap-2"
-                    style={{ minWidth: 74 }}
+                    className="header-tool-pill inline-flex items-center gap-1.5"
                     title={isDark ? "切换到白天" : "切换到黑夜"}
                   >
-                    {isDark ? <Sun size={13} /> : <Moon size={13} />}
+                    {isDark ? <Sun size={11} /> : <Moon size={11} />}
                     {isDark ? "DAY" : "NIGHT"}
                   </button>
                   <button
                     onClick={() => setLang(lang === "en" ? "zh" : "en")}
-                    className="pill-tab text-xs"
-                    style={{ minWidth: 60 }}
+                    className="header-tool-pill"
                   >
                     {tr.langSwitch}
                   </button>
