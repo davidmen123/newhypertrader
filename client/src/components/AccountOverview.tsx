@@ -312,8 +312,8 @@ export default function AccountOverview() {
             />
             <MetricTile
               label={t("年化收益率", "Annualized Return")}
-              value={data.annualizedReturnPct != null ? `${fmtSign(data.annualizedReturnPct, 2)}%` : "--"}
-              tone={data.annualizedReturnPct != null && data.annualizedReturnPct >= 0 ? "profit" : "loss"}
+              value="--"
+              tone="neutral"
             />
             <MetricTile
               label={t("运行天数", "Running Days")}
