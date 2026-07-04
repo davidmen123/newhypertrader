@@ -566,6 +566,17 @@ function calculateAnnualizedReturnPct(initialEquity: number | null | undefined, 
   return (Math.pow(latestEquity / initialEquity, 365 / runningDays) - 1) * 100;
 }
 
+function calculateRunningDaysFromFirstFill(fills: HyperliquidFill[]) {
+  const firstFillTime = fills.reduce<number | null>((earliest, fill) => {
+    const time = Number(fill.time);
+    if (!Number.isFinite(time) || time <= 0) return earliest;
+    return earliest == null || time < earliest ? time : earliest;
+  }, null);
+
+  if (firstFillTime == null) return null;
+  return Math.max(1, Math.ceil((Date.now() - firstFillTime) / (24 * 60 * 60 * 1000)));
+}
+
 export function getHyperliquidPerformanceStats(portfolio: HyperliquidPortfolio) {
   const windowData =
     findPortfolioWindow(portfolio, "allTime") ??
@@ -852,11 +863,12 @@ export async function getHyperliquidPositions() {
 }
 
 export async function getHyperliquidAccountOverview() {
-  const [perpStates, spotState, btcPrice, fills, portfolio, initialCapitalUsdc] = await Promise.all([
+  const [perpStates, spotState, btcPrice, fills, allTimeFills, portfolio, initialCapitalUsdc] = await Promise.all([
     getHyperliquidPerpStates(),
     getHyperliquidSpotState().catch(() => ({ balances: [] })),
     getHyperliquidBtcPrice().catch(() => 0),
     getHyperliquidFills(Date.now() - 30 * 24 * 60 * 60 * 1000).catch(() => []),
+    getHyperliquidFills(0).catch(() => []),
     getHyperliquidPortfolio().catch(() => null),
     getHyperliquidInitialCapitalUsdc().catch(() => null),
   ]);
@@ -895,10 +907,12 @@ export async function getHyperliquidAccountOverview() {
     : null;
   const totalEquityBtc = btcPrice > 0 ? totalEquityUsdc / btcPrice : 0;
   const tradeMetrics = calculateRoundTripTradeMetrics(fills);
+  const tradeRunningDays = calculateRunningDaysFromFirstFill(allTimeFills);
+  const runningDays = tradeRunningDays ?? performance.runningDays;
   const accountAnnualizedReturnPct = calculateAnnualizedReturnPct(
     initialEquityUsdc,
     totalEquityUsdc,
-    performance.runningDays
+    runningDays
   );
 
   return {
@@ -927,7 +941,7 @@ export async function getHyperliquidAccountOverview() {
     maxDrawdownPct: drawdown.maxDrawdownPct,
     sharpeRatio: performance.sharpeRatio,
     annualizedReturnPct: accountAnnualizedReturnPct ?? performance.annualizedReturnPct,
-    runningDays: performance.runningDays,
+    runningDays,
     calmarRatio: null,
     totalNtlPos,
     metrics: tradeMetrics,
