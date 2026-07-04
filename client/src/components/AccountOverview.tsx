@@ -175,7 +175,7 @@ export default function AccountOverview() {
   const isBtc = denomination === "BTC";
   const totalEquity = isBtc ? data.totalEquityBtc : data.totalEquityUsdc;
   const equityUnit = isBtc ? "BTC" : "USDC";
-  const equityDecimals = 2;
+  const equityDecimals = isBtc ? 4 : 2;
   const totalPnlUsdc = data.totalPnlUsdc ?? null;
   const pnlTone = totalPnlUsdc != null && totalPnlUsdc >= 0 ? "profit" : "loss";
   const winRate = metricsData?.winRate ?? null;
@@ -278,7 +278,7 @@ export default function AccountOverview() {
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <span className="text-muted-foreground/65 num-display" style={{ fontSize: "0.72rem" }}>
-                  {isBtc ? `≈ $${fmt(data.totalEquityUsdc, 2)} USDC` : `≈ ${fmt(data.totalEquityBtc, 2)} BTC`}
+                  {isBtc ? `≈ $${fmt(data.totalEquityUsdc, 2)} USDC` : `≈ ${fmt(data.totalEquityBtc, 4)} BTC`}
                 </span>
                 <span className="text-muted-foreground/55" style={{ fontSize: "0.66rem" }}>
                   {t("初始资金", "Initial")} {data.initialEquityUsdc != null ? `${fmt(data.initialEquityUsdc, 2)} USDC` : "--"}
