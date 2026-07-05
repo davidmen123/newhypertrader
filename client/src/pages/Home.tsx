@@ -201,7 +201,6 @@ export default function Home() {
               {lang === "zh" && (
                 <div
                   ref={kickerRef}
-                  className="flex items-center flex-wrap gap-2.5"
                   style={{
                     fontFamily: "DM Mono, monospace",
                     fontSize: "0.92rem",
@@ -213,16 +212,15 @@ export default function Home() {
                 >
                   <span style={{ whiteSpace: "nowrap" }}>
                     风控 <span style={{ color: heroAccentColor }}>·</span>
-                  </span>
+                  </span>{" "}
                   <span style={{ whiteSpace: "nowrap" }}>
                     累积 <span style={{ color: heroAccentColor }}>·</span>
-                  </span>
+                  </span>{" "}
                   <span style={{ whiteSpace: "nowrap" }}>复利</span>
                 </div>
               )}
               {lang === "en" && (
                 <div
-                  className="flex items-center flex-wrap gap-2.5"
                   style={{
                     fontFamily: "DM Mono, monospace",
                     fontSize: "0.68rem",
@@ -234,10 +232,10 @@ export default function Home() {
                 >
                   <span style={{ whiteSpace: "nowrap" }}>
                     Risk Control <span style={{ color: heroAccentColor }}>·</span>
-                  </span>
+                  </span>{" "}
                   <span style={{ whiteSpace: "nowrap" }}>
                     Accumulation <span style={{ color: heroAccentColor }}>·</span>
-                  </span>
+                  </span>{" "}
                   <span style={{ whiteSpace: "nowrap" }}>Compounding</span>
                 </div>
               )}
