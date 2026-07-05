@@ -18,21 +18,17 @@ import {
 } from "../hyperliquid.js";
 import { getPnlSnapshots, upsertPnlSnapshot } from "../db.js";
 
-export const hyperliquidRouter = router({
-  configStatus: publicProcedure.query(() => getHyperliquidConfigStatus()),
+const yahooUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-  marketTicker: publicProcedure.query(async () => {
-    const yahooUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+function readYahooMeta(payload: unknown) {
+  const meta = (payload as any)?.chart?.result?.[0]?.meta ?? {};
+  return {
+    current: meta.regularMarketPrice ?? null,
+    prevClose: meta.previousClose ?? meta.chartPreviousClose ?? null,
+  };
+}
 
-    const readYahooMeta = (payload: unknown) => {
-      const meta = (payload as any)?.chart?.result?.[0]?.meta ?? {};
-      return {
-        current: meta.regularMarketPrice ?? null,
-        prevClose: meta.previousClose ?? meta.chartPreviousClose ?? null,
-      };
-    };
-
-    async function fetchYahooQuote(symbol: string, baseMode: "prevClose" | "24hAgo" = "prevClose") {
+async function fetchYahooQuote(symbol: string, baseMode: "prevClose" | "24hAgo" = "prevClose") {
       const symbolPath = symbol.includes("%") ? symbol : encodeURIComponent(symbol);
       const urls = [
         `https://query1.finance.yahoo.com/v8/finance/chart/${symbolPath}?interval=1m&range=1d`,
@@ -107,29 +103,33 @@ export const hyperliquidRouter = router({
       }
 
       return { current: null, prevClose: null };
-    }
+}
 
-    async function fetchHyperliquidPrice24hAgo(coin: string) {
-      const now = Date.now();
-      const target = now - 24 * 60 * 60 * 1000;
-      const candles = await getHyperliquidCandles({
-        coin,
-        interval: "1h",
-        startTime: now - 30 * 60 * 60 * 1000,
-        endTime: now,
-      });
-      let best: { time: number; close: number } | null = null;
-      for (const candle of candles) {
-        const time = candle.t ?? candle.T ?? 0;
-        const close = Number(candle.c);
-        if (!Number.isFinite(time) || !Number.isFinite(close) || close <= 0) continue;
-        if (!best || Math.abs(time - target) < Math.abs(best.time - target)) {
-          best = { time, close };
-        }
-      }
-      return best?.close ?? null;
+async function fetchHyperliquidPrice24hAgo(coin: string) {
+  const now = Date.now();
+  const target = now - 24 * 60 * 60 * 1000;
+  const candles = await getHyperliquidCandles({
+    coin,
+    interval: "1h",
+    startTime: now - 30 * 60 * 60 * 1000,
+    endTime: now,
+  });
+  let best: { time: number; close: number } | null = null;
+  for (const candle of candles) {
+    const time = candle.t ?? candle.T ?? 0;
+    const close = Number(candle.c);
+    if (!Number.isFinite(time) || !Number.isFinite(close) || close <= 0) continue;
+    if (!best || Math.abs(time - target) < Math.abs(best.time - target)) {
+      best = { time, close };
     }
+  }
+  return best?.close ?? null;
+}
 
+export const hyperliquidRouter = router({
+  configStatus: publicProcedure.query(() => getHyperliquidConfigStatus()),
+
+  marketTicker: publicProcedure.query(async () => {
     const [hyperliquidRes, btcYahooRes, goldYahooRes, vixRes, nas100FuturesRes, nas100Prev24hRes, shanghaiRes] = await Promise.allSettled([
       getHyperliquidMarketPrices(),
       fetchYahooQuote("BTC-USD"),
@@ -165,7 +165,17 @@ export const hyperliquidRouter = router({
   }),
 
   accountOverview: publicProcedure.query(async () => {
-    return getHyperliquidAccountOverview();
+    const [overview, cnyQuote] = await Promise.all([
+      getHyperliquidAccountOverview(),
+      fetchYahooQuote("CNY=X"),
+    ]);
+    const usdCnyRate = cnyQuote.current;
+    return {
+      ...overview,
+      usdCnyRate,
+      totalEquityCny: usdCnyRate ? overview.totalEquityUsdc * usdCnyRate : null,
+      totalPnlCny: usdCnyRate && overview.totalPnlUsdc != null ? overview.totalPnlUsdc * usdCnyRate : null,
+    };
   }),
 
   tradeMetrics: publicProcedure.query(async () => {

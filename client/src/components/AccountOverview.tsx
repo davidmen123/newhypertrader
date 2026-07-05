@@ -125,7 +125,7 @@ function SectionTitle({ children }: { children: ReactNode }) {
 
 export default function AccountOverview() {
   const { lang } = useLang();
-  const [denomination, setDenomination] = useState<"USDC" | "BTC">("USDC");
+  const [denomination, setDenomination] = useState<"USDC" | "BTC" | "CNY">("USDC");
 
   const { data, isLoading, isFetching, refetch } = trpc.hyperliquid.accountOverview.useQuery(
     undefined,
@@ -137,13 +137,13 @@ export default function AccountOverview() {
     { refetchInterval: 60_000 }
   );
 
-  const fmt = (v: number, decimals = 2) => {
-    if (!isFinite(v)) return "--";
+  const fmt = (v: number | null | undefined, decimals = 2) => {
+    if (v == null || !isFinite(v)) return "--";
     return v.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   };
 
-  const fmtSign = (v: number, decimals = 2) => {
-    if (!isFinite(v)) return "--";
+  const fmtSign = (v: number | null | undefined, decimals = 2) => {
+    if (v == null || !isFinite(v)) return "--";
     const s = fmt(Math.abs(v), decimals);
     return v >= 0 ? `+${s}` : `-${s}`;
   };
@@ -173,10 +173,13 @@ export default function AccountOverview() {
   if (!data) return null;
 
   const isBtc = denomination === "BTC";
-  const totalEquity = isBtc ? data.totalEquityBtc : data.totalEquityUsdc;
-  const equityUnit = isBtc ? "BTC" : "USDC";
+  const isCny = denomination === "CNY";
+  const totalEquity = isBtc ? data.totalEquityBtc : isCny ? data.totalEquityCny : data.totalEquityUsdc;
+  const equityUnit = isBtc ? "BTC" : isCny ? "CNY" : "USDC";
   const equityDecimals = isBtc ? 4 : 2;
   const totalPnlUsdc = data.totalPnlUsdc ?? null;
+  const totalPnlBtc = totalPnlUsdc != null && data.btcPrice > 0 ? totalPnlUsdc / data.btcPrice : null;
+  const totalPnlDisplay = isBtc ? totalPnlBtc : isCny ? (data.totalPnlCny ?? null) : totalPnlUsdc;
   const pnlTone = totalPnlUsdc != null && totalPnlUsdc >= 0 ? "profit" : "loss";
   const winRate = metricsData?.winRate ?? null;
   const plRatio = metricsData?.plRatio ?? null;
@@ -214,7 +217,7 @@ export default function AccountOverview() {
         </div>
         <div className="flex items-center gap-3">
           <div className="flex gap-1">
-            {(["USDC", "BTC"] as const).map((d) => (
+            {(["USDC", "BTC", "CNY"] as const).map((d) => (
               <button
                 key={d}
                 onClick={() => setDenomination(d)}
@@ -278,7 +281,7 @@ export default function AccountOverview() {
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <span className="text-muted-foreground/65 num-display" style={{ fontSize: "0.72rem" }}>
-                  {isBtc ? `≈ $${fmt(data.totalEquityUsdc, 2)} USDC` : `≈ ${fmt(data.totalEquityBtc, 4)} BTC`}
+                  {isBtc || isCny ? `≈ $${fmt(data.totalEquityUsdc, 2)} USDC` : `≈ ${fmt(data.totalEquityBtc, 4)} BTC`}
                 </span>
                 <span className="text-muted-foreground/55" style={{ fontSize: "0.66rem" }}>
                   {t("初始资金", "Initial")} {data.initialEquityUsdc != null ? `${fmt(data.initialEquityUsdc, 2)} USDC` : "--"}
@@ -288,7 +291,7 @@ export default function AccountOverview() {
 
             <MetricTile
               label={t("总盈亏", "Total PnL")}
-              value={totalPnlUsdc != null ? `${fmtSign(totalPnlUsdc, 2)} USDC` : "--"}
+              value={totalPnlDisplay != null ? `${fmtSign(totalPnlDisplay, isBtc ? 4 : 2)} ${equityUnit}` : "--"}
               sub={data.totalPnlPct != null ? `${data.totalPnlPct >= 0 ? "+" : ""}${data.totalPnlPct.toFixed(2)}%` : undefined}
               tone={pnlTone}
             />
