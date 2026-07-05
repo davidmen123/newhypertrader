@@ -197,7 +197,7 @@ export default function TradeHistory() {
         >
           <div>
             <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.6rem" }}>
-              {t("成交数", "Fills")}
+              {t("成交数", "Trades")}
             </span>
             <div className="num-display" style={{ fontSize: "0.78rem" }}>{filtered.length}</div>
           </div>

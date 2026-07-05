@@ -954,28 +954,74 @@ export async function getHyperliquidTradeHistory(params: {
   limit?: number;
 }) {
   const fills = await getHyperliquidFills(params.startTime, params.endTime);
-  const mapped = fills
-    .slice()
-    .sort((a, b) => b.time - a.time)
+  const grouped = new Map<string, {
+    fill: HyperliquidFill;
+    qty: number;
+    value: number;
+    fee: number;
+    pnl: number;
+    latestTime: number;
+  }>();
+
+  for (const fill of fills) {
+    const side = fill.side === "B" ? "buy" : "sell";
+    const timeBucket = Math.floor(fill.time / 1000);
+    const orderKey = fill.oid != null && fill.oid !== ""
+      ? String(fill.oid)
+      : `${fill.hash ?? ""}-${timeBucket}`;
+    const key = [
+      fill.coin,
+      orderKey,
+      side,
+      fill.dir ?? "",
+      fill.crossed ? "market" : "limit",
+    ].join("|");
+    const qty = toNumber(fill.sz);
+    const value = toNumber(fill.px) * qty;
+    const current = grouped.get(key);
+
+    if (current) {
+      current.qty += qty;
+      current.value += value;
+      current.fee += toNumber(fill.fee);
+      current.pnl += toNumber(fill.closedPnl);
+      current.latestTime = Math.max(current.latestTime, fill.time);
+    } else {
+      grouped.set(key, {
+        fill,
+        qty,
+        value,
+        fee: toNumber(fill.fee),
+        pnl: toNumber(fill.closedPnl),
+        latestTime: fill.time,
+      });
+    }
+  }
+
+  const mapped = Array.from(grouped.values())
+    .sort((a, b) => b.latestTime - a.latestTime)
     .slice(0, params.limit ?? 100)
-    .map((fill) => {
+    .map((group) => {
+      const fill = group.fill;
       const side = fill.side === "B" ? "buy" : "sell";
+      const price = group.qty > 0 ? group.value / group.qty : toNumber(fill.px);
+      const orderId = String(fill.oid ?? "");
       return {
-        execId: fill.hash ? `${fill.hash}-${fill.oid}-${fill.time}` : `${fill.coin}-${fill.oid}-${fill.time}`,
-        orderId: String(fill.oid ?? ""),
+        execId: fill.hash ? `${fill.hash}-${orderId}-${group.latestTime}` : `${fill.coin}-${orderId}-${group.latestTime}`,
+        orderId,
         category: "PERP",
         symbol: `${fill.coin}-PERP`,
         orderType: fill.crossed ? "Market" : "Limit",
         side,
-        execPrice: fill.px,
-        execQty: fill.sz,
-        execValue: String(toNumber(fill.px) * toNumber(fill.sz)),
+        execPrice: String(price),
+        execQty: String(group.qty),
+        execValue: String(group.value),
         tradeScope: "Hyperliquid",
         tradeSide: fill.dir ?? "",
-        feeDetail: [{ feeCoin: fill.feeToken || "USDC", fee: fill.fee || "0" }],
-        createdTime: String(fill.time),
-        updatedTime: String(fill.time),
-        execPnl: fill.closedPnl || "0",
+        feeDetail: [{ feeCoin: fill.feeToken || "USDC", fee: String(group.fee) }],
+        createdTime: String(group.latestTime),
+        updatedTime: String(group.latestTime),
+        execPnl: String(group.pnl),
         isRPI: "false",
       };
     });
