@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import LiveTicker from "@/components/LiveTicker";
 import PositionsTable from "@/components/PositionsTable";
@@ -79,6 +79,47 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Match the zh kicker's width to the hero title width by measuring natural
+  // text width and solving for the letter-spacing needed to stretch/compress
+  // to fit — avoids distorting glyphs via scaleX.
+  const heroTitleRef = useRef<HTMLHeadingElement>(null);
+  const kickerRef = useRef<HTMLDivElement>(null);
+  const [kickerLetterSpacing, setKickerLetterSpacing] = useState<number | null>(null);
+
+  useLayoutEffect(() => {
+    // getBoundingClientRect() on the elements themselves would measure their
+    // box width (which stretches to fill the flex column), not the glyphs —
+    // a Range over the content gives the actual rendered text width instead.
+    function contentWidth(el: HTMLElement | null): number {
+      if (!el) return 0;
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      return range.getBoundingClientRect().width;
+    }
+
+    function matchWidthBySpacing(el: HTMLElement | null, targetWidth: number): number | null {
+      if (!el) return null;
+      const prevSpacing = el.style.letterSpacing;
+      el.style.letterSpacing = "0px";
+      const naturalWidth = contentWidth(el);
+      el.style.letterSpacing = prevSpacing;
+      const charCount = Array.from(el.textContent ?? "").length;
+      if (charCount === 0 || naturalWidth === 0) return null;
+      return (targetWidth - naturalWidth) / charCount;
+    }
+
+    function measure() {
+      const targetWidth = contentWidth(heroTitleRef.current);
+      if (!targetWidth) return;
+      setKickerLetterSpacing(lang === "zh" ? matchWidthBySpacing(kickerRef.current, targetWidth) : null);
+    }
+
+    measure();
+    window.addEventListener("resize", measure);
+    document.fonts?.ready.then(measure).catch(() => {});
+    return () => window.removeEventListener("resize", measure);
+  }, [lang]);
+
   const pageBackground = isDark
     ? "#000000"
     : "linear-gradient(180deg, #fbfcfa 0%, #f4f6f2 46%, #eef1ed 100%)";
@@ -157,26 +198,51 @@ export default function Home() {
             </div>
 
             <div>
-              <div
-                className="flex items-center flex-wrap gap-2.5"
-                style={{
-                  fontFamily: "DM Mono, monospace",
-                  fontSize: "0.68rem",
-                  letterSpacing: "0.22em",
-                  textTransform: "uppercase",
-                  color: subtleTextColor,
-                  marginBottom: "0.9rem",
-                }}
-              >
-                <span style={{ whiteSpace: "nowrap" }}>
-                  {lang === "zh" ? "风控" : "Risk Control"} <span style={{ color: heroAccentColor }}>·</span>
-                </span>
-                <span style={{ whiteSpace: "nowrap" }}>
-                  {lang === "zh" ? "累积" : "Accumulation"} <span style={{ color: heroAccentColor }}>·</span>
-                </span>
-                <span style={{ whiteSpace: "nowrap" }}>{lang === "zh" ? "复利" : "Compounding"}</span>
-              </div>
+              {lang === "zh" && (
+                <div
+                  ref={kickerRef}
+                  className="flex items-center flex-wrap gap-2.5"
+                  style={{
+                    fontFamily: "DM Mono, monospace",
+                    fontSize: "0.92rem",
+                    letterSpacing: kickerLetterSpacing != null ? `${kickerLetterSpacing}px` : "0.22em",
+                    textTransform: "uppercase",
+                    color: subtleTextColor,
+                    marginBottom: "0.9rem",
+                  }}
+                >
+                  <span style={{ whiteSpace: "nowrap" }}>
+                    风控 <span style={{ color: heroAccentColor }}>·</span>
+                  </span>
+                  <span style={{ whiteSpace: "nowrap" }}>
+                    累积 <span style={{ color: heroAccentColor }}>·</span>
+                  </span>
+                  <span style={{ whiteSpace: "nowrap" }}>复利</span>
+                </div>
+              )}
+              {lang === "en" && (
+                <div
+                  className="flex items-center flex-wrap gap-2.5"
+                  style={{
+                    fontFamily: "DM Mono, monospace",
+                    fontSize: "0.68rem",
+                    letterSpacing: "0.22em",
+                    textTransform: "uppercase",
+                    color: subtleTextColor,
+                    marginBottom: "0.9rem",
+                  }}
+                >
+                  <span style={{ whiteSpace: "nowrap" }}>
+                    Risk Control <span style={{ color: heroAccentColor }}>·</span>
+                  </span>
+                  <span style={{ whiteSpace: "nowrap" }}>
+                    Accumulation <span style={{ color: heroAccentColor }}>·</span>
+                  </span>
+                  <span style={{ whiteSpace: "nowrap" }}>Compounding</span>
+                </div>
+              )}
               <h1
+                ref={heroTitleRef}
                 style={{
                   fontFamily: '"Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif',
                   fontSize: "clamp(3rem, 6.6vw, 5.05rem)",
@@ -204,7 +270,7 @@ export default function Home() {
                     color: heroAccentColor,
                   }}
                 >
-                  Trading for a living
+                  Trading for a Living
                 </span>
               </div>
             </div>
