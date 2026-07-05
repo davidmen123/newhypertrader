@@ -284,7 +284,7 @@ export default function Home() {
             }}
           >
             {lang === "zh"
-              ? "本页仅展示实盘账户数据，不构成投资建议。交易有风险，请独立判断。"
+              ? "本页为实盘教学账户数据，不构成投资建议。交易有风险，请独立判断。"
               : "This page displays live account data only and does not constitute investment advice. Trading involves risk; please make independent decisions."}
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
