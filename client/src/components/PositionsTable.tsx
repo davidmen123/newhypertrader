@@ -10,6 +10,7 @@ type HyperliquidPosition = {
   marginMode: string;
   total: string;
   available: string;
+  positionValue: string;
   leverage: string;
   avgPrice: string;
   markPrice: string;
@@ -43,18 +44,6 @@ function pnlColor(value: string | number | null | undefined) {
   if (n > 0) return "text-profit";
   if (n < 0) return "text-loss";
   return "text-muted-foreground";
-}
-
-function formatTime(value: string | number | null | undefined, lang: string) {
-  const ts = Number(value ?? 0);
-  if (!ts) return "—";
-  return new Date(ts).toLocaleString(lang === "zh" ? "zh-CN" : "en-US", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
 }
 
 export default function PositionsTable() {
@@ -124,6 +113,7 @@ export default function PositionsTable() {
                   <th>{t("市场", "Market")}</th>
                   <th>{t("方向", "Side")}</th>
                   <th>{t("数量", "Size")}</th>
+                  <th>{t("仓位价值", "Position Value")}</th>
                   <th>{t("可平", "Available")}</th>
                   <th>{t("均价", "Avg Price")}</th>
                   <th>{t("标记价", "Mark")}</th>
@@ -132,7 +122,6 @@ export default function PositionsTable() {
                   <th>{t("收益率", "ROI")}</th>
                   <th>{t("资金费", "Funding")}</th>
                   <th>{t("强平价", "Liq.")}</th>
-                  <th>{t("更新", "Updated")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -147,6 +136,7 @@ export default function PositionsTable() {
                         </span>
                       </td>
                       <td>{fmt(p.total, 2)}</td>
+                      <td>{fmt(p.positionValue, 2)}</td>
                       <td>{fmt(p.available, 2)}</td>
                       <td>{fmt(p.avgPrice, 2)}</td>
                       <td>{fmt(p.markPrice, 2)}</td>
@@ -155,7 +145,6 @@ export default function PositionsTable() {
                       <td className={pnlColor(p.profitRate)}>{signed(num(p.profitRate) * 100, 2)}%</td>
                       <td className={pnlColor(p.fundingFee)}>{signed(p.fundingFee, 2)}</td>
                       <td>{num(p.liquidationPrice) > 0 ? fmt(p.liquidationPrice, 2) : "—"}</td>
-                      <td className="text-muted-foreground">{formatTime(p.updatedTime, lang)}</td>
                     </tr>
                   );
                 })}
