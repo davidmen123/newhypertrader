@@ -84,7 +84,6 @@ export default function Home() {
     : "linear-gradient(180deg, #fbfcfa 0%, #f4f6f2 46%, #eef1ed 100%)";
   const heroTitleColor = isDark ? "#fffef8" : "#101214";
   const heroAccentColor = isDark ? "rgb(242 231 201 / 88%)" : "rgb(31 107 79 / 86%)";
-  const heroMetaColor = isDark ? "rgb(255 255 255 / 82%)" : "rgb(42 47 52 / 76%)";
   const subtleTextColor = isDark ? "rgb(230 230 224 / 76%)" : "rgb(75 82 89 / 72%)";
   const panelBackground = isDark ? "rgb(255 255 255 / 4%)" : "rgb(255 255 255 / 82%)";
   const panelBorder = isDark ? "rgb(255 255 255 / 9%)" : "rgb(17 19 21 / 10%)";
@@ -131,77 +130,82 @@ export default function Home() {
                     {lang === "en" ? "CN" : "EN"}
                   </button>
                 </div>
-                <div
-                  style={{
-                    fontFamily: "DM Mono, monospace",
-                    fontSize: "0.65rem",
-                    color: subtleTextColor,
-                    letterSpacing: "0.04em",
-                    textAlign: "right",
-                  }}
-                  className="hidden sm:block"
-                >
-                  {new Date().toLocaleDateString(lang === "zh" ? "zh-CN" : "en-US", {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
+                <div className="hidden sm:flex items-center gap-2">
+                  <span
+                    className="pulse-dot"
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: "oklch(68% 0.15 145)",
+                      boxShadow: "0 0 8px oklch(68% 0.15 145 / 55%)",
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontFamily: "DM Mono, monospace",
+                      fontSize: "0.65rem",
+                      color: subtleTextColor,
+                      letterSpacing: "0.14em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {lang === "zh" ? "实时更新" : "Live Updates"}
+                  </span>
                 </div>
               </div>
             </div>
 
-            <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_290px] lg:items-end">
-              <div>
-                <h1
-                  style={{
-                    fontFamily: '"Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif',
-                    fontSize: "clamp(3rem, 6.6vw, 5.05rem)",
-                    fontWeight: 300,
-                    letterSpacing: "0.015em",
-                    lineHeight: 0.98,
-                    color: heroTitleColor,
-                    textShadow: isDark ? "0 12px 42px rgb(0 0 0 / 55%)" : "none",
-                  }}
-                >
-                  以交易为生
-                </h1>
-                <div
-                  className="flex flex-wrap items-center gap-4 sm:gap-5"
-                  style={{
-                    marginTop: "1rem",
-                  }}
-                >
-                  <span
-                    style={{
-                      fontFamily: '"Bodoni 72", Didot, "Cormorant Garamond", Georgia, serif',
-                      fontSize: "clamp(1.08rem, 1.45vw, 1.28rem)",
-                      fontWeight: 400,
-                      letterSpacing: "0.015em",
-                      color: heroAccentColor,
-                    }}
-                  >
-                    Trading for a living
-                  </span>
-                  <span className="hidden sm:block" style={{ width: 76, height: 1, background: heroRule }} />
-                </div>
-              </div>
-
+            <div>
               <div
+                className="flex items-center flex-wrap gap-2.5"
                 style={{
-                  fontFamily: '"Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif',
-                  color: heroMetaColor,
-                  fontSize: "clamp(0.92rem, 1.1vw, 1.04rem)",
-                  fontWeight: 300,
-                  letterSpacing: "0.16em",
-                  lineHeight: 1.9,
-                  borderLeft: `1px solid ${heroRule}`,
-                  paddingLeft: "1.25rem",
+                  fontFamily: "DM Mono, monospace",
+                  fontSize: "0.68rem",
+                  letterSpacing: "0.22em",
+                  textTransform: "uppercase",
+                  color: subtleTextColor,
+                  marginBottom: "0.9rem",
                 }}
               >
-                <div>{lang === "zh" ? "风控" : "Risk Control"}</div>
-                <div>{lang === "zh" ? "累积" : "Accumulation"}</div>
-                <div>{lang === "zh" ? "复利" : "Compounding"}</div>
+                <span style={{ whiteSpace: "nowrap" }}>
+                  {lang === "zh" ? "风控" : "Risk Control"} <span style={{ color: heroAccentColor }}>·</span>
+                </span>
+                <span style={{ whiteSpace: "nowrap" }}>
+                  {lang === "zh" ? "累积" : "Accumulation"} <span style={{ color: heroAccentColor }}>·</span>
+                </span>
+                <span style={{ whiteSpace: "nowrap" }}>{lang === "zh" ? "复利" : "Compounding"}</span>
+              </div>
+              <h1
+                style={{
+                  fontFamily: '"Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif',
+                  fontSize: "clamp(3rem, 6.6vw, 5.05rem)",
+                  fontWeight: 300,
+                  letterSpacing: "0.015em",
+                  lineHeight: 0.98,
+                  color: heroTitleColor,
+                  textShadow: isDark ? "0 12px 42px rgb(0 0 0 / 55%)" : "none",
+                }}
+              >
+                以交易为生
+              </h1>
+              <div
+                className="flex flex-wrap items-center gap-4 sm:gap-5"
+                style={{
+                  marginTop: "1rem",
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: '"Bodoni 72", Didot, "Cormorant Garamond", Georgia, serif',
+                    fontSize: "clamp(1.08rem, 1.45vw, 1.28rem)",
+                    fontWeight: 400,
+                    letterSpacing: "0.015em",
+                    color: heroAccentColor,
+                  }}
+                >
+                  Trading for a living
+                </span>
               </div>
             </div>
           </div>
