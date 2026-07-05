@@ -850,6 +850,7 @@ export async function getHyperliquidPositions() {
       total: Math.abs(size).toString(),
       available: Math.abs(size).toString(),
       positionValue: String(toNumber(position.positionValue)),
+      marginUsed: String(toNumber(position.marginUsed)),
       leverage: String(position.leverage?.value ?? 0),
       avgPrice: String(entry),
       markPrice: String(mark),

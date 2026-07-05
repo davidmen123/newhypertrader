@@ -11,6 +11,7 @@ type HyperliquidPosition = {
   total: string;
   available: string;
   positionValue: string;
+  marginUsed: string;
   leverage: string;
   avgPrice: string;
   markPrice: string;
@@ -118,6 +119,7 @@ export default function PositionsTable() {
                   <th>{t("均价", "Avg Price")}</th>
                   <th>{t("标记价", "Mark")}</th>
                   <th>{t("杠杆", "Lev.")}</th>
+                  <th>{t("保证金", "Margin")}</th>
                   <th>{t("未实现盈亏", "Unrealized")}</th>
                   <th>{t("收益率", "ROI")}</th>
                   <th>{t("资金费", "Funding")}</th>
@@ -141,6 +143,7 @@ export default function PositionsTable() {
                       <td>{fmt(p.avgPrice, 2)}</td>
                       <td>{fmt(p.markPrice, 2)}</td>
                       <td>{fmt(p.leverage, 2)}x</td>
+                      <td>{fmt(p.marginUsed, 2)}</td>
                       <td className={pnlColor(p.unrealisedPnl)}>{signed(p.unrealisedPnl, 2)}</td>
                       <td className={pnlColor(p.profitRate)}>{signed(num(p.profitRate) * 100, 2)}%</td>
                       <td className={pnlColor(p.fundingFee)}>{signed(p.fundingFee, 2)}</td>
