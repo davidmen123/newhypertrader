@@ -423,6 +423,71 @@ export async function getHyperliquidOpenOrders() {
   }));
 }
 
+interface HyperliquidHistoricalOrder {
+  order?: HyperliquidOpenOrder;
+  status?: string;
+  statusTimestamp?: number;
+}
+
+async function getHyperliquidOrderHistoryForDex(dex = "") {
+  const user = assertAddress();
+  return callInfo<HyperliquidHistoricalOrder[]>({
+    type: "historicalOrders",
+    user,
+    ...(dex ? { dex } : {}),
+  });
+}
+
+export async function getHyperliquidOrderHistory(limit = 200) {
+  const results = await Promise.allSettled(
+    getPerpDexes().map(async (dex) => ({
+      dex,
+      entries: await getHyperliquidOrderHistoryForDex(dex),
+    }))
+  );
+
+  const entries = results.flatMap((result) => {
+    if (result.status === "fulfilled") {
+      return result.value.entries.map((entry) => ({ ...entry, dex: result.value.dex }));
+    }
+    console.warn("[Hyperliquid] Failed to read order history:", result.reason);
+    return [];
+  });
+
+  const seen = new Set<string>();
+  return entries
+    .filter((entry) => {
+      const key = `${entry.order?.oid ?? ""}-${entry.statusTimestamp ?? ""}-${entry.status ?? ""}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => (b.statusTimestamp ?? 0) - (a.statusTimestamp ?? 0))
+    .slice(0, limit)
+    .map((entry) => {
+      const order = entry.order ?? {};
+      return {
+        symbol: order.coin ? `${order.coin}-PERP` : "—",
+        market: entry.dex ? String(entry.dex) : "default",
+        coin: order.coin ?? "",
+        side: order.side ?? "",
+        orderType: order.orderType ?? (order.isTrigger ? "Trigger" : "Limit"),
+        limitPrice: String(order.limitPx ?? ""),
+        size: String(order.sz ?? ""),
+        originalSize: String(order.origSz ?? order.sz ?? ""),
+        orderId: String(order.oid ?? ""),
+        timestamp: String(order.timestamp ?? ""),
+        reduceOnly: Boolean(order.reduceOnly),
+        tif: order.tif ?? "",
+        triggerPrice: order.triggerPx != null ? String(order.triggerPx) : "",
+        triggerCondition: order.triggerCondition ?? "",
+        isTrigger: Boolean(order.isTrigger),
+        status: entry.status ?? "",
+        statusTimestamp: String(entry.statusTimestamp ?? ""),
+      };
+    });
+}
+
 export async function getHyperliquidLedgerUpdates(startTime = 0, endTime = Date.now()) {
   const user = assertAddress();
   return callInfo<HyperliquidLedgerUpdate[]>({

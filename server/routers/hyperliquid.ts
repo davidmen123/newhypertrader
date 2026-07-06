@@ -7,6 +7,7 @@ import {
   getHyperliquidConfigStatus,
   getHyperliquidMarketPrices,
   getHyperliquidOpenOrders,
+  getHyperliquidOrderHistory,
   getActiveHyperliquidPerpStates,
   getHyperliquidPerpStates,
   getHyperliquidPositions,
@@ -189,6 +190,10 @@ export const hyperliquidRouter = router({
 
   openOrders: publicProcedure.query(async () => {
     return getHyperliquidOpenOrders();
+  }),
+
+  orderHistory: publicProcedure.query(async () => {
+    return getHyperliquidOrderHistory();
   }),
 
   tradeHistory: publicProcedure

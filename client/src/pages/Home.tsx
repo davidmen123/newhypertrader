@@ -3,6 +3,7 @@ import { trpc } from "@/lib/trpc";
 import LiveTicker from "@/components/LiveTicker";
 import PositionsTable from "@/components/PositionsTable";
 import OpenOrdersTable from "@/components/OpenOrdersTable";
+import OrderHistoryTable from "@/components/OrderHistoryTable";
 import PnlChart from "@/components/PnlChart";
 import AccountOverview from "@/components/AccountOverview";
 import EconomicCalendar from "@/components/EconomicCalendar";
@@ -322,12 +323,17 @@ export default function Home() {
             <TradeHistory />
           </CollapsibleSection>
 
-          {/* 6. Economic Calendar — default collapsed */}
+          {/* 6. Order History — default collapsed */}
+          <CollapsibleSection label={lang === "zh" ? "委托历史" : "Order History"} defaultOpen={false}>
+            <OrderHistoryTable />
+          </CollapsibleSection>
+
+          {/* 7. Economic Calendar — default collapsed */}
           <CollapsibleSection label={tr.economicCalendar} defaultOpen={false}>
             <EconomicCalendar />
           </CollapsibleSection>
 
-          {/* 7. Earnings Calendar — default collapsed */}
+          {/* 8. Earnings Calendar — default collapsed */}
           <CollapsibleSection label={tr.earningsCalendar} defaultOpen={false}>
             <EarningsCalendar />
           </CollapsibleSection>
