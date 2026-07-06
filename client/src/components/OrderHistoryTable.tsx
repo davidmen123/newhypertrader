@@ -23,7 +23,7 @@ type HyperliquidHistoricalOrder = {
   statusTimestamp: string;
 };
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 function num(value: string | number | null | undefined) {
   const n = Number(value ?? 0);
