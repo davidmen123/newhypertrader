@@ -123,7 +123,20 @@ function filledSize(order: HyperliquidHistoricalOrder) {
   return filled > 0 ? filled : 0;
 }
 
+// Market-type orders (Market / Stop Market / Take Profit Market) carry a
+// slippage-cap limitPx from the API, not a real order price — Hyperliquid
+// shows "Market" for them, so mirror that instead of the misleading number.
+function isMarketType(order: HyperliquidHistoricalOrder) {
+  return order.orderType.toLowerCase().includes("market");
+}
+
+function displayPrice(order: HyperliquidHistoricalOrder) {
+  if (isMarketType(order)) return "Market";
+  return num(order.limitPrice) > 0 ? fmt(order.limitPrice, 2) : "—";
+}
+
 function displayOrderValue(order: HyperliquidHistoricalOrder) {
+  if (isMarketType(order)) return "—";
   const price = num(order.limitPrice);
   const size = num(order.originalSize);
   if (price <= 0 || size <= 0) return "—";
@@ -197,7 +210,7 @@ export default function OrderHistoryTable() {
                     <td className="text-foreground font-medium">{order.symbol}</td>
                     <td className={sideClass(order.side)}>{sideLabel(order.side, lang)}</td>
                     <td>{displayOrderType(order, lang)}</td>
-                    <td>{num(order.limitPrice) > 0 ? fmt(order.limitPrice, 2) : "—"}</td>
+                    <td>{displayPrice(order)}</td>
                     <td>{num(order.originalSize) > 0 ? fmt(order.originalSize, 2) : "—"}</td>
                     <td>{filledSize(order) > 0 ? fmt(filledSize(order), 2) : "—"}</td>
                     <td>{displayOrderValue(order)}</td>
@@ -223,7 +236,7 @@ export default function OrderHistoryTable() {
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <span className={sideClass(order.side)}>{sideLabel(order.side, lang)} · {displayOrderType(order, lang)}</span>
-                  <span>{t("价格", "Price")}: {num(order.limitPrice) > 0 ? fmt(order.limitPrice, 2) : "—"}</span>
+                  <span>{t("价格", "Price")}: {displayPrice(order)}</span>
                   <span>{t("数量", "Size")}: {num(order.originalSize) > 0 ? fmt(order.originalSize, 2) : "—"}</span>
                   <span>{t("已成交", "Filled")}: {filledSize(order) > 0 ? fmt(filledSize(order), 2) : "—"}</span>
                   <span>{t("时间", "Time")}: {formatTime(order.statusTimestamp || order.timestamp, lang)}</span>
