@@ -789,16 +789,22 @@ export async function getHyperliquidCandles(params: {
   });
 }
 
-function choosePortfolioWindow(startDate?: string) {
-  if (!startDate) return "allTime";
-  const startMs = new Date(`${startDate}T00:00:00Z`).getTime();
-  const ageDays = (Date.now() - startMs) / (24 * 60 * 60 * 1000);
-  if (ageDays <= 2) return "day";
-  if (ageDays <= 10) return "week";
-  if (ageDays <= 45) return "month";
-  // Hyperliquid does not expose every custom range directly. Build 90D and
-  // other longer ranges by filtering allTime account history.
-  return "allTime";
+// Pick the finest-grained portfolio window whose history actually covers the
+// requested start time. Choosing by range age alone can silently drop the
+// earliest days of a range (e.g. a 10-day range served from the ~7-day week
+// window). The tolerance absorbs the gap between the date-floored start and
+// the window's first sample so boundary requests keep the finer granularity.
+function choosePortfolioWindow(portfolio: HyperliquidPortfolio, startMs: number) {
+  const toleranceMs = 24 * 60 * 60 * 1000;
+  let fallback: HyperliquidPortfolioWindow | null = null;
+  for (const name of ["day", "week", "month", "allTime"]) {
+    const windowData = findPortfolioWindow(portfolio, name);
+    if (!windowData) continue;
+    fallback = windowData;
+    const firstTime = windowData.accountValueHistory?.[0]?.[0];
+    if (firstTime != null && firstTime <= startMs + toleranceMs) return windowData;
+  }
+  return fallback;
 }
 
 function findPortfolioWindow(portfolio: HyperliquidPortfolio, name: string) {
@@ -827,16 +833,13 @@ export async function getHyperliquidPortfolioSnapshots(params: {
   limit?: number;
 }) {
   const portfolio = await getHyperliquidPortfolio();
-  const preferredWindow = choosePortfolioWindow(params.startDate);
+  const startMs = params.startDate ? new Date(`${params.startDate}T00:00:00Z`).getTime() : 0;
+  const endMs = params.endDate ? new Date(`${params.endDate}T23:59:59Z`).getTime() : Number.MAX_SAFE_INTEGER;
   const windowData =
-    findPortfolioWindow(portfolio, preferredWindow) ??
-    findPortfolioWindow(portfolio, "allTime") ??
+    choosePortfolioWindow(portfolio, startMs) ??
     portfolio.find(([, data]) => data.accountValueHistory?.length)?.[1];
 
   if (!windowData) return [];
-
-  const startMs = params.startDate ? new Date(`${params.startDate}T00:00:00Z`).getTime() : 0;
-  const endMs = params.endDate ? new Date(`${params.endDate}T23:59:59Z`).getTime() : Number.MAX_SAFE_INTEGER;
   const pnlHistory = windowData.pnlHistory ?? [];
   const accountValueHistory = windowData.accountValueHistory ?? [];
   const baseEquity = accountValueHistory.length > 0 ? toNumber(accountValueHistory[0][1]) : 0;
