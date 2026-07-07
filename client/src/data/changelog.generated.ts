@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.13.0",
+    "date": "2026-07-08",
+    "zh": "实时更新指示移到标题栏Live Account后面",
+    "en": "Moved the live indicator next to Live Account"
+  },
+  {
     "version": "1.12.0",
     "date": "2026-07-08",
     "zh": "首页标题改用毛笔楷书字体",

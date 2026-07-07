@@ -140,6 +140,7 @@ export default function Home() {
           <div className="flex flex-col gap-8 sm:gap-10">
             <div className="flex items-start justify-between gap-5">
               <div
+                className="flex items-center gap-2.5"
                 style={{
                   fontFamily: "DM Mono, monospace",
                   fontSize: "0.68rem",
@@ -148,51 +149,43 @@ export default function Home() {
                   paddingTop: "0.2rem",
                 }}
               >
-                PnLNote.com&nbsp;&nbsp;/&nbsp;&nbsp;Live Account
+                <span>PnLNote.com&nbsp;&nbsp;/&nbsp;&nbsp;Live Account</span>
+                <span
+                  className="pulse-dot"
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background: "oklch(68% 0.15 145)",
+                    boxShadow: "0 0 8px oklch(68% 0.15 145 / 55%)",
+                    flexShrink: 0,
+                  }}
+                />
+                <span
+                  className="hidden sm:inline"
+                  style={{ fontSize: "0.65rem", letterSpacing: "0.14em", textTransform: "uppercase" }}
+                >
+                  {lang === "zh" ? "实时更新" : "Live Updates"}
+                </span>
               </div>
 
-              <div className="flex flex-col items-end gap-2.5">
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={toggleTheme}
-                    className="header-icon-button"
-                    title={isDark ? "切换到白天" : "切换到黑夜"}
-                    aria-label={isDark ? "切换到白天" : "切换到黑夜"}
-                  >
-                    {isDark ? <Sun size={14} /> : <Moon size={14} />}
-                  </button>
-                  <button
-                    onClick={() => setLang(lang === "en" ? "zh" : "en")}
-                    className="header-icon-button header-lang-button"
-                    title={lang === "en" ? "切换到中文" : "Switch to English"}
-                    aria-label={lang === "en" ? "切换到中文" : "Switch to English"}
-                  >
-                    {lang === "en" ? "CN" : "EN"}
-                  </button>
-                </div>
-                <div className="hidden sm:flex items-center gap-2">
-                  <span
-                    className="pulse-dot"
-                    style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: "50%",
-                      background: "oklch(68% 0.15 145)",
-                      boxShadow: "0 0 8px oklch(68% 0.15 145 / 55%)",
-                    }}
-                  />
-                  <span
-                    style={{
-                      fontFamily: "DM Mono, monospace",
-                      fontSize: "0.65rem",
-                      color: subtleTextColor,
-                      letterSpacing: "0.14em",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {lang === "zh" ? "实时更新" : "Live Updates"}
-                  </span>
-                </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={toggleTheme}
+                  className="header-icon-button"
+                  title={isDark ? "切换到白天" : "切换到黑夜"}
+                  aria-label={isDark ? "切换到白天" : "切换到黑夜"}
+                >
+                  {isDark ? <Sun size={14} /> : <Moon size={14} />}
+                </button>
+                <button
+                  onClick={() => setLang(lang === "en" ? "zh" : "en")}
+                  className="header-icon-button header-lang-button"
+                  title={lang === "en" ? "切换到中文" : "Switch to English"}
+                  aria-label={lang === "en" ? "切换到中文" : "Switch to English"}
+                >
+                  {lang === "en" ? "CN" : "EN"}
+                </button>
               </div>
             </div>
 
