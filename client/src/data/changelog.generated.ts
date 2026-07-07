@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.12.0",
+    "date": "2026-07-08",
+    "zh": "首页标题改用毛笔楷书字体",
+    "en": "Switched the hero title to a brush calligraphy font"
+  },
+  {
     "version": "1.11.0",
     "date": "2026-07-08",
     "zh": "行情卡新增EMA20与RSI技术指标",

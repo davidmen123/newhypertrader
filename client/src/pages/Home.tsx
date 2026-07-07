@@ -241,10 +241,10 @@ export default function Home() {
               <h1
                 ref={heroTitleRef}
                 style={{
-                  fontFamily: '"Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif',
+                  fontFamily: '"Ma Shan Zheng", "Noto Serif SC", "Songti SC", "STSong", serif',
                   fontSize: "clamp(3rem, 6.6vw, 5.05rem)",
-                  fontWeight: 300,
-                  letterSpacing: "0.015em",
+                  fontWeight: 400,
+                  letterSpacing: "0.02em",
                   lineHeight: 0.98,
                   color: heroTitleColor,
                   textShadow: isDark ? "0 12px 42px rgb(0 0 0 / 55%)" : "none",
