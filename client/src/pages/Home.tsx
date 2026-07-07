@@ -152,6 +152,7 @@ export default function Home() {
                 <span>PnLNote.com&nbsp;&nbsp;/&nbsp;&nbsp;Live Account</span>
                 <span
                   className="pulse-dot"
+                  title={lang === "zh" ? "实时更新" : "Live updates"}
                   style={{
                     width: 6,
                     height: 6,
@@ -161,12 +162,6 @@ export default function Home() {
                     flexShrink: 0,
                   }}
                 />
-                <span
-                  className="hidden sm:inline"
-                  style={{ fontSize: "0.65rem", letterSpacing: "0.14em", textTransform: "uppercase" }}
-                >
-                  {lang === "zh" ? "实时更新" : "Live Updates"}
-                </span>
               </div>
 
               <div className="flex items-center gap-1.5">
