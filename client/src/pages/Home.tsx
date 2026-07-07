@@ -69,14 +69,11 @@ export default function Home() {
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === "dark";
 
-  // Page view counter: increment on mount, display total
+  // Count the visit server-side; the total is no longer displayed.
   const incrementMutation = trpc.pageViews.increment.useMutation();
-  const [pageViewCount, setPageViewCount] = useState<number | null>(null);
 
   useEffect(() => {
-    incrementMutation.mutateAsync().then((res) => {
-      setPageViewCount(res.count);
-    }).catch(() => { /* silently ignore */ });
+    incrementMutation.mutateAsync().catch(() => { /* silently ignore */ });
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -381,53 +378,19 @@ export default function Home() {
               : "This page displays live account data only and does not constitute investment advice. Trading involves risk; please make independent decisions."}
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <span
-            style={{
-              fontFamily: "Inter, sans-serif",
-              fontSize: "0.6rem",
-              letterSpacing: "0.18em",
-              textTransform: "uppercase",
-              color: subtleTextColor,
-            }}
-          >
-            以交易为生 Trading for a living
-          </span>
-          <div
-            className="flex flex-wrap items-center gap-x-5 gap-y-2"
-            style={{
-              fontFamily: "Inter, sans-serif",
-              fontSize: "0.62rem",
-              letterSpacing: "0.08em",
-              color: subtleTextColor,
-            }}
-          >
-            <span>公众号：温格笔记</span>
-            <span>X：@mindwingsD</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "1.2rem" }}>
-            {pageViewCount !== null && (
-              <span
-                style={{
-                  fontFamily: "DM Mono, monospace",
-                  fontSize: "0.55rem",
-                  color: subtleTextColor,
-                  letterSpacing: "0.06em",
-                }}
-              >
-                {pageViewCount.toLocaleString()} views
-              </span>
-            )}
-            <span
+            <div
+              className="flex flex-wrap items-center gap-x-5 gap-y-2"
               style={{
-                fontFamily: "DM Mono, monospace",
-                fontSize: "0.6rem",
+                fontFamily: "Inter, sans-serif",
+                fontSize: "0.62rem",
+                letterSpacing: "0.08em",
                 color: subtleTextColor,
               }}
             >
-              {tr.autoRefresh}
-            </span>
+              <span>公众号：温格笔记</span>
+              <span>X：@mindwingsD</span>
+            </div>
             <Changelog />
-          </div>
           </div>
         </div>
       </footer>

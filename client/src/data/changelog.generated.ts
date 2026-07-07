@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.7.0",
+    "date": "2026-07-07",
+    "zh": "精简页脚信息",
+    "en": "Simplified the footer"
+  },
+  {
     "version": "1.6.0",
     "date": "2026-07-07",
     "zh": "页脚新增版本号与更新日志",
