@@ -85,6 +85,7 @@ export default function TradeHistory() {
     return sum + (trade.feeDetail ?? []).reduce((feeSum, item) => feeSum + Math.abs(num(item.fee)), 0);
   }, 0);
   const totalPnl = filtered.reduce((sum, trade) => sum + num(trade.execPnl), 0);
+  const totalFunding = num((data as { totalFundingUsdc?: number } | undefined)?.totalFundingUsdc);
 
   const fmtTime = (ts: string) =>
     new Date(Number(ts)).toLocaleString(lang === "zh" ? "zh-CN" : "en-US", {
@@ -206,6 +207,14 @@ export default function TradeHistory() {
               {t("手续费", "Fees")}
             </span>
             <div className="num-display" style={{ fontSize: "0.78rem" }}>{fmt(totalFees, 2)}</div>
+          </div>
+          <div>
+            <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.6rem" }}>
+              {t("累积资金费", "Net Funding")}
+            </span>
+            <div className="num-display" style={{ fontSize: "0.78rem", color: pnlColor(totalFunding) }}>
+              {signed(totalFunding, 2)}
+            </div>
           </div>
           <div>
             <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.6rem" }}>

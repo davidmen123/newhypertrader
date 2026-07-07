@@ -1028,12 +1028,38 @@ export async function getHyperliquidAccountOverview() {
   };
 }
 
+interface HyperliquidFundingUpdate {
+  time?: number;
+  delta?: {
+    type?: string;
+    coin?: string;
+    usdc?: string | number;
+    szi?: string;
+    fundingRate?: string;
+  };
+}
+
+// Signed funding credited to the account (delta.usdc): positive = received,
+// negative = paid.
+export async function getHyperliquidFundingHistory(startTime = 0, endTime = Date.now()) {
+  const user = assertAddress();
+  return callInfo<HyperliquidFundingUpdate[]>({
+    type: "userFunding",
+    user,
+    startTime,
+    endTime,
+  });
+}
+
 export async function getHyperliquidTradeHistory(params: {
   startTime?: number;
   endTime?: number;
   limit?: number;
 }) {
-  const fills = await getHyperliquidFills(params.startTime, params.endTime);
+  const [fills, fundingUpdates] = await Promise.all([
+    getHyperliquidFills(params.startTime, params.endTime),
+    getHyperliquidFundingHistory(params.startTime ?? 0, params.endTime ?? Date.now()).catch(() => []),
+  ]);
   const grouped = new Map<string, {
     fill: HyperliquidFill;
     qty: number;
@@ -1106,5 +1132,10 @@ export async function getHyperliquidTradeHistory(params: {
       };
     });
 
-  return { trades: mapped, total: mapped.length, cursor: null };
+  const totalFundingUsdc = fundingUpdates.reduce(
+    (sum, update) => sum + toNumber(update.delta?.usdc),
+    0
+  );
+
+  return { trades: mapped, total: mapped.length, cursor: null, totalFundingUsdc };
 }
