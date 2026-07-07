@@ -195,7 +195,9 @@ const INDICATOR_CONFIG: Array<{
   has4h: boolean;
 }> = [
   { key: "btc", source: "hl", symbol: "BTC", has4h: true },
-  { key: "nas100", source: "hl", symbol: "NAS100", has4h: true },
+  // NAS100 from Nasdaq futures (Yahoo), not the 24/7 Hyperliquid perp, so the
+  // EMA/RSI reflect equity-market sessions. 4H is aggregated from 1h bars.
+  { key: "nas100", source: "yahoo", symbol: "NQ=F", has4h: true },
   { key: "gold", source: "yahoo", symbol: "GC=F", has4h: true },
   { key: "vix", source: "yahoo", symbol: "%5EVIX", has4h: false },
   { key: "dxy", source: "yahoo", symbol: "DX-Y.NYB", has4h: false },
