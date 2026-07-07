@@ -18,6 +18,7 @@ import {
   getHyperliquidTradeHistory,
 } from "../hyperliquid.js";
 import { getPnlSnapshots, upsertPnlSnapshot } from "../db.js";
+import { seriesIndicators } from "../indicators.js";
 
 const yahooUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
@@ -127,6 +128,115 @@ async function fetchHyperliquidPrice24hAgo(coin: string) {
   return best?.close ?? null;
 }
 
+// ─── Market indicators (EMA20 position + RSI14 per timeframe) ────────────────
+
+async function fetchYahooCloses(symbol: string, interval: string, range: string): Promise<number[]> {
+  const symbolPath = symbol.includes("%") ? symbol : encodeURIComponent(symbol);
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbolPath}?interval=${interval}&range=${range}`;
+  const extract = (payload: unknown): number[] => {
+    const closes = (payload as any)?.chart?.result?.[0]?.indicators?.quote?.[0]?.close ?? [];
+    return (closes as Array<number | null>).map((c) => Number(c)).filter((c) => Number.isFinite(c) && c > 0);
+  };
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": yahooUserAgent, Accept: "application/json", Referer: "https://finance.yahoo.com/" },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) throw new Error(`Yahoo returned ${response.status}`);
+    return extract(await response.json());
+  } catch {
+    try {
+      const { execFile } = await import("child_process");
+      const { promisify } = await import("util");
+      const execFileAsync = promisify(execFile);
+      const { stdout } = await execFileAsync("curl", [
+        "-sS", "-L", "--max-time", "10",
+        "-A", yahooUserAgent,
+        "-H", "Accept: application/json",
+        "-H", "Referer: https://finance.yahoo.com/",
+        url,
+      ], { timeout: 12000 });
+      return extract(JSON.parse(stdout));
+    } catch {
+      return [];
+    }
+  }
+}
+
+async function fetchHyperliquidCloses(coin: string, interval: string, spanMs: number): Promise<number[]> {
+  const now = Date.now();
+  const raw = await getHyperliquidCandles({ coin, interval, startTime: now - spanMs, endTime: now }).catch(() => []);
+  const candles = Array.isArray(raw) ? raw : [];
+  return candles
+    .slice()
+    .sort((a, b) => (a.t ?? a.T ?? 0) - (b.t ?? b.T ?? 0))
+    .map((candle) => Number(candle.c))
+    .filter((c) => Number.isFinite(c) && c > 0);
+}
+
+// Down-sample an ascending series to every Nth point, anchored to the latest
+// bar — used to build 4H closes from a 1H series when there's no native 4H.
+function sampleEveryN(values: number[], n: number): number[] {
+  const out: number[] = [];
+  for (let i = values.length - 1; i >= 0; i -= n) out.push(values[i]);
+  return out.reverse();
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Which series to build per ticker. 4H comes from Hyperliquid's native 4h
+// candles (BTC / NAS100) or, for gold, aggregated from Yahoo 1h bars.
+// Session-based indices are 1D-only.
+type IndicatorSource = "hl" | "yahoo";
+const INDICATOR_CONFIG: Array<{
+  key: string;
+  source: IndicatorSource;
+  symbol: string;
+  has4h: boolean;
+}> = [
+  { key: "btc", source: "hl", symbol: "BTC", has4h: true },
+  { key: "nas100", source: "hl", symbol: "NAS100", has4h: true },
+  { key: "gold", source: "yahoo", symbol: "GC=F", has4h: true },
+  { key: "vix", source: "yahoo", symbol: "%5EVIX", has4h: false },
+  { key: "dxy", source: "yahoo", symbol: "DX-Y.NYB", has4h: false },
+  { key: "shanghai", source: "yahoo", symbol: "000001.SS", has4h: false },
+  { key: "nikkei", source: "yahoo", symbol: "%5EN225", has4h: false },
+  { key: "kospi", source: "yahoo", symbol: "%5EKS11", has4h: false },
+];
+
+let indicatorCache: { at: number; data: Record<string, unknown> } | null = null;
+const INDICATOR_TTL_MS = 10 * 60 * 1000;
+
+async function getMarketIndicators() {
+  if (indicatorCache && Date.now() - indicatorCache.at < INDICATOR_TTL_MS) {
+    return indicatorCache.data;
+  }
+
+  const entries = await Promise.all(
+    INDICATOR_CONFIG.map(async (cfg) => {
+      const daily = cfg.source === "hl"
+        ? await fetchHyperliquidCloses(cfg.symbol, "1d", 130 * DAY_MS)
+        : await fetchYahooCloses(cfg.symbol, "1d", "6mo");
+
+      let fourHour: number[] = [];
+      if (cfg.has4h) {
+        if (cfg.source === "hl") {
+          fourHour = await fetchHyperliquidCloses(cfg.symbol, "4h", 40 * DAY_MS);
+        } else {
+          const hourly = await fetchYahooCloses(cfg.symbol, "60m", "1mo");
+          fourHour = sampleEveryN(hourly, 4);
+        }
+      }
+
+      return [cfg.key, { d1: seriesIndicators(daily), h4: seriesIndicators(fourHour) }] as const;
+    })
+  );
+
+  const data = Object.fromEntries(entries);
+  indicatorCache = { at: Date.now(), data };
+  return data;
+}
+
 export const hyperliquidRouter = router({
   configStatus: publicProcedure.query(() => getHyperliquidConfigStatus()),
 
@@ -175,6 +285,10 @@ export const hyperliquidRouter = router({
       vix: vix.current,
       vixPrevClose: vix.prevClose,
     };
+  }),
+
+  marketIndicators: publicProcedure.query(async () => {
+    return getMarketIndicators();
   }),
 
   accountOverview: publicProcedure.query(async () => {

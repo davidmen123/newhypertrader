@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.11.0",
+    "date": "2026-07-08",
+    "zh": "行情卡新增EMA20与RSI技术指标",
+    "en": "Added EMA20/RSI indicators to the market ticker"
+  },
+  {
     "version": "1.10.0",
     "date": "2026-07-07",
     "zh": "行情新增美元指数DXY",

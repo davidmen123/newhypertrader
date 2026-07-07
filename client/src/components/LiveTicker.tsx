@@ -3,6 +3,7 @@
  * Row 1 (Prices): BTC
  * Row 2 (Indices): VIX · GOLD · NAS100 · SSE
  */
+import { useState } from "react";
 import { useLang } from "@/contexts/LangContext";
 import { trpc } from "@/lib/trpc";
 
@@ -36,6 +37,49 @@ function ChangeTag({ pct }: { pct: number | null }) {
   );
 }
 
+// ─── Indicator types ──────────────────────────────────────────────────────────
+type TimeframeIndicator = { emaAbove: boolean; rsi: number } | null;
+type TickerIndicator = { d1: TimeframeIndicator; h4: TimeframeIndicator } | undefined;
+
+const PROFIT = "oklch(68% 0.14 145)";
+const LOSS = "oklch(62% 0.18 25)";
+
+function rsiColor(rsi: number) {
+  if (rsi >= 70) return LOSS;
+  if (rsi <= 30) return PROFIT;
+  return "var(--text-soft)";
+}
+
+// Compact EMA20-position + RSI14 row shown at the bottom of each card. Falls
+// back to the 1D reading (with a tag) when 4H isn't available for that market.
+function IndicatorRow({ indicator, timeframe }: { indicator: TickerIndicator; timeframe: "4H" | "1D" }) {
+  if (!indicator) return null;
+  const use4h = timeframe === "4H" && indicator.h4 != null;
+  const data = use4h ? indicator.h4 : indicator.d1;
+  const tag = use4h ? "4H" : "1D";
+  if (!data) return null;
+
+  return (
+    <div
+      className="mt-1.5 pt-1.5 flex items-center gap-x-2"
+      style={{
+        borderTop: "1px solid var(--panel-border)",
+        fontFamily: "DM Mono, monospace",
+        fontSize: "0.6rem",
+        letterSpacing: "0.02em",
+      }}
+    >
+      <span style={{ color: "var(--text-faint)" }}>{tag}</span>
+      <span style={{ color: data.emaAbove ? PROFIT : LOSS }}>
+        EMA {data.emaAbove ? "▲" : "▼"}
+      </span>
+      <span style={{ color: "var(--text-faint)" }}>
+        RSI <span style={{ color: rsiColor(data.rsi) }}>{data.rsi.toFixed(0)}</span>
+      </span>
+    </div>
+  );
+}
+
 // ─── Volatility card (Row 2) ──────────────────────────────────────────────────
 interface VolCardProps {
   label: string;
@@ -46,9 +90,11 @@ interface VolCardProps {
   decimals?: number;
   lang: string;
   compact?: boolean;
+  indicator?: TickerIndicator;
+  timeframe?: "4H" | "1D";
 }
 
-function VolCard({ label, sublabel, current, prevDay, prevLabel, decimals = 2, lang, compact = false }: VolCardProps) {
+function VolCard({ label, sublabel, current, prevDay, prevLabel, decimals = 2, lang, compact = false, indicator, timeframe = "4H" }: VolCardProps) {
   const change =
     current != null && prevDay != null && prevDay !== 0
       ? ((current - prevDay) / prevDay) * 100
@@ -114,6 +160,8 @@ function VolCard({ label, sublabel, current, prevDay, prevLabel, decimals = 2, l
         </span>
         <ChangeTag pct={change} />
       </div>
+
+      <IndicatorRow indicator={indicator} timeframe={timeframe} />
     </div>
   );
 }
@@ -121,26 +169,50 @@ function VolCard({ label, sublabel, current, prevDay, prevLabel, decimals = 2, l
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function LiveTicker() {
   const { lang } = useLang();
+  const [timeframe, setTimeframe] = useState<"4H" | "1D">("4H");
 
   // Hyperliquid market indices + VIX (poll every 30s)
   const { data: volData } = trpc.hyperliquid.marketTicker.useQuery(undefined, {
     refetchInterval: 30 * 1000,
   });
 
+  // EMA20 position + RSI14 per timeframe; changes slowly, so poll every 10 min.
+  const { data: indicators } = trpc.hyperliquid.marketIndicators.useQuery(undefined, {
+    refetchInterval: 10 * 60 * 1000,
+  });
+
+  const ind = (indicators ?? {}) as Record<string, TickerIndicator>;
+
+  const cards = [
+    { label: "BTC", key: "btc", sub: lang === "zh" ? "永续" : "Perp", cur: volData?.btc ?? null, prev: volData?.btcPrevClose ?? null },
+    { label: "VIX", key: "vix", sub: lang === "zh" ? "恐慌指数" : "Fear Index", cur: volData?.vix ?? null, prev: volData?.vixPrevClose ?? null },
+    { label: "DXY", key: "dxy", sub: lang === "zh" ? "美元指数" : "Dollar Index", cur: volData?.dxy ?? null, prev: volData?.dxyPrevClose ?? null },
+    { label: "GOLD", key: "gold", sub: lang === "zh" ? "黄金" : "Gold", cur: volData?.gold ?? null, prev: volData?.goldPrevClose ?? null },
+    { label: "NAS100", key: "nas100", sub: lang === "zh" ? "纳斯达克100指数" : "Nasdaq 100", cur: volData?.nas100 ?? null, prev: volData?.nas100PrevClose ?? null, prevLabel: lang === "zh" ? "24h前" : "24h Ago" },
+    { label: "SSE", key: "shanghai", sub: lang === "zh" ? "上证指数" : "Shanghai Composite", cur: volData?.shanghai ?? null, prev: volData?.shanghaiPrevClose ?? null },
+    { label: "N225", key: "nikkei", sub: lang === "zh" ? "日经225指数" : "Nikkei 225", cur: volData?.nikkei ?? null, prev: volData?.nikkeiPrevClose ?? null },
+    { label: "KOSPI", key: "kospi", sub: lang === "zh" ? "韩国综合指数" : "KOSPI", cur: volData?.kospi ?? null, prev: volData?.kospiPrevClose ?? null },
+  ];
+
   return (
     <div>
+      {/* Timeframe toggle for the EMA/RSI readings */}
+      <div className="flex items-center justify-end gap-1 mb-2">
+        {(["4H", "1D"] as const).map((tf) => (
+          <button
+            key={tf}
+            onClick={() => setTimeframe(tf)}
+            className={`pill-tab ${timeframe === tf ? "active" : ""}`}
+            style={{ fontSize: "0.6rem", padding: "0.15rem 0.7rem" }}
+          >
+            {tf}
+          </button>
+        ))}
+      </div>
+
       {/* BTC · VIX · DXY · GOLD · NAS100 · SSE · Nikkei · KOSPI */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-        {[
-          { label: "BTC", sub: lang === "zh" ? "永续" : "Perp", cur: volData?.btc ?? null, prev: volData?.btcPrevClose ?? null },
-          { label: "VIX", sub: lang === "zh" ? "恐慌指数" : "Fear Index", cur: volData?.vix ?? null, prev: volData?.vixPrevClose ?? null },
-          { label: "DXY", sub: lang === "zh" ? "美元指数" : "Dollar Index", cur: volData?.dxy ?? null, prev: volData?.dxyPrevClose ?? null },
-          { label: "GOLD", sub: lang === "zh" ? "黄金" : "Gold", cur: volData?.gold ?? null, prev: volData?.goldPrevClose ?? null },
-          { label: "NAS100", sub: lang === "zh" ? "纳斯达克100指数" : "Nasdaq 100", cur: volData?.nas100 ?? null, prev: volData?.nas100PrevClose ?? null, prevLabel: lang === "zh" ? "24h前" : "24h Ago" },
-          { label: "SSE", sub: lang === "zh" ? "上证指数" : "Shanghai Composite", cur: volData?.shanghai ?? null, prev: volData?.shanghaiPrevClose ?? null },
-          { label: "N225", sub: lang === "zh" ? "日经225指数" : "Nikkei 225", cur: volData?.nikkei ?? null, prev: volData?.nikkeiPrevClose ?? null },
-          { label: "KOSPI", sub: lang === "zh" ? "韩国综合指数" : "KOSPI", cur: volData?.kospi ?? null, prev: volData?.kospiPrevClose ?? null },
-        ].map((v) => (
+        {cards.map((v) => (
           <VolCard
             key={v.label}
             label={v.label}
@@ -151,6 +223,8 @@ export default function LiveTicker() {
             decimals={2}
             lang={lang}
             compact
+            indicator={ind[v.key]}
+            timeframe={timeframe}
           />
         ))}
       </div>
