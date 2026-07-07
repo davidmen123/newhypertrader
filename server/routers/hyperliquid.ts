@@ -131,7 +131,7 @@ export const hyperliquidRouter = router({
   configStatus: publicProcedure.query(() => getHyperliquidConfigStatus()),
 
   marketTicker: publicProcedure.query(async () => {
-    const [hyperliquidRes, btcYahooRes, goldYahooRes, vixRes, nas100FuturesRes, nas100Prev24hRes, shanghaiRes] = await Promise.allSettled([
+    const [hyperliquidRes, btcYahooRes, goldYahooRes, vixRes, nas100FuturesRes, nas100Prev24hRes, shanghaiRes, nikkeiRes, kospiRes] = await Promise.allSettled([
       getHyperliquidMarketPrices(),
       fetchYahooQuote("BTC-USD"),
       fetchYahooQuote("GC=F"),
@@ -139,6 +139,8 @@ export const hyperliquidRouter = router({
       fetchYahooQuote("NQ=F", "24hAgo"),
       fetchHyperliquidPrice24hAgo("NAS100"),
       fetchYahooQuote("000001.SS"),
+      fetchYahooQuote("%5EN225"),
+      fetchYahooQuote("%5EKS11"),
     ]);
 
     const hyperliquid = hyperliquidRes.status === "fulfilled"
@@ -150,6 +152,8 @@ export const hyperliquidRouter = router({
     const nas100Futures = nas100FuturesRes.status === "fulfilled" ? nas100FuturesRes.value : { current: null, prevClose: null };
     const nas100Prev24h = nas100Prev24hRes.status === "fulfilled" ? nas100Prev24hRes.value : null;
     const shanghai = shanghaiRes.status === "fulfilled" ? shanghaiRes.value : { current: null, prevClose: null };
+    const nikkei = nikkeiRes.status === "fulfilled" ? nikkeiRes.value : { current: null, prevClose: null };
+    const kospi = kospiRes.status === "fulfilled" ? kospiRes.value : { current: null, prevClose: null };
 
     return {
       btc: hyperliquid.btc ?? btcYahoo.current,
@@ -160,6 +164,10 @@ export const hyperliquidRouter = router({
       nas100PrevClose: nas100Prev24h ?? nas100Futures.prevClose,
       shanghai: shanghai.current,
       shanghaiPrevClose: shanghai.prevClose,
+      nikkei: nikkei.current,
+      nikkeiPrevClose: nikkei.prevClose,
+      kospi: kospi.current,
+      kospiPrevClose: kospi.prevClose,
       vix: vix.current,
       vixPrevClose: vix.prevClose,
     };

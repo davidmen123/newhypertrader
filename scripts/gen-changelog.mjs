@@ -65,7 +65,12 @@ function build() {
   const entries = [...SEED];
   let [major, minor] = SEED[SEED.length - 1].version.split(".").map(Number);
 
+  // Collapse consecutive commits with the same summary (e.g. an amended commit
+  // that also lingers in history) so a version isn't logged twice.
+  let previousZh = null;
   for (const commit of readTrailerCommits()) {
+    if (commit.zh === previousZh) continue;
+    previousZh = commit.zh;
     minor += 1;
     entries.push({ version: `${major}.${minor}.0`, date: commit.date, zh: commit.zh, en: commit.en });
   }

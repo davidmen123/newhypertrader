@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.9.0",
+    "date": "2026-07-07",
+    "zh": "行情新增日经225和韩国综合指数",
+    "en": "Added Nikkei 225 and KOSPI to the market ticker"
+  },
+  {
     "version": "1.8.0",
     "date": "2026-07-07",
     "zh": "首页定位介绍改为竖排三行",
