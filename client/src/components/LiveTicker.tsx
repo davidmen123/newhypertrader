@@ -71,7 +71,7 @@ function IndicatorRow({ indicator, timeframe }: { indicator: TickerIndicator; ti
     >
       <span style={{ color: "var(--text-faint)" }}>{tag}</span>
       <span style={{ color: data.emaAbove ? PROFIT : LOSS }}>
-        EMA {data.emaAbove ? "▲" : "▼"}
+        EMA20 {data.emaAbove ? "▲" : "▼"}
       </span>
       <span style={{ color: "var(--text-faint)" }}>
         RSI <span style={{ color: rsiColor(data.rsi) }}>{data.rsi.toFixed(0)}</span>
