@@ -875,9 +875,19 @@ export async function getHyperliquidPortfolioSnapshots(params: {
     return best?.c ?? null;
   };
 
+  // Rebase PnL to the first visible point so every range starts at 0 and only
+  // reflects performance within that range. The window's pnlHistory is
+  // cumulative since the window start (inception for allTime), which drifts
+  // from the range start once the account outlives the requested range.
+  const rawPnlAt = (time: number, equity: string) =>
+    toNumber(nearestHistoryValue(pnlHistory, time) ?? toNumber(equity) - baseEquity);
+  const pnlBase = filteredHistory.length > 0
+    ? rawPnlAt(filteredHistory[0][0], filteredHistory[0][1])
+    : 0;
+
   return filteredHistory
     .map(([time, equity]) => {
-      const totalPnl = nearestHistoryValue(pnlHistory, time) ?? String(toNumber(equity) - baseEquity);
+      const totalPnl = String(rawPnlAt(time, equity) - pnlBase);
       return {
         currency: "USDC",
         date: new Date(time + 8 * 60 * 60 * 1000).toISOString().slice(0, 16).replace("T", " "),
