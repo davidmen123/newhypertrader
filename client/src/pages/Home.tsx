@@ -9,6 +9,7 @@ import AccountOverview from "@/components/AccountOverview";
 import EconomicCalendar from "@/components/EconomicCalendar";
 import TradeHistory from "@/components/TradeHistory";
 import EarningsCalendar from "@/components/EarningsCalendar";
+import Changelog from "@/components/Changelog";
 import { useLang } from "@/contexts/LangContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { ChevronDown, Moon, Sun } from "lucide-react";
@@ -425,6 +426,7 @@ export default function Home() {
             >
               {tr.autoRefresh}
             </span>
+            <Changelog />
           </div>
           </div>
         </div>
