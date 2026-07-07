@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLang } from "@/contexts/LangContext";
 import {
@@ -68,19 +68,6 @@ function formatAxisDay(value: string) {
 
 function getDateKey(value: string) {
   return String(value ?? "").slice(0, 10);
-}
-
-function formatUtc8Now(lang: string) {
-  return new Intl.DateTimeFormat(lang === "zh" ? "zh-CN" : "en-US", {
-    timeZone: "Asia/Shanghai",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).format(new Date());
 }
 
 function formatUtc8Date(date: Date) {
@@ -241,15 +228,6 @@ export default function PnlChart() {
     assetTrend: false,
   });
   const [timeRange, setTimeRange] = useState<TimeRange | null>(null);
-  const [utc8Now, setUtc8Now] = useState(() => formatUtc8Now(lang));
-
-  useEffect(() => {
-    setUtc8Now(formatUtc8Now(lang));
-    const timer = window.setInterval(() => {
-      setUtc8Now(formatUtc8Now(lang));
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [lang]);
 
   // Compute startDate from timeRange
   // 7D  = past 7 calendar days
@@ -397,14 +375,6 @@ export default function PnlChart() {
           </span>
           <span className="num-display text-foreground/80" style={{ fontSize: "0.72rem" }}>
             {snapshots.length}
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5 ml-auto">
-          <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.62rem" }}>
-            {lang === "zh" ? "快照时间" : "Snapshot Time"}
-          </span>
-          <span className="num-display text-foreground/70" style={{ fontSize: "0.72rem" }}>
-            {utc8Now} UTC+8
           </span>
         </div>
       </div>
