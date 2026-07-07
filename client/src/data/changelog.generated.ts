@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.8.0",
+    "date": "2026-07-07",
+    "zh": "首页定位介绍改为竖排三行",
+    "en": "Restyled the hero tagline as three stacked lines"
+  },
+  {
     "version": "1.7.0",
     "date": "2026-07-07",
     "zh": "精简页脚信息",

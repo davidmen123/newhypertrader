@@ -270,24 +270,34 @@ export default function Home() {
                   Trading for a Living
                 </span>
               </div>
-              <p
+              <div
                 style={{
-                  fontFamily: lang === "zh"
-                    ? '"Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif'
-                    : "Inter, sans-serif",
-                  fontSize: "clamp(0.85rem, 1vw, 0.95rem)",
-                  fontWeight: lang === "zh" ? 300 : 400,
-                  letterSpacing: lang === "zh" ? "0.06em" : "0.01em",
-                  lineHeight: 1.8,
-                  color: subtleTextColor,
-                  marginTop: "1.1rem",
-                  maxWidth: "38rem",
+                  marginTop: "1.25rem",
+                  paddingLeft: "1rem",
+                  borderLeft: `1px solid ${heroRule}`,
                 }}
               >
-                {lang === "zh"
-                  ? "实盘教学账户全程公开，每一笔交易实时可查，交易逻辑在社群内呈现。"
-                  : "A live teaching account, fully public: every trade visible in real time, with the reasoning behind each shared in the community."}
-              </p>
+                {(lang === "zh"
+                  ? ["实盘教学账户全程公开", "每一笔交易实时可查", "交易逻辑在社群内呈现"]
+                  : ["A fully public live teaching account", "Every trade visible in real time", "Trade reasoning shared in the community"]
+                ).map((line) => (
+                  <div
+                    key={line}
+                    style={{
+                      fontFamily: lang === "zh"
+                        ? '"Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif'
+                        : "Inter, sans-serif",
+                      fontSize: "clamp(0.85rem, 1vw, 0.95rem)",
+                      fontWeight: lang === "zh" ? 300 : 400,
+                      letterSpacing: lang === "zh" ? "0.08em" : "0.01em",
+                      lineHeight: 2,
+                      color: subtleTextColor,
+                    }}
+                  >
+                    {line}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
