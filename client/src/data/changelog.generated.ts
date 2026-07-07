@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.10.0",
+    "date": "2026-07-07",
+    "zh": "行情新增美元指数DXY",
+    "en": "Added the US Dollar Index (DXY) to the market ticker"
+  },
+  {
     "version": "1.9.0",
     "date": "2026-07-07",
     "zh": "行情新增日经225和韩国综合指数",
