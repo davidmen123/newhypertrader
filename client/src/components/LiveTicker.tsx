@@ -1,7 +1,6 @@
 /*
  * LiveTicker
- * Row 1 (Prices): BTC
- * Row 2 (Indices): VIX · GOLD · NAS100 · SSE
+ * BTC · ETH · VIX · DXY · GOLD · NAS100 · SSE · HSI · N225 · KOSPI
  */
 import { useState } from "react";
 import { useLang } from "@/contexts/LangContext";
@@ -185,11 +184,13 @@ export default function LiveTicker() {
 
   const cards = [
     { label: "BTC", key: "btc", sub: lang === "zh" ? "永续" : "Perp", cur: volData?.btc ?? null, prev: volData?.btcPrevClose ?? null },
+    { label: "ETH", key: "eth", sub: lang === "zh" ? "永续" : "Perp", cur: volData?.eth ?? null, prev: volData?.ethPrevClose ?? null },
     { label: "VIX", key: "vix", sub: lang === "zh" ? "恐慌指数" : "Fear Index", cur: volData?.vix ?? null, prev: volData?.vixPrevClose ?? null },
     { label: "DXY", key: "dxy", sub: lang === "zh" ? "美元指数" : "Dollar Index", cur: volData?.dxy ?? null, prev: volData?.dxyPrevClose ?? null },
     { label: "GOLD", key: "gold", sub: lang === "zh" ? "黄金" : "Gold", cur: volData?.gold ?? null, prev: volData?.goldPrevClose ?? null },
     { label: "NAS100", key: "nas100", sub: lang === "zh" ? "纳斯达克100指数" : "Nasdaq 100", cur: volData?.nas100 ?? null, prev: volData?.nas100PrevClose ?? null, prevLabel: lang === "zh" ? "24h前" : "24h Ago" },
     { label: "SSE", key: "shanghai", sub: lang === "zh" ? "上证指数" : "Shanghai Composite", cur: volData?.shanghai ?? null, prev: volData?.shanghaiPrevClose ?? null },
+    { label: "HSI", key: "hangSeng", sub: lang === "zh" ? "恒生指数" : "Hang Seng Index", cur: volData?.hangSeng ?? null, prev: volData?.hangSengPrevClose ?? null },
     { label: "N225", key: "nikkei", sub: lang === "zh" ? "日经225指数" : "Nikkei 225", cur: volData?.nikkei ?? null, prev: volData?.nikkeiPrevClose ?? null },
     { label: "KOSPI", key: "kospi", sub: lang === "zh" ? "韩国综合指数" : "KOSPI", cur: volData?.kospi ?? null, prev: volData?.kospiPrevClose ?? null },
   ];
@@ -210,8 +211,8 @@ export default function LiveTicker() {
         ))}
       </div>
 
-      {/* BTC · VIX · DXY · GOLD · NAS100 · SSE · Nikkei · KOSPI */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+      {/* BTC · ETH · VIX · DXY · GOLD · NAS100 · SSE · HSI · N225 · KOSPI */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-2">
         {cards.map((v) => (
           <VolCard
             key={v.label}

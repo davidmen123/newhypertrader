@@ -195,6 +195,7 @@ const INDICATOR_CONFIG: Array<{
   has4h: boolean;
 }> = [
   { key: "btc", source: "hl", symbol: "BTC", has4h: true },
+  { key: "eth", source: "hl", symbol: "ETH", has4h: true },
   // NAS100 from Nasdaq futures (Yahoo), not the 24/7 Hyperliquid perp, so the
   // EMA/RSI reflect equity-market sessions. 4H is aggregated from 1h bars.
   { key: "nas100", source: "yahoo", symbol: "NQ=F", has4h: true },
@@ -202,6 +203,7 @@ const INDICATOR_CONFIG: Array<{
   { key: "vix", source: "yahoo", symbol: "%5EVIX", has4h: false },
   { key: "dxy", source: "yahoo", symbol: "DX-Y.NYB", has4h: false },
   { key: "shanghai", source: "yahoo", symbol: "000001.SS", has4h: false },
+  { key: "hangSeng", source: "yahoo", symbol: "%5EHSI", has4h: false },
   { key: "nikkei", source: "yahoo", symbol: "%5EN225", has4h: false },
   { key: "kospi", source: "yahoo", symbol: "%5EKS11", has4h: false },
 ];
@@ -243,14 +245,16 @@ export const hyperliquidRouter = router({
   configStatus: publicProcedure.query(() => getHyperliquidConfigStatus()),
 
   marketTicker: publicProcedure.query(async () => {
-    const [hyperliquidRes, btcYahooRes, goldYahooRes, vixRes, nas100FuturesRes, nas100Prev24hRes, shanghaiRes, nikkeiRes, kospiRes, dxyRes] = await Promise.allSettled([
+    const [hyperliquidRes, btcYahooRes, ethYahooRes, goldYahooRes, vixRes, nas100FuturesRes, nas100Prev24hRes, shanghaiRes, hangSengRes, nikkeiRes, kospiRes, dxyRes] = await Promise.allSettled([
       getHyperliquidMarketPrices(),
       fetchYahooQuote("BTC-USD"),
+      fetchYahooQuote("ETH-USD"),
       fetchYahooQuote("GC=F"),
       fetchYahooQuote("%5EVIX"),
       fetchYahooQuote("NQ=F", "24hAgo"),
       fetchHyperliquidPrice24hAgo("NAS100"),
       fetchYahooQuote("000001.SS"),
+      fetchYahooQuote("%5EHSI"),
       fetchYahooQuote("%5EN225"),
       fetchYahooQuote("%5EKS11"),
       fetchYahooQuote("DX-Y.NYB"),
@@ -258,13 +262,15 @@ export const hyperliquidRouter = router({
 
     const hyperliquid = hyperliquidRes.status === "fulfilled"
       ? hyperliquidRes.value
-      : { btc: null, gold: null, nas100: null, sp500: null };
+      : { btc: null, eth: null, gold: null, nas100: null, sp500: null };
     const btcYahoo = btcYahooRes.status === "fulfilled" ? btcYahooRes.value : { current: null, prevClose: null };
+    const ethYahoo = ethYahooRes.status === "fulfilled" ? ethYahooRes.value : { current: null, prevClose: null };
     const goldYahoo = goldYahooRes.status === "fulfilled" ? goldYahooRes.value : { current: null, prevClose: null };
     const vix = vixRes.status === "fulfilled" ? vixRes.value : { current: null, prevClose: null };
     const nas100Futures = nas100FuturesRes.status === "fulfilled" ? nas100FuturesRes.value : { current: null, prevClose: null };
     const nas100Prev24h = nas100Prev24hRes.status === "fulfilled" ? nas100Prev24hRes.value : null;
     const shanghai = shanghaiRes.status === "fulfilled" ? shanghaiRes.value : { current: null, prevClose: null };
+    const hangSeng = hangSengRes.status === "fulfilled" ? hangSengRes.value : { current: null, prevClose: null };
     const nikkei = nikkeiRes.status === "fulfilled" ? nikkeiRes.value : { current: null, prevClose: null };
     const kospi = kospiRes.status === "fulfilled" ? kospiRes.value : { current: null, prevClose: null };
     const dxy = dxyRes.status === "fulfilled" ? dxyRes.value : { current: null, prevClose: null };
@@ -272,12 +278,16 @@ export const hyperliquidRouter = router({
     return {
       btc: hyperliquid.btc ?? btcYahoo.current,
       btcPrevClose: btcYahoo.prevClose,
+      eth: hyperliquid.eth ?? ethYahoo.current,
+      ethPrevClose: ethYahoo.prevClose,
       gold: hyperliquid.gold ?? goldYahoo.current,
       goldPrevClose: goldYahoo.prevClose,
       nas100: hyperliquid.nas100 ?? nas100Futures.current,
       nas100PrevClose: nas100Prev24h ?? nas100Futures.prevClose,
       shanghai: shanghai.current,
       shanghaiPrevClose: shanghai.prevClose,
+      hangSeng: hangSeng.current,
+      hangSengPrevClose: hangSeng.prevClose,
       nikkei: nikkei.current,
       nikkeiPrevClose: nikkei.prevClose,
       kospi: kospi.current,

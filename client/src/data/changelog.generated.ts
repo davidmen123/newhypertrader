@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.18.0",
+    "date": "2026-07-08",
+    "zh": "实时行情新增 ETH 与恒生指数",
+    "en": "Added ETH and Hang Seng Index to live market ticker"
+  },
+  {
     "version": "1.17.0",
     "date": "2026-07-08",
     "zh": "损益曲线与行情数据源优化",
