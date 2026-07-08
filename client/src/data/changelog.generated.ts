@@ -11,6 +11,24 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.17.0",
+    "date": "2026-07-08",
+    "zh": "损益曲线与行情数据源优化",
+    "en": "Improved PnL curves and market data sources"
+  },
+  {
+    "version": "1.16.0",
+    "date": "2026-07-08",
+    "zh": "历史成交、持仓明细与当前委托展示对齐 Hyperliquid",
+    "en": "Aligned trade history, positions and open orders with Hyperliquid"
+  },
+  {
+    "version": "1.15.0",
+    "date": "2026-07-08",
+    "zh": "账户概览补充夏普比率、运行天数与平均持仓时长",
+    "en": "Added account overview metrics such as Sharpe ratio, running days and average holding time"
+  },
+  {
     "version": "1.14.0",
     "date": "2026-07-08",
     "zh": "风控状态与历史成交平仓方式完善",
