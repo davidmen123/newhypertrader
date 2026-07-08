@@ -20,6 +20,7 @@ type HyperliquidFill = {
   feeDetail?: Array<{ feeCoin: string; fee: string }>;
   createdTime: string;
   execPnl: string;
+  closeMethod?: string;
 };
 
 function num(value: string | number | null | undefined) {
@@ -44,6 +45,26 @@ function pnlColor(value: string | number | null | undefined) {
   const n = num(value);
   if (n > 0) return "oklch(68% 0.15 145)";
   if (n < 0) return "oklch(62% 0.15 25)";
+  return "var(--text-soft)";
+}
+
+function closeMethodLabel(method: string | null | undefined, lang: string) {
+  const labels: Record<string, { zh: string; en: string }> = {
+    preset_stop_loss: { zh: "预设止损", en: "Preset Stop" },
+    preset_take_profit: { zh: "预设止盈", en: "Preset Take Profit" },
+    active_stop_loss: { zh: "主动止损", en: "Manual Stop" },
+    active_take_profit: { zh: "主动止盈", en: "Manual Take Profit" },
+    active_close: { zh: "主动平仓", en: "Manual Close" },
+  };
+  const label = labels[String(method ?? "")];
+  if (!label) return "—";
+  return lang === "zh" ? label.zh : label.en;
+}
+
+function closeMethodColor(method: string | null | undefined) {
+  const value = String(method ?? "");
+  if (value.includes("take_profit")) return "oklch(68% 0.15 145)";
+  if (value.includes("stop_loss")) return "oklch(62% 0.15 25)";
   return "var(--text-soft)";
 }
 
@@ -73,11 +94,11 @@ export default function TradeHistory() {
     const q = search.trim().toLowerCase();
     if (!q) return trades;
     return trades.filter((trade) =>
-      [trade.symbol, trade.category, trade.side, trade.tradeSide, trade.orderType]
+      [trade.symbol, trade.category, trade.side, trade.tradeSide, trade.orderType, closeMethodLabel(trade.closeMethod, lang)]
         .filter(Boolean)
         .some((value) => value.toLowerCase().includes(q))
     );
-  }, [trades, search]);
+  }, [trades, search, lang]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageTrades = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -244,7 +265,7 @@ export default function TradeHistory() {
             <table className="w-full" style={{ borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--panel-border)" }}>
-                  {[t("时间", "Time"), t("交易对", "Symbol"), t("市场", "Market"), t("方向", "Side"), t("开平", "Open/Close"), t("数量", "Qty"), t("成交价", "Price"), t("成交额", "Value"), t("手续费", "Fee"), t("盈亏", "PnL")].map((h) => (
+                  {[t("时间", "Time"), t("交易对", "Symbol"), t("市场", "Market"), t("方向", "Side"), t("开平", "Open/Close"), t("平仓方式", "Close Method"), t("数量", "Qty"), t("成交价", "Price"), t("成交额", "Value"), t("手续费", "Fee"), t("盈亏", "PnL")].map((h) => (
                     <th
                       key={h}
                       className="text-left pb-2 pr-4"
@@ -274,6 +295,7 @@ export default function TradeHistory() {
                       <td className="py-2 pr-4" style={{ fontSize: "0.68rem", color: "var(--text-soft)" }}>{trade.category}</td>
                       <td className="py-2 pr-4" style={{ color: isBuy ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)", fontSize: "0.7rem", fontWeight: 600 }}>{isBuy ? t("买入", "Buy") : t("卖出", "Sell")}</td>
                       <td className="py-2 pr-4" style={{ fontSize: "0.68rem", color: "var(--text-soft)" }}>{trade.tradeSide || "—"}</td>
+                      <td className="py-2 pr-4" style={{ fontSize: "0.68rem", color: closeMethodColor(trade.closeMethod), whiteSpace: "nowrap" }}>{closeMethodLabel(trade.closeMethod, lang)}</td>
                       <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execQty, 2)}</td>
                       <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execPrice, 2)}</td>
                       <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execValue, 2)}</td>
@@ -304,6 +326,7 @@ export default function TradeHistory() {
                     <span>{trade.category}</span>
                     <span>{t("价格", "Price")}: {fmt(trade.execPrice, 2)}</span>
                     <span>{t("数量", "Qty")}: {fmt(trade.execQty, 2)}</span>
+                    <span style={{ color: closeMethodColor(trade.closeMethod) }}>{t("平仓方式", "Close")}: {closeMethodLabel(trade.closeMethod, lang)}</span>
                     {num(trade.execPnl) !== 0 && <span style={{ color: pnlColor(trade.execPnl) }}>PnL: {signed(trade.execPnl, 2)}</span>}
                   </div>
                 </div>

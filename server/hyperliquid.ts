@@ -1056,10 +1056,12 @@ export async function getHyperliquidTradeHistory(params: {
   endTime?: number;
   limit?: number;
 }) {
-  const [fills, fundingUpdates] = await Promise.all([
+  const [fills, fundingUpdates, orderHistory] = await Promise.all([
     getHyperliquidFills(params.startTime, params.endTime),
     getHyperliquidFundingHistory(params.startTime ?? 0, params.endTime ?? Date.now()).catch(() => []),
+    getHyperliquidOrderHistory(1000).catch(() => []),
   ]);
+  const ordersById = new Map(orderHistory.map((order) => [order.orderId, order]));
   const grouped = new Map<string, {
     fill: HyperliquidFill;
     qty: number;
@@ -1112,6 +1114,22 @@ export async function getHyperliquidTradeHistory(params: {
       const side = fill.side === "B" ? "buy" : "sell";
       const price = group.qty > 0 ? group.value / group.qty : toNumber(fill.px);
       const orderId = String(fill.oid ?? "");
+      const historicalOrder = ordersById.get(orderId);
+      const historicalType = String(historicalOrder?.orderType ?? "").toLowerCase();
+      const isClosingTrade = String(fill.dir ?? "").toLowerCase().includes("close");
+      const isPresetTrigger =
+        Boolean(historicalOrder?.isTrigger) ||
+        Boolean(historicalOrder?.triggerCondition) ||
+        toNumber(historicalOrder?.triggerPrice) > 0;
+      const closeMethod = (() => {
+        if (!isClosingTrade) return "";
+        if (historicalType.includes("take profit")) return "preset_take_profit";
+        if (historicalType.includes("stop")) return "preset_stop_loss";
+        if (isPresetTrigger) return group.pnl >= 0 ? "preset_take_profit" : "preset_stop_loss";
+        if (group.pnl > 0) return "active_take_profit";
+        if (group.pnl < 0) return "active_stop_loss";
+        return "active_close";
+      })();
       return {
         execId: fill.hash ? `${fill.hash}-${orderId}-${group.latestTime}` : `${fill.coin}-${orderId}-${group.latestTime}`,
         orderId,
@@ -1128,6 +1146,7 @@ export async function getHyperliquidTradeHistory(params: {
         createdTime: String(group.latestTime),
         updatedTime: String(group.latestTime),
         execPnl: String(group.pnl),
+        closeMethod,
         isRPI: "false",
       };
     });
