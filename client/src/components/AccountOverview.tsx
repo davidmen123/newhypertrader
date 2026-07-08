@@ -137,6 +137,11 @@ export default function AccountOverview() {
     { refetchInterval: 60_000 }
   );
 
+  const { data: openOrdersData } = trpc.hyperliquid.openOrders.useQuery(
+    undefined,
+    { refetchInterval: 10_000 }
+  );
+
   const fmt = (v: number | null | undefined, decimals = 2) => {
     if (v == null || !isFinite(v)) return "--";
     return v.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
@@ -205,6 +210,35 @@ export default function AccountOverview() {
     : leverage >= 5
     ? "oklch(72% 0.14 55)"
     : "oklch(68% 0.15 145)";
+  const openOrders = openOrdersData ?? [];
+  const hasStopLossOrder = openOrders.some((order) => {
+    const type = String(order.orderType ?? "").toLowerCase();
+    return type.includes("stop");
+  });
+  const hasTakeProfitOrder = openOrders.some((order) => {
+    const type = String(order.orderType ?? "").toLowerCase();
+    return type.includes("take profit");
+  });
+  const stopLossStatus = !hasExposure
+    ? "--"
+    : hasStopLossOrder
+    ? t("已挂止损", "Stop Set")
+    : t("未挂止损", "No Stop");
+  const takeProfitStatus = !hasExposure
+    ? "--"
+    : hasTakeProfitOrder
+    ? t("已挂止盈", "Take Profit Set")
+    : t("未挂止盈", "No Take Profit");
+  const stopLossColor = !hasExposure
+    ? "var(--metric-neutral)"
+    : hasStopLossOrder
+    ? "oklch(68% 0.15 145)"
+    : "oklch(72% 0.14 55)";
+  const takeProfitColor = !hasExposure
+    ? "var(--metric-neutral)"
+    : hasTakeProfitOrder
+    ? "oklch(68% 0.15 145)"
+    : "oklch(72% 0.14 55)";
 
   return (
     <div className="glass-card px-4 sm:px-8 py-5 sm:py-7 fade-in">
@@ -252,6 +286,16 @@ export default function AccountOverview() {
           label={t("风险等级", "Risk")}
           value={riskLevel}
           color={riskColor}
+        />
+        <StatusPill
+          label={t("止损状态", "Stop Loss")}
+          value={stopLossStatus}
+          color={stopLossColor}
+        />
+        <StatusPill
+          label={t("止盈状态", "Take Profit")}
+          value={takeProfitStatus}
+          color={takeProfitColor}
         />
         <span className="ml-auto text-muted-foreground/45 tracking-widest uppercase" style={{ fontSize: "0.58rem" }}>
           {t("30秒刷新", "30s refresh")}
