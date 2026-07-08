@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.14.0",
+    "date": "2026-07-08",
+    "zh": "风控状态与历史成交平仓方式完善",
+    "en": "Improved risk status and trade close method labels"
+  },
+  {
     "version": "1.13.0",
     "date": "2026-07-08",
     "zh": "实时更新指示移到标题栏Live Account后面",
