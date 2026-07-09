@@ -346,7 +346,7 @@ export default function AccountOverview() {
 
         <div className="space-y-2">
           <SectionTitle>{t("风险收益指标", "Risk & Return")}</SectionTitle>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
             <MetricTile
               label={t("最大回撤", "Max Drawdown")}
               value={data.maxDrawdownPct != null ? `${data.maxDrawdownPct.toFixed(2)}%` : "--"}
@@ -361,6 +361,11 @@ export default function AccountOverview() {
               label={t("年化收益率", "Annualized Return")}
               value="--"
               tone="neutral"
+            />
+            <MetricTile
+              label={t("卡玛比率", "Calmar Ratio")}
+              value={data.calmarRatio != null && isFinite(data.calmarRatio) ? fmt(data.calmarRatio, 2) : "--"}
+              tone={data.calmarRatio != null && data.calmarRatio < 0 ? "loss" : data.calmarRatio != null && data.calmarRatio >= 1 ? "profit" : "neutral"}
             />
             <MetricTile
               label={t("运行天数", "Running Days")}

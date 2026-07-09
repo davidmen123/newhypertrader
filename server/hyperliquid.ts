@@ -632,6 +632,14 @@ function calculateAnnualizedReturnPct(initialEquity: number | null | undefined, 
   return (Math.pow(latestEquity / initialEquity, 365 / runningDays) - 1) * 100;
 }
 
+function calculateCalmarRatio(annualizedReturnPct: number | null | undefined, maxDrawdownPct: number | null | undefined) {
+  if (annualizedReturnPct == null || maxDrawdownPct == null) return null;
+  if (!Number.isFinite(annualizedReturnPct) || !Number.isFinite(maxDrawdownPct)) return null;
+  const drawdownAbsPct = Math.abs(maxDrawdownPct);
+  if (drawdownAbsPct <= 0) return null;
+  return annualizedReturnPct / drawdownAbsPct;
+}
+
 function calculateRunningDaysFromFirstFill(fills: HyperliquidFill[]) {
   const firstFillTime = fills.reduce<number | null>((earliest, fill) => {
     const time = Number(fill.time);
@@ -995,6 +1003,8 @@ export async function getHyperliquidAccountOverview() {
     totalEquityUsdc,
     runningDays
   );
+  const annualizedReturnPct = accountAnnualizedReturnPct ?? performance.annualizedReturnPct;
+  const calmarRatio = calculateCalmarRatio(annualizedReturnPct, drawdown.maxDrawdownPct);
 
   return {
     exchange: "Hyperliquid",
@@ -1021,9 +1031,9 @@ export async function getHyperliquidAccountOverview() {
     maxDrawdownUsdc: drawdown.maxDrawdownUsdc,
     maxDrawdownPct: drawdown.maxDrawdownPct,
     sharpeRatio: performance.sharpeRatio,
-    annualizedReturnPct: accountAnnualizedReturnPct ?? performance.annualizedReturnPct,
+    annualizedReturnPct,
     runningDays,
-    calmarRatio: null,
+    calmarRatio,
     totalNtlPos,
     metrics: tradeMetrics,
   };

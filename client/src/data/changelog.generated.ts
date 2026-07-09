@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.19.0",
+    "date": "2026-07-09",
+    "zh": "账户概览新增卡玛比率",
+    "en": "Added Calmar ratio to account overview"
+  },
+  {
     "version": "1.18.0",
     "date": "2026-07-08",
     "zh": "实时行情新增 ETH 与恒生指数",
