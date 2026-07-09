@@ -766,6 +766,9 @@ function calculateRoundTripTradeMetrics(fills: HyperliquidFill[]) {
   const grossLoss = Math.abs(completedPnls.reduce((sum, pnl) => sum + Math.min(0, pnl), 0));
   const avgWin = winningTrades > 0 ? grossWin / winningTrades : 0;
   const avgLoss = losingTrades > 0 ? grossLoss / losingTrades : 0;
+  const expectancyUsdc = completedPnls.length > 0
+    ? completedPnls.reduce((sum, pnl) => sum + pnl, 0) / completedPnls.length
+    : null;
   const averageHoldingHours = completedHoldingHours.length > 0
     ? completedHoldingHours.reduce((sum, hours) => sum + hours, 0) / completedHoldingHours.length
     : null;
@@ -777,6 +780,7 @@ function calculateRoundTripTradeMetrics(fills: HyperliquidFill[]) {
     breakevenTrades,
     winRate: completedPnls.length > 0 ? (winningTrades / completedPnls.length) * 100 : null,
     plRatio: avgLoss > 0 ? avgWin / avgLoss : null,
+    expectancyUsdc,
     averageHoldingHours,
   };
 }

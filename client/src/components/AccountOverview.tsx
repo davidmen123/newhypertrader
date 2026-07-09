@@ -188,6 +188,7 @@ export default function AccountOverview() {
   const pnlTone = totalPnlUsdc != null && totalPnlUsdc >= 0 ? "profit" : "loss";
   const winRate = metricsData?.winRate ?? null;
   const plRatio = metricsData?.plRatio ?? null;
+  const expectancyUsdc = metricsData?.expectancyUsdc ?? null;
   const leverage = Number.isFinite(data.marginUsageRatio) ? data.marginUsageRatio : 0;
   const hasExposure = data.totalNtlPos > 0 || leverage > 0;
   const strategyStatus = hasExposure
@@ -378,7 +379,7 @@ export default function AccountOverview() {
 
         <div className="space-y-2">
           <SectionTitle>{t("交易表现", "Trade Performance")}</SectionTitle>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
             <MetricTile
               label={t("胜率", "Win Rate")}
               value={winRate != null ? `${winRate.toFixed(2)}%` : "--"}
@@ -390,6 +391,12 @@ export default function AccountOverview() {
               value={plRatio != null && isFinite(plRatio) ? fmt(plRatio, 2) : "--"}
               sub={t("平均盈利 / 平均亏损", "Avg Win / Avg Loss")}
               tone={plRatio != null && plRatio > 1 ? "profit" : "neutral"}
+            />
+            <MetricTile
+              label={t("期望值", "Expectancy")}
+              value={expectancyUsdc != null && isFinite(expectancyUsdc) ? `${fmtSign(expectancyUsdc, 2)} USDC` : "--"}
+              sub={t("每笔完整交易", "Per round trip")}
+              tone={expectancyUsdc != null && expectancyUsdc > 0 ? "profit" : expectancyUsdc != null && expectancyUsdc < 0 ? "loss" : "neutral"}
             />
             <MetricTile
               label={t("完整交易数", "Round Trips")}
