@@ -1137,9 +1137,13 @@ export async function getHyperliquidTradeHistory(params: {
       const historicalOrder = ordersById.get(orderId);
       const historicalType = String(historicalOrder?.orderType ?? "").toLowerCase();
       const isClosingTrade = String(fill.dir ?? "").toLowerCase().includes("close");
+      // Hyperliquid reports the literal string "N/A" (not an empty value) for
+      // non-trigger orders — treat it as absent or every manual market close
+      // gets misread as a preset trigger.
+      const triggerCondition = String(historicalOrder?.triggerCondition ?? "").trim();
       const isPresetTrigger =
         Boolean(historicalOrder?.isTrigger) ||
-        Boolean(historicalOrder?.triggerCondition) ||
+        (triggerCondition !== "" && triggerCondition.toLowerCase() !== "n/a") ||
         toNumber(historicalOrder?.triggerPrice) > 0;
       // Close method describes the exit *mechanism* (pre-committed trigger vs
       // manual decision), never the PnL outcome — the PnL column already says
