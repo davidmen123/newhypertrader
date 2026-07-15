@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.21.0",
+    "date": "2026-07-16",
+    "zh": "修正历史成交平仓方式的判定口径",
+    "en": "Corrected close-method classification in trade history"
+  },
+  {
     "version": "1.20.0",
     "date": "2026-07-09",
     "zh": "账户概览新增交易期望值",
