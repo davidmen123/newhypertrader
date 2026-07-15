@@ -52,9 +52,9 @@ function closeMethodLabel(method: string | null | undefined, lang: string) {
   const labels: Record<string, { zh: string; en: string }> = {
     preset_stop_loss: { zh: "预设止损", en: "Preset Stop" },
     preset_take_profit: { zh: "预设止盈", en: "Preset Take Profit" },
-    active_stop_loss: { zh: "主动止损", en: "Manual Stop" },
-    active_take_profit: { zh: "主动止盈", en: "Manual Take Profit" },
+    preset_trigger: { zh: "预设触发", en: "Preset Trigger" },
     active_close: { zh: "主动平仓", en: "Manual Close" },
+    liquidation: { zh: "强制平仓", en: "Liquidated" },
   };
   const label = labels[String(method ?? "")];
   if (!label) return "—";
@@ -63,6 +63,7 @@ function closeMethodLabel(method: string | null | undefined, lang: string) {
 
 function closeMethodColor(method: string | null | undefined) {
   const value = String(method ?? "");
+  if (value === "liquidation") return "oklch(62% 0.18 25)";
   if (value.includes("take_profit")) return "oklch(68% 0.15 145)";
   if (value.includes("stop_loss")) return "oklch(62% 0.15 25)";
   return "var(--text-soft)";

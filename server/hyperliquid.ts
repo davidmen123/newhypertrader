@@ -244,6 +244,11 @@ export interface HyperliquidFill {
   crossed?: boolean;
   fee?: string;
   feeToken?: string;
+  liquidation?: {
+    liquidatedUser?: string;
+    markPx?: string;
+    method?: string;
+  };
 }
 
 export interface HyperliquidPortfolioWindow {
@@ -1136,13 +1141,17 @@ export async function getHyperliquidTradeHistory(params: {
         Boolean(historicalOrder?.isTrigger) ||
         Boolean(historicalOrder?.triggerCondition) ||
         toNumber(historicalOrder?.triggerPrice) > 0;
+      // Close method describes the exit *mechanism* (pre-committed trigger vs
+      // manual decision), never the PnL outcome — the PnL column already says
+      // whether the trade won or lost.
+      const isLiquidation =
+        Boolean(fill.liquidation) || String(fill.dir ?? "").toLowerCase().includes("liquidat");
       const closeMethod = (() => {
         if (!isClosingTrade) return "";
+        if (isLiquidation) return "liquidation";
         if (historicalType.includes("take profit")) return "preset_take_profit";
         if (historicalType.includes("stop")) return "preset_stop_loss";
-        if (isPresetTrigger) return group.pnl >= 0 ? "preset_take_profit" : "preset_stop_loss";
-        if (group.pnl > 0) return "active_take_profit";
-        if (group.pnl < 0) return "active_stop_loss";
+        if (isPresetTrigger) return "preset_trigger";
         return "active_close";
       })();
       return {
