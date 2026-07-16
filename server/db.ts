@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, InsertTrade, InsertPnlSnapshot, pnlSnapshots, trades, users, pageViews } from "../drizzle/schema.js";
+import { InsertUser, InsertTrade, InsertPnlSnapshot, InsertVisitorLog, pnlSnapshots, trades, users, pageViews, visitorLogs } from "../drizzle/schema.js";
 import { ENV } from './_core/env.js';
 import { getIndexPrice } from './deribit.js';
 
@@ -218,6 +218,173 @@ export async function getPageViews(): Promise<number> {
   if (!db) return 0;
   const rows = await db.select().from(pageViews).where(eq(pageViews.id, 1)).limit(1);
   return rows[0]?.count ?? 0;
+}
+
+// ─── Visitor Analytics ──────────────────────────────────────────────────────────
+
+export async function logVisitor(data: InsertVisitorLog): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(visitorLogs).values(data);
+}
+
+export async function getDailyVisitorStats(params?: {
+  startDate?: string;
+  endDate?: string;
+}): Promise<Array<{ date: string; visits: number; uniqueIps: number; avgDuration: number }>> {
+  const db = await getDb();
+  if (!db) return [];
+
+  if (params?.startDate && params?.endDate) {
+    return db
+      .select({
+        date: sql<string>`DATE(${visitorLogs.createdAt})`,
+        visits: sql<number>`COUNT(*)`,
+        uniqueIps: sql<number>`COUNT(DISTINCT ${visitorLogs.ip})`,
+        avgDuration: sql<number>`IFNULL(AVG(${visitorLogs.duration}), 0)`,
+      })
+      .from(visitorLogs)
+      .where(and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, new Date(params.endDate))))
+      .groupBy(sql`DATE(${visitorLogs.createdAt})`)
+      .orderBy(desc(sql`DATE(${visitorLogs.createdAt})`));
+  }
+
+  if (params?.startDate) {
+    return db
+      .select({
+        date: sql<string>`DATE(${visitorLogs.createdAt})`,
+        visits: sql<number>`COUNT(*)`,
+        uniqueIps: sql<number>`COUNT(DISTINCT ${visitorLogs.ip})`,
+        avgDuration: sql<number>`IFNULL(AVG(${visitorLogs.duration}), 0)`,
+      })
+      .from(visitorLogs)
+      .where(gte(visitorLogs.createdAt, new Date(params.startDate)))
+      .groupBy(sql`DATE(${visitorLogs.createdAt})`)
+      .orderBy(desc(sql`DATE(${visitorLogs.createdAt})`));
+  }
+
+  if (params?.endDate) {
+    return db
+      .select({
+        date: sql<string>`DATE(${visitorLogs.createdAt})`,
+        visits: sql<number>`COUNT(*)`,
+        uniqueIps: sql<number>`COUNT(DISTINCT ${visitorLogs.ip})`,
+        avgDuration: sql<number>`IFNULL(AVG(${visitorLogs.duration}), 0)`,
+      })
+      .from(visitorLogs)
+      .where(lte(visitorLogs.createdAt, new Date(params.endDate)))
+      .groupBy(sql`DATE(${visitorLogs.createdAt})`)
+      .orderBy(desc(sql`DATE(${visitorLogs.createdAt})`));
+  }
+
+  return db
+    .select({
+      date: sql<string>`DATE(${visitorLogs.createdAt})`,
+      visits: sql<number>`COUNT(*)`,
+      uniqueIps: sql<number>`COUNT(DISTINCT ${visitorLogs.ip})`,
+      avgDuration: sql<number>`IFNULL(AVG(${visitorLogs.duration}), 0)`,
+    })
+    .from(visitorLogs)
+    .groupBy(sql`DATE(${visitorLogs.createdAt})`)
+    .orderBy(desc(sql`DATE(${visitorLogs.createdAt})`));
+}
+
+export async function getVisitorDeviceStats(params?: {
+  startDate?: string;
+  endDate?: string;
+}): Promise<Array<{ deviceType: string | null; count: number; percentage: number }>> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const getWhereClause = () => {
+    if (params?.startDate && params?.endDate) {
+      return and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, new Date(params.endDate)));
+    }
+    if (params?.startDate) return gte(visitorLogs.createdAt, new Date(params.startDate));
+    if (params?.endDate) return lte(visitorLogs.createdAt, new Date(params.endDate));
+    return undefined;
+  };
+
+  const whereClause = getWhereClause();
+
+  const [totalResult, result] = await Promise.all([
+    whereClause ? db.select({ total: sql<number>`COUNT(*)` }).from(visitorLogs).where(whereClause) : db.select({ total: sql<number>`COUNT(*)` }).from(visitorLogs),
+    whereClause
+      ? db.select({ deviceType: visitorLogs.deviceType, count: sql<number>`COUNT(*)` }).from(visitorLogs).where(whereClause).groupBy(visitorLogs.deviceType).orderBy(desc(sql`COUNT(*)`))
+      : db.select({ deviceType: visitorLogs.deviceType, count: sql<number>`COUNT(*)` }).from(visitorLogs).groupBy(visitorLogs.deviceType).orderBy(desc(sql`COUNT(*)`)),
+  ]);
+
+  const total = totalResult[0]?.total ?? 0;
+  return result.map((row) => ({
+    deviceType: row.deviceType,
+    count: row.count,
+    percentage: total > 0 ? Math.round((row.count / total) * 100) : 0,
+  }));
+}
+
+export async function getVisitorOsStats(params?: {
+  startDate?: string;
+  endDate?: string;
+}): Promise<Array<{ os: string | null; count: number; percentage: number }>> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const getWhereClause = () => {
+    if (params?.startDate && params?.endDate) {
+      return and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, new Date(params.endDate)));
+    }
+    if (params?.startDate) return gte(visitorLogs.createdAt, new Date(params.startDate));
+    if (params?.endDate) return lte(visitorLogs.createdAt, new Date(params.endDate));
+    return undefined;
+  };
+
+  const whereClause = getWhereClause();
+
+  const [totalResult, result] = await Promise.all([
+    whereClause ? db.select({ total: sql<number>`COUNT(*)` }).from(visitorLogs).where(whereClause) : db.select({ total: sql<number>`COUNT(*)` }).from(visitorLogs),
+    whereClause
+      ? db.select({ os: visitorLogs.os, count: sql<number>`COUNT(*)` }).from(visitorLogs).where(whereClause).groupBy(visitorLogs.os).orderBy(desc(sql`COUNT(*)`))
+      : db.select({ os: visitorLogs.os, count: sql<number>`COUNT(*)` }).from(visitorLogs).groupBy(visitorLogs.os).orderBy(desc(sql`COUNT(*)`)),
+  ]);
+
+  const total = totalResult[0]?.total ?? 0;
+  return result.map((row) => ({
+    os: row.os,
+    count: row.count,
+    percentage: total > 0 ? Math.round((row.count / total) * 100) : 0,
+  }));
+}
+
+export async function getVisitorIpList(params?: {
+  startDate?: string;
+  endDate?: string;
+  limit?: number;
+}): Promise<Array<{ ip: string; visits: number; lastVisit: string }>> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const getWhereClause = () => {
+    if (params?.startDate && params?.endDate) {
+      return and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, new Date(params.endDate)));
+    }
+    if (params?.startDate) return gte(visitorLogs.createdAt, new Date(params.startDate));
+    if (params?.endDate) return lte(visitorLogs.createdAt, new Date(params.endDate));
+    return undefined;
+  };
+
+  const whereClause = getWhereClause();
+
+  const baseQuery = db
+    .select({
+      ip: visitorLogs.ip,
+      visits: sql<number>`COUNT(*)`,
+      lastVisit: sql<string>`MAX(${visitorLogs.createdAt})`,
+    })
+    .from(visitorLogs);
+
+  return whereClause
+    ? baseQuery.where(whereClause).groupBy(visitorLogs.ip).orderBy(desc(sql`MAX(${visitorLogs.createdAt})`)).limit(params?.limit ?? 50)
+    : baseQuery.groupBy(visitorLogs.ip).orderBy(desc(sql`MAX(${visitorLogs.createdAt})`)).limit(params?.limit ?? 50);
 }
 
 /**

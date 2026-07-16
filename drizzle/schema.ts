@@ -90,3 +90,20 @@ export const pageViews = mysqlTable("page_views", {
 });
 
 export type PageView = typeof pageViews.$inferSelect;
+
+// Visitor logs for analytics
+export const visitorLogs = mysqlTable("visitor_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  ip: varchar("ip", { length: 45 }).notNull(),
+  userAgent: text("userAgent"),
+  deviceType: mysqlEnum("deviceType", ["desktop", "mobile", "tablet"]),
+  os: varchar("os", { length: 64 }),
+  browser: varchar("browser", { length: 64 }),
+  page: varchar("page", { length: 256 }),
+  referrer: text("referrer"),
+  duration: int("duration"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type VisitorLog = typeof visitorLogs.$inferSelect;
+export type InsertVisitorLog = typeof visitorLogs.$inferInsert;

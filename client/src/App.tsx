@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
@@ -6,23 +7,46 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { LangProvider } from "./contexts/LangContext";
 import Home from "./pages/Home";
+import { trpc } from "@/lib/trpc";
 
 function Router() {
-  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       <Route path={"/"} component={Home} />
       <Route path={"/404"} component={NotFound} />
-      {/* Final fallback route */}
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-// NOTE: About Theme
-// - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
-//   to keep consistent foreground/background color across components
-// - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
+function AnalyticsTracker() {
+  const [startTime] = useState(Date.now());
+  const trackMutation = trpc.analytics.track.useMutation({
+    onError: () => {},
+  });
+
+  useEffect(() => {
+    trackMutation.mutate({
+      page: window.location.pathname,
+      userAgent: navigator.userAgent,
+      referrer: document.referrer,
+    });
+
+    const handleBeforeUnload = () => {
+      const duration = Math.round((Date.now() - startTime) / 1000);
+      trackMutation.mutate({
+        page: window.location.pathname,
+        duration,
+        userAgent: navigator.userAgent,
+      });
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [startTime, trackMutation]);
+
+  return null;
+}
 
 function App() {
   return (
@@ -34,6 +58,7 @@ function App() {
         <LangProvider>
           <TooltipProvider>
             <Toaster />
+            <AnalyticsTracker />
             <Router />
           </TooltipProvider>
         </LangProvider>
