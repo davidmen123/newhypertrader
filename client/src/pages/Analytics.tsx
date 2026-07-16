@@ -200,7 +200,7 @@ function AnalyticsDashboard() {
             <TabsTrigger value="hourly">访问时段</TabsTrigger>
             <TabsTrigger value="geo">地理分布</TabsTrigger>
             <TabsTrigger value="recent">实时访客</TabsTrigger>
-            <TabsTrigger value="ips">访问IP</TabsTrigger>
+            <TabsTrigger value="ips">访问地区</TabsTrigger>
           </TabsList>
 
           <TabsContent value="daily" className="mt-0">
@@ -409,14 +409,15 @@ function AnalyticsDashboard() {
                   <div className="text-center py-12 text-slate-500">暂无数据</div>
                 ) : (
                   <div className="space-y-2">
-                    {recentVisitors.map((item: { ip: string; page: string | null; deviceType: string | null; os: string | null; browser: string | null; createdAt: string }) => (
-                      <div key={item.createdAt + item.ip} className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
+                    {recentVisitors.map((item: { region: string | null; city: string | null; page: string | null; deviceType: string | null; os: string | null; browser: string | null; createdAt: string }) => (
+                      <div key={item.createdAt + (item.region || "")} className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
                         <div className="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-600 rounded-full">
                           <Eye className="w-4 h-4" />
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-mono text-sm text-slate-700">{item.ip}</span>
+                            <span className="text-sm text-slate-700">{item.region || item.city || "未知地区"}</span>
+                            {item.city && item.region && <span className="text-xs text-slate-400">({item.city})</span>}
                             <Badge variant="outline" className="text-xs">{item.deviceType === "desktop" ? "桌面" : item.deviceType === "mobile" ? "手机" : item.deviceType === "tablet" ? "平板" : "未知"}</Badge>
                           </div>
                           <div className="flex items-center gap-2 mt-1">
@@ -441,8 +442,8 @@ function AnalyticsDashboard() {
           <TabsContent value="ips" className="mt-0">
             <Card className="shadow-sm border-slate-200">
               <CardHeader>
-                <CardTitle className="text-lg">访问IP列表</CardTitle>
-                <CardDescription>最近20个访问IP及访问次数</CardDescription>
+                <CardTitle className="text-lg">访问地区列表</CardTitle>
+                <CardDescription>最近访问地区及访问次数</CardDescription>
               </CardHeader>
               <CardContent>
                 {ipLoading ? (
@@ -453,10 +454,13 @@ function AnalyticsDashboard() {
                   <div className="text-center py-12 text-slate-500">暂无数据</div>
                 ) : (
                   <div className="space-y-2">
-                    {ipList.map((item: { ip: string; visits: number; lastVisit: string }, index: number) => (
-                      <div key={item.ip} className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
+                    {ipList.map((item: { region: string | null; city: string | null; visits: number; lastVisit: string }, index: number) => (
+                      <div key={(item.region || "") + (item.city || "")} className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
                         <div className="w-6 h-6 flex items-center justify-center bg-blue-100 text-blue-600 rounded-full text-xs font-medium">{index + 1}</div>
-                        <div className="flex-1 font-mono text-sm text-slate-700">{item.ip}</div>
+                        <div className="flex-1 text-sm text-slate-700">
+                          {item.region || item.city || "未知地区"}
+                          {item.city && item.region && <span className="text-xs text-slate-400">({item.city})</span>}
+                        </div>
                         <div className="text-sm font-medium text-slate-900">{item.visits} 次</div>
                         <div className="text-xs text-slate-500">
                           {new Date(item.lastVisit).toLocaleString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}

@@ -8,6 +8,7 @@ import { calendarRouter } from "./routers/calendar.js";
 import { bitgetRouter } from "./routers/bitget.js";
 import { hyperliquidRouter } from "./routers/hyperliquid.js";
 import { incrementPageViews, getPageViews, logVisitor, getDailyVisitorStats, getVisitorDeviceStats, getVisitorOsStats, getVisitorIpList, getVisitorBrowserStats, getVisitorHourlyStats, getVisitorGeoStats, getRecentVisitors } from "./db.js";
+import { getIpGeo } from "./_core/ipGeo.js";
 
 function parseUserAgent(userAgent?: string) {
   if (!userAgent) return { deviceType: undefined as "desktop" | "mobile" | "tablet" | undefined, os: undefined as string | undefined, browser: undefined as string | undefined };
@@ -115,6 +116,10 @@ export const appRouter = router({
         const { deviceType, os, browser } = parseUserAgent(input.userAgent);
         const ip = getClientIp(ctx.req);
 
+        const geoPromise = getIpGeo(ip);
+
+        const { region, city } = await geoPromise;
+
         await logVisitor({
           ip,
           userAgent: input.userAgent ?? undefined,
@@ -124,6 +129,8 @@ export const appRouter = router({
           page: input.page ?? undefined,
           referrer: input.referrer ?? undefined,
           duration: input.duration ?? undefined,
+          region,
+          city,
         });
 
         return { success: true };

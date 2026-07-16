@@ -359,7 +359,7 @@ export async function getVisitorIpList(params?: {
   startDate?: string;
   endDate?: string;
   limit?: number;
-}): Promise<Array<{ ip: string; visits: number; lastVisit: string }>> {
+}): Promise<Array<{ region: string | null; city: string | null; visits: number; lastVisit: string }>> {
   const db = await getDb();
   if (!db) return [];
 
@@ -376,15 +376,16 @@ export async function getVisitorIpList(params?: {
 
   const baseQuery = db
     .select({
-      ip: visitorLogs.ip,
+      region: visitorLogs.region,
+      city: visitorLogs.city,
       visits: sql<number>`COUNT(*)`,
       lastVisit: sql<string>`MAX(${visitorLogs.createdAt})`,
     })
     .from(visitorLogs);
 
   return whereClause
-    ? baseQuery.where(whereClause).groupBy(visitorLogs.ip).orderBy(desc(sql`MAX(${visitorLogs.createdAt})`)).limit(params?.limit ?? 50)
-    : baseQuery.groupBy(visitorLogs.ip).orderBy(desc(sql`MAX(${visitorLogs.createdAt})`)).limit(params?.limit ?? 50);
+    ? baseQuery.where(whereClause).groupBy(visitorLogs.region, visitorLogs.city).orderBy(desc(sql`MAX(${visitorLogs.createdAt})`)).limit(params?.limit ?? 50)
+    : baseQuery.groupBy(visitorLogs.region, visitorLogs.city).orderBy(desc(sql`MAX(${visitorLogs.createdAt})`)).limit(params?.limit ?? 50);
 }
 
 export async function getVisitorBrowserStats(params?: {
@@ -494,13 +495,14 @@ export async function getVisitorGeoStats(params?: {
   }));
 }
 
-export async function getRecentVisitors(limit?: number): Promise<Array<{ ip: string; page: string | null; deviceType: string | null; os: string | null; browser: string | null; createdAt: string }>> {
+export async function getRecentVisitors(limit?: number): Promise<Array<{ region: string | null; city: string | null; page: string | null; deviceType: string | null; os: string | null; browser: string | null; createdAt: string }>> {
   const db = await getDb();
   if (!db) return [];
 
   return db
     .select({
-      ip: visitorLogs.ip,
+      region: visitorLogs.region,
+      city: visitorLogs.city,
       page: visitorLogs.page,
       deviceType: visitorLogs.deviceType,
       os: visitorLogs.os,
