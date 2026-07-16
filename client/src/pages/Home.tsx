@@ -375,12 +375,12 @@ export default function Home() {
               ? "本页为实盘教学账户数据，不构成投资建议。交易有风险，请独立判断。"
               : "This page displays live account data only and does not constitute investment advice. Trading involves risk; please make independent decisions."}
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between py-2">
             <div
               className="flex flex-wrap items-center gap-x-5 gap-y-2"
               style={{
                 fontFamily: "Inter, sans-serif",
-                fontSize: "0.62rem",
+                fontSize: "0.68rem",
                 letterSpacing: "0.08em",
                 color: subtleTextColor,
               }}
