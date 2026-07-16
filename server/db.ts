@@ -224,7 +224,10 @@ export async function logVisitor(data: InsertVisitorLog): Promise<void> {
     throw error;
   }
   try {
-    await db.insert(visitorLogs).values(data);
+    await db.execute(sql`
+      INSERT INTO visitor_logs (ip, userAgent, deviceType, os, browser, page, referrer, duration, city, region)
+      VALUES (${data.ip}, ${data.userAgent}, ${data.deviceType}, ${data.os}, ${data.browser}, ${data.page}, ${data.referrer}, ${data.duration}, ${data.city}, ${data.region})
+    `);
     console.log("[Analytics] Visitor logged successfully:", data.page, data.deviceType);
   } catch (e) {
     console.error("[Analytics] Failed to log visitor:", e);
