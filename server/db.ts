@@ -5,6 +5,14 @@ import { InsertUser, InsertTrade, InsertPnlSnapshot, InsertVisitorLog, pnlSnapsh
 import { ENV } from './_core/env.js';
 import { getIndexPrice } from './deribit.js';
 
+// createdat is stored in UTC and the frontend sends UTC "YYYY-MM-DD" bounds.
+// new Date("2026-07-16") is 00:00:00Z, so filtering createdat <= that dropped
+// every same-day visit (they all have a time component). Extend the end bound
+// to the last instant of the day so the range is inclusive.
+function endOfDayUtc(dateStr: string): Date {
+  return new Date(`${dateStr.slice(0, 10)}T23:59:59.999Z`);
+}
+
 let _db: any = null;
 let _pool: any = null;
 
@@ -290,7 +298,7 @@ export async function getDailyVisitorStats(params?: {
         avgDuration: sql<number>`COALESCE(AVG(${visitorLogs.duration}), 0)`,
       })
       .from(visitorLogs)
-      .where(and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, new Date(params.endDate))))
+      .where(and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, endOfDayUtc(params.endDate))))
       .groupBy(sql`DATE(${visitorLogs.createdAt})`)
       .orderBy(desc(sql`DATE(${visitorLogs.createdAt})`));
   }
@@ -318,7 +326,7 @@ export async function getDailyVisitorStats(params?: {
         avgDuration: sql<number>`COALESCE(AVG(${visitorLogs.duration}), 0)`,
       })
       .from(visitorLogs)
-      .where(lte(visitorLogs.createdAt, new Date(params.endDate)))
+      .where(lte(visitorLogs.createdAt, endOfDayUtc(params.endDate)))
       .groupBy(sql`DATE(${visitorLogs.createdAt})`)
       .orderBy(desc(sql`DATE(${visitorLogs.createdAt})`));
   }
@@ -344,10 +352,10 @@ export async function getVisitorDeviceStats(params?: {
 
   const getWhereClause = () => {
     if (params?.startDate && params?.endDate) {
-      return and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, new Date(params.endDate)));
+      return and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, endOfDayUtc(params.endDate)));
     }
     if (params?.startDate) return gte(visitorLogs.createdAt, new Date(params.startDate));
-    if (params?.endDate) return lte(visitorLogs.createdAt, new Date(params.endDate));
+    if (params?.endDate) return lte(visitorLogs.createdAt, endOfDayUtc(params.endDate));
     return undefined;
   };
 
@@ -377,10 +385,10 @@ export async function getVisitorOsStats(params?: {
 
   const getWhereClause = () => {
     if (params?.startDate && params?.endDate) {
-      return and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, new Date(params.endDate)));
+      return and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, endOfDayUtc(params.endDate)));
     }
     if (params?.startDate) return gte(visitorLogs.createdAt, new Date(params.startDate));
-    if (params?.endDate) return lte(visitorLogs.createdAt, new Date(params.endDate));
+    if (params?.endDate) return lte(visitorLogs.createdAt, endOfDayUtc(params.endDate));
     return undefined;
   };
 
@@ -411,10 +419,10 @@ export async function getVisitorIpList(params?: {
 
   const getWhereClause = () => {
     if (params?.startDate && params?.endDate) {
-      return and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, new Date(params.endDate)));
+      return and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, endOfDayUtc(params.endDate)));
     }
     if (params?.startDate) return gte(visitorLogs.createdAt, new Date(params.startDate));
-    if (params?.endDate) return lte(visitorLogs.createdAt, new Date(params.endDate));
+    if (params?.endDate) return lte(visitorLogs.createdAt, endOfDayUtc(params.endDate));
     return undefined;
   };
 
@@ -443,10 +451,10 @@ export async function getVisitorBrowserStats(params?: {
 
   const getWhereClause = () => {
     if (params?.startDate && params?.endDate) {
-      return and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, new Date(params.endDate)));
+      return and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, endOfDayUtc(params.endDate)));
     }
     if (params?.startDate) return gte(visitorLogs.createdAt, new Date(params.startDate));
-    if (params?.endDate) return lte(visitorLogs.createdAt, new Date(params.endDate));
+    if (params?.endDate) return lte(visitorLogs.createdAt, endOfDayUtc(params.endDate));
     return undefined;
   };
 
@@ -476,10 +484,10 @@ export async function getVisitorHourlyStats(params?: {
 
   const getWhereClause = () => {
     if (params?.startDate && params?.endDate) {
-      return and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, new Date(params.endDate)));
+      return and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, endOfDayUtc(params.endDate)));
     }
     if (params?.startDate) return gte(visitorLogs.createdAt, new Date(params.startDate));
-    if (params?.endDate) return lte(visitorLogs.createdAt, new Date(params.endDate));
+    if (params?.endDate) return lte(visitorLogs.createdAt, endOfDayUtc(params.endDate));
     return undefined;
   };
 
@@ -516,10 +524,10 @@ export async function getVisitorGeoStats(params?: {
 
   const getWhereClause = () => {
     if (params?.startDate && params?.endDate) {
-      return and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, new Date(params.endDate)));
+      return and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, endOfDayUtc(params.endDate)));
     }
     if (params?.startDate) return gte(visitorLogs.createdAt, new Date(params.startDate));
-    if (params?.endDate) return lte(visitorLogs.createdAt, new Date(params.endDate));
+    if (params?.endDate) return lte(visitorLogs.createdAt, endOfDayUtc(params.endDate));
     return undefined;
   };
 
