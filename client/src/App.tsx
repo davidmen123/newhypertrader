@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
@@ -22,49 +22,46 @@ function Router() {
 }
 
 function AnalyticsTracker() {
-  const [startTime] = useState(Date.now());
-  const trackMutation = trpc.analytics.track.useMutation({
-    onSuccess: () => {
-      console.log("[Analytics] Track visit successful");
-    },
-    onError: (e) => {
-      console.error("[Analytics] Track visit error:", e);
-    },
-  });
+  const trackMutation = trpc.analytics.track.useMutation();
+  const updateDurationMutation = trpc.analytics.updateDuration.useMutation();
 
   useEffect(() => {
-    console.log("[Analytics] AnalyticsTracker initialized, tracking visit to:", window.location.pathname);
-    const trackVisit = async () => {
-      try {
-        await trackMutation.mutateAsync({
-          page: window.location.pathname,
-          userAgent: navigator.userAgent,
-          referrer: document.referrer,
-        });
-      } catch (e) {
-        console.warn("[Analytics] Track visit failed:", e);
-      }
-    };
-    trackVisit();
+    const startTime = Date.now();
+    let visitId: number | null = null;
+    let durationSent = false;
 
-    const handleBeforeUnload = () => {
+    // One row per visit: insert on load, capture its id.
+    trackMutation
+      .mutateAsync({
+        page: window.location.pathname,
+        userAgent: navigator.userAgent,
+        referrer: document.referrer,
+      })
+      .then((res) => {
+        visitId = res?.id ?? null;
+      })
+      .catch(() => {});
+
+    // On leave, update that row's dwell time instead of inserting a new one.
+    // visibilitychange→hidden fires more reliably than beforeunload on mobile.
+    const sendDuration = () => {
+      if (durationSent || visitId == null) return;
+      durationSent = true;
       const duration = Math.round((Date.now() - startTime) / 1000);
-      try {
-        trackMutation.mutate({
-          page: window.location.pathname,
-          duration,
-          userAgent: navigator.userAgent,
-        });
-      } catch (e) {
-        console.warn("[Analytics] Track duration failed:", e);
-      }
+      updateDurationMutation.mutate({ id: visitId, duration });
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") sendDuration();
     };
 
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-    // Intentionally mount-only: trackMutation is a fresh object every render,
-    // so listing it as a dependency re-runs the effect after each mutation
-    // state change — an infinite tracking loop.
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", sendDuration);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", sendDuration);
+    };
+    // Intentionally mount-only: the mutation objects are recreated each render,
+    // so depending on them would re-run this effect and re-track in a loop.
   }, []);
 
   return null;

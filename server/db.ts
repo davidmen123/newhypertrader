@@ -216,7 +216,7 @@ export async function getPageViews(): Promise<number> {
   return rows[0]?.count ?? 0;
 }
 
-export async function logVisitor(data: InsertVisitorLog): Promise<void> {
+export async function logVisitor(data: InsertVisitorLog): Promise<number | null> {
   const db = await getDb();
   if (!db) {
     const error = new Error("Database connection failed");
@@ -252,11 +252,25 @@ export async function logVisitor(data: InsertVisitorLog): Promise<void> {
       city: data.city ?? null,
       region: data.region ?? null,
     };
-    await db.insert(visitorLogs).values(insertData);
+    const inserted = await db.insert(visitorLogs).values(insertData).returning({ id: visitorLogs.id });
     console.log("[Analytics] Visitor logged successfully:", data.page, data.deviceType);
+    return inserted[0]?.id ?? null;
   } catch (e) {
     console.error("[Analytics] Failed to log visitor:", e);
     throw e;
+  }
+}
+
+// Records the on-leave dwell time onto the row created on page load, instead
+// of inserting a second row — keeps one row per real visit so counts aren't
+// doubled.
+export async function updateVisitorDuration(id: number, duration: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  try {
+    await db.update(visitorLogs).set({ duration }).where(eq(visitorLogs.id, id));
+  } catch (e) {
+    console.warn("[Analytics] Failed to update visitor duration:", e);
   }
 }
 

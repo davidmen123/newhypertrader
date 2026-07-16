@@ -7,7 +7,7 @@ import { deribitRouter } from "./routers/deribit.js";
 import { calendarRouter } from "./routers/calendar.js";
 import { bitgetRouter } from "./routers/bitget.js";
 import { hyperliquidRouter } from "./routers/hyperliquid.js";
-import { incrementPageViews, getPageViews, logVisitor, getDailyVisitorStats, getVisitorDeviceStats, getVisitorOsStats, getVisitorIpList, getVisitorBrowserStats, getVisitorHourlyStats, getVisitorGeoStats, getRecentVisitors, getDb } from "./db.js";
+import { incrementPageViews, getPageViews, logVisitor, updateVisitorDuration, getDailyVisitorStats, getVisitorDeviceStats, getVisitorOsStats, getVisitorIpList, getVisitorBrowserStats, getVisitorHourlyStats, getVisitorGeoStats, getRecentVisitors, getDb } from "./db.js";
 import { getIpGeo } from "./_core/ipGeo.js";
 import { sql } from "drizzle-orm";
 
@@ -62,6 +62,20 @@ function getClientIp(req: { headers: Record<string, string | string[] | undefine
     return parts[0].trim() || "unknown";
   }
   return "unknown";
+}
+
+// Drop the last group of the address before storing so we keep an anonymized
+// visitor identifier (good enough for de-duping) without persisting a full,
+// re-identifiable IP. Geo lookup is done on the full IP first, then discarded.
+function maskIp(ip: string): string {
+  if (!ip || ip === "unknown") return "unknown";
+  if (ip.includes(":")) {
+    const groups = ip.split(":");
+    return groups.slice(0, 4).join(":") + "::";
+  }
+  const octets = ip.split(".");
+  if (octets.length === 4) return `${octets[0]}.${octets[1]}.${octets[2]}.0`;
+  return ip;
 }
 
 export const appRouter = router({
@@ -141,24 +155,21 @@ export const appRouter = router({
         }
 
         try {
-          console.log("[Analytics] Track API called with input:", { page: input.page, duration: input.duration });
           const { deviceType, os, browser } = parseUserAgent(input.userAgent);
-          const ip = getClientIp(ctx.req);
-          console.log("[Analytics] Parsed data:", { ip, deviceType, os, browser });
+          const fullIp = getClientIp(ctx.req);
 
           let region: string | undefined;
           let city: string | undefined;
           try {
-            const geo = await getIpGeo(ip);
+            const geo = await getIpGeo(fullIp);
             region = geo.region || undefined;
             city = geo.city || undefined;
-            console.log("[Analytics] Geo lookup result:", { region, city });
           } catch (e) {
             console.warn("[Analytics] IP geo lookup failed, skipping:", e);
           }
 
-          await logVisitor({
-            ip,
+          const id = await logVisitor({
+            ip: maskIp(fullIp),
             userAgent: input.userAgent ?? undefined,
             deviceType,
             os,
@@ -170,11 +181,20 @@ export const appRouter = router({
             city,
           });
 
-          return { success: true };
+          return { success: true, id };
         } catch (error) {
           console.error("[Analytics] Track API error:", error);
           return { success: false, error: String(error) };
         }
+      }),
+
+    // Updates the dwell time onto an existing visit row (from track) rather
+    // than inserting a new one, so a single visit stays a single row.
+    updateDuration: publicProcedure
+      .input(z.object({ id: z.number(), duration: z.number() }))
+      .mutation(async ({ input }) => {
+        await updateVisitorDuration(input.id, input.duration);
+        return { success: true };
       }),
 
     dailyStats: publicProcedure
