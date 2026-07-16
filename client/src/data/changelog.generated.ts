@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.24.0",
+    "date": "2026-07-16",
+    "zh": "经济日历事件名称支持中英文切换",
+    "en": "Economic calendar events now support Chinese/English toggle"
+  },
+  {
     "version": "1.23.0",
     "date": "2026-07-16",
     "zh": "优化页脚底部行间距与字体大小",
