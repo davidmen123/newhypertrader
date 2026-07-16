@@ -122,7 +122,7 @@ export default function PositionsTable() {
                         <Info className="text-muted-foreground/60 cursor-help" style={{ width: "12px", height: "12px" }} />
                       </TooltipTrigger>
                       <TooltipContent className="text-xs" style={{ fontSize: "0.7rem" }}>
-                        {t("显示当前的持仓市值（数量*开仓均价）", "Position value at current mark price")}
+                        {t("显示当前的持仓市值（数量*标记价）", "Position value at current mark price")}
                       </TooltipContent>
                     </Tooltip>
                   </th>
