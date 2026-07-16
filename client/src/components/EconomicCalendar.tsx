@@ -6,28 +6,33 @@ import { useLang } from "@/contexts/LangContext";
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { ECONOMIC_EVENT_TRANSLATIONS } from "@/lib/event-i18n";
 
-function ImportanceBadge({ level }: { level: number }) {
+function ImportanceBadge({ level, lang }: { level: number; lang: string }) {
+  const labels = {
+    zh: { 1: "低", 2: "中", 3: "高" },
+    en: { 1: "LOW", 2: "MED", 3: "HIGH" },
+  };
   const styles =
     level === 3
       ? {
           bg: "oklch(55% 0.18 25 / 20%)",
           border: "oklch(55% 0.18 25 / 60%)",
           text: "oklch(72% 0.15 25)",
-          label: "HIGH",
+          label: labels[lang as "zh" | "en"][3],
         }
       : level === 2
       ? {
           bg: "oklch(70% 0.14 80 / 15%)",
           border: "oklch(70% 0.14 80 / 50%)",
           text: "oklch(78% 0.12 80)",
-          label: "MED",
+          label: labels[lang as "zh" | "en"][2],
         }
       : {
           bg: "oklch(50% 0.01 200 / 10%)",
           border: "oklch(50% 0.01 200 / 30%)",
           text: "oklch(55% 0.01 200)",
-          label: "LOW",
+          label: labels[lang as "zh" | "en"][1],
         };
 
   return (
@@ -229,10 +234,10 @@ export default function EconomicCalendar() {
                       maxWidth: 300,
                     }}
                   >
-                    {event.event}
+                    {lang === "zh" ? (ECONOMIC_EVENT_TRANSLATIONS[event.event] || event.event) : event.event}
                   </td>
                   <td style={{ padding: "8px 10px" }}>
-                    <ImportanceBadge level={event.importance} />
+                    <ImportanceBadge level={event.importance} lang={lang} />
                   </td>
                   <td
                     style={{
