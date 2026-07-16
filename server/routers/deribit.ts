@@ -31,18 +31,17 @@ export const deribitRouter = router({
     let totalProfit = 0;
     let totalLoss = 0;
 
-    const processedTrades = allTrades.trades.map(trade => {
+    const processedTrades = allTrades.trades.map((trade: any) => {
       let convertedProfit = trade.profit ? parseFloat(trade.profit) : 0;
       let convertedFee = trade.fee ? parseFloat(trade.fee) : 0;
 
-      // Convert BTC denominated trades to USDC
       if (trade.currency === "BTC" && btcPrice) {
         convertedProfit *= btcPrice;
         convertedFee *= btcPrice;
       }
       const netProfit = convertedProfit - convertedFee;
       return { ...trade, netProfit };
-    }).filter(trade => trade.netProfit !== 0); // Filter out trades with 0 net profit after conversion
+    }).filter((trade: any) => trade.netProfit !== 0);
 
     for (const trade of processedTrades) {
       if (trade.netProfit > 0) {
@@ -680,7 +679,7 @@ export const deribitRouter = router({
         offset: input.page * input.pageSize,
       });
 
-      const mapped = rows.map((t) => ({
+      const mapped = rows.map((t: any) => ({
         tradeId: t.tradeId,
         orderId: t.orderId,
         instrument: t.instrument,

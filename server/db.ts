@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
-import { createPool } from "mysql2/promise";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { InsertUser, InsertTrade, InsertPnlSnapshot, InsertVisitorLog, pnlSnapshots, trades, users, pageViews, visitorLogs } from "../drizzle/schema.js";
 import { ENV } from './_core/env.js';
 import { getIndexPrice } from './deribit.js';
@@ -8,29 +8,14 @@ import { getIndexPrice } from './deribit.js';
 let _db: any = null;
 let _pool: any = null;
 
-function parseDatabaseUrl(url: string) {
-  const parsed = new URL(url);
-  return {
-    host: parsed.hostname,
-    port: parseInt(parsed.port) || 3306,
-    user: parsed.username,
-    password: parsed.password,
-    database: parsed.pathname.substring(1),
-  };
-}
-
-// Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
       if (!_pool) {
-        const config = parseDatabaseUrl(process.env.DATABASE_URL);
-        _pool = createPool({
-          ...config,
-          waitForConnections: true,
-          connectionLimit: 10,
-          queueLimit: 0,
-          charset: "utf8mb4",
+        _pool = postgres(process.env.DATABASE_URL, {
+          max: 10,
+          idle_timeout: 30,
+          connect_timeout: 10,
         });
       }
       _db = drizzle(_pool);
@@ -94,8 +79,9 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
+      set: updateSet as any,
     });
   } catch (error) {
     console.error("[Database] Failed to upsert user:", error);
@@ -115,12 +101,11 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// ─── Trades ──────────────────────────────────────────────────────────────────
-
 export async function upsertTrade(trade: InsertTrade): Promise<void> {
   const db = await getDb();
   if (!db) return;
-  await db.insert(trades).values(trade).onDuplicateKeyUpdate({
+  await db.insert(trades).values(trade).onConflictDoUpdate({
+    target: trades.tradeId,
     set: {
       price: trade.price,
       profit: trade.profit,
@@ -153,7 +138,6 @@ export async function getTradesFromDb(params: {
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-  // Run count and data queries in parallel
   const [countResult, rows] = await Promise.all([
     db
       .select({ count: sql<number>`COUNT(*)` })
@@ -172,12 +156,11 @@ export async function getTradesFromDb(params: {
   return { trades: rows, total };
 }
 
-// ─── PnL Snapshots ───────────────────────────────────────────────────────────
-
 export async function upsertPnlSnapshot(snapshot: InsertPnlSnapshot): Promise<void> {
   const db = await getDb();
   if (!db) return;
-  await db.insert(pnlSnapshots).values(snapshot).onDuplicateKeyUpdate({
+  await db.insert(pnlSnapshots).values(snapshot).onConflictDoUpdate({
+    target: [pnlSnapshots.currency, pnlSnapshots.date],
     set: {
       equity: snapshot.equity,
       balance: snapshot.balance,
@@ -215,23 +198,11 @@ export async function getPnlSnapshots(params: {
     .limit(params.limit ?? 90);
 }
 
-/**
- * Returns combined portfolio snapshots merging BTC + USDC sub-accounts.
- * denomination = 'USDC': totalEquity = btcEquity * btcPrice + usdcEquity
- * denomination = 'BTC':  totalEquity = btcEquity + usdcEquity / btcPrice
- * Rows are matched by date; only dates where both sub-accounts have a snapshot are included.
- */
-// ─── Page Views ──────────────────────────────────────────────────────────────
-
-/**
- * Atomically increment the page view counter and return the new total.
- * Uses INSERT ... ON DUPLICATE KEY UPDATE to handle the single-row pattern.
- */
 export async function incrementPageViews(): Promise<number> {
   const db = await getDb();
   if (!db) return 0;
-  // Ensure row id=1 exists, then increment
-  await db.insert(pageViews).values({ id: 1, count: 1 }).onDuplicateKeyUpdate({
+  await db.insert(pageViews).values({ id: 1, count: 1 }).onConflictDoUpdate({
+    target: pageViews.id,
     set: { count: sql`count + 1` },
   });
   const rows = await db.select().from(pageViews).where(eq(pageViews.id, 1)).limit(1);
@@ -244,8 +215,6 @@ export async function getPageViews(): Promise<number> {
   const rows = await db.select().from(pageViews).where(eq(pageViews.id, 1)).limit(1);
   return rows[0]?.count ?? 0;
 }
-
-// ─── Visitor Analytics ──────────────────────────────────────────────────────────
 
 export async function logVisitor(data: InsertVisitorLog): Promise<void> {
   const db = await getDb();
@@ -276,7 +245,7 @@ export async function getDailyVisitorStats(params?: {
         date: sql<string>`DATE(${visitorLogs.createdAt})`,
         visits: sql<number>`COUNT(*)`,
         uniqueIps: sql<number>`COUNT(DISTINCT ${visitorLogs.ip})`,
-        avgDuration: sql<number>`IFNULL(AVG(${visitorLogs.duration}), 0)`,
+        avgDuration: sql<number>`COALESCE(AVG(${visitorLogs.duration}), 0)`,
       })
       .from(visitorLogs)
       .where(and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, new Date(params.endDate))))
@@ -290,7 +259,7 @@ export async function getDailyVisitorStats(params?: {
         date: sql<string>`DATE(${visitorLogs.createdAt})`,
         visits: sql<number>`COUNT(*)`,
         uniqueIps: sql<number>`COUNT(DISTINCT ${visitorLogs.ip})`,
-        avgDuration: sql<number>`IFNULL(AVG(${visitorLogs.duration}), 0)`,
+        avgDuration: sql<number>`COALESCE(AVG(${visitorLogs.duration}), 0)`,
       })
       .from(visitorLogs)
       .where(gte(visitorLogs.createdAt, new Date(params.startDate)))
@@ -304,7 +273,7 @@ export async function getDailyVisitorStats(params?: {
         date: sql<string>`DATE(${visitorLogs.createdAt})`,
         visits: sql<number>`COUNT(*)`,
         uniqueIps: sql<number>`COUNT(DISTINCT ${visitorLogs.ip})`,
-        avgDuration: sql<number>`IFNULL(AVG(${visitorLogs.duration}), 0)`,
+        avgDuration: sql<number>`COALESCE(AVG(${visitorLogs.duration}), 0)`,
       })
       .from(visitorLogs)
       .where(lte(visitorLogs.createdAt, new Date(params.endDate)))
@@ -317,7 +286,7 @@ export async function getDailyVisitorStats(params?: {
       date: sql<string>`DATE(${visitorLogs.createdAt})`,
       visits: sql<number>`COUNT(*)`,
       uniqueIps: sql<number>`COUNT(DISTINCT ${visitorLogs.ip})`,
-      avgDuration: sql<number>`IFNULL(AVG(${visitorLogs.duration}), 0)`,
+      avgDuration: sql<number>`COALESCE(AVG(${visitorLogs.duration}), 0)`,
     })
     .from(visitorLogs)
     .groupBy(sql`DATE(${visitorLogs.createdAt})`)
@@ -350,7 +319,7 @@ export async function getVisitorDeviceStats(params?: {
   ]);
 
   const total = totalResult[0]?.total ?? 0;
-  return result.map((row) => ({
+  return result.map((row: { deviceType: string | null; count: number }) => ({
     deviceType: row.deviceType,
     count: row.count,
     percentage: total > 0 ? Math.round((row.count / total) * 100) : 0,
@@ -383,7 +352,7 @@ export async function getVisitorOsStats(params?: {
   ]);
 
   const total = totalResult[0]?.total ?? 0;
-  return result.map((row) => ({
+  return result.map((row: { os: string | null; count: number }) => ({
     os: row.os,
     count: row.count,
     percentage: total > 0 ? Math.round((row.count / total) * 100) : 0,
@@ -449,7 +418,7 @@ export async function getVisitorBrowserStats(params?: {
   ]);
 
   const total = totalResult[0]?.total ?? 0;
-  return result.map((row) => ({
+  return result.map((row: { browser: string | null; count: number }) => ({
     browser: row.browser,
     count: row.count,
     percentage: total > 0 ? Math.round((row.count / total) * 100) : 0,
@@ -477,12 +446,12 @@ export async function getVisitorHourlyStats(params?: {
   const [totalResult, result] = await Promise.all([
     whereClause ? db.select({ total: sql<number>`COUNT(*)` }).from(visitorLogs).where(whereClause) : db.select({ total: sql<number>`COUNT(*)` }).from(visitorLogs),
     whereClause
-      ? db.select({ hour: sql<number>`HOUR(${visitorLogs.createdAt})`, visits: sql<number>`COUNT(*)` }).from(visitorLogs).where(whereClause).groupBy(sql`HOUR(${visitorLogs.createdAt})`).orderBy(sql`HOUR(${visitorLogs.createdAt})`)
-      : db.select({ hour: sql<number>`HOUR(${visitorLogs.createdAt})`, visits: sql<number>`COUNT(*)` }).from(visitorLogs).groupBy(sql`HOUR(${visitorLogs.createdAt})`).orderBy(sql`HOUR(${visitorLogs.createdAt})`),
+      ? db.select({ hour: sql<number>`EXTRACT(HOUR FROM ${visitorLogs.createdAt})`, visits: sql<number>`COUNT(*)` }).from(visitorLogs).where(whereClause).groupBy(sql`EXTRACT(HOUR FROM ${visitorLogs.createdAt})`).orderBy(sql`EXTRACT(HOUR FROM ${visitorLogs.createdAt})`)
+      : db.select({ hour: sql<number>`EXTRACT(HOUR FROM ${visitorLogs.createdAt})`, visits: sql<number>`COUNT(*)` }).from(visitorLogs).groupBy(sql`EXTRACT(HOUR FROM ${visitorLogs.createdAt})`).orderBy(sql`EXTRACT(HOUR FROM ${visitorLogs.createdAt})`),
   ]);
 
   const total = totalResult[0]?.total ?? 0;
-  const hourlyData = result.map((row) => ({
+  const hourlyData = result.map((row: { hour: number; visits: number }) => ({
     hour: row.hour,
     visits: row.visits,
     percentage: total > 0 ? Math.round((row.visits / total) * 100) : 0,
@@ -490,7 +459,7 @@ export async function getVisitorHourlyStats(params?: {
 
   const fullDay: Array<{ hour: number; visits: number; percentage: number }> = [];
   for (let h = 0; h < 24; h++) {
-    const existing = hourlyData.find((d) => d.hour === h);
+    const existing = hourlyData.find((d: { hour: number }) => d.hour === h);
     fullDay.push(existing || { hour: h, visits: 0, percentage: 0 });
   }
   return fullDay;
@@ -522,7 +491,7 @@ export async function getVisitorGeoStats(params?: {
   ]);
 
   const total = totalResult[0]?.total ?? 0;
-  return result.map((row) => ({
+  return result.map((row: { region: string | null; city: string | null; count: number }) => ({
     region: row.region,
     city: row.city,
     count: row.count,
@@ -549,10 +518,6 @@ export async function getRecentVisitors(limit?: number): Promise<Array<{ region:
     .limit(limit ?? 20);
 }
 
-/**
- * Returns the earliest recorded snapshot for each currency.
- * Used to compute total P&L = currentEquity - initialBalance.
- */
 export async function getEarliestPnlSnapshots(): Promise<{
   btc: { balance: string; equity: string; snapshotAt: number } | null;
   usdc: { balance: string; equity: string; snapshotAt: number } | null;
@@ -598,13 +563,11 @@ export async function getCombinedPnlSnapshots(params: {
 
   const limit = params.limit ?? 180;
 
-  // Fetch current BTC price as fallback for rows with btcPrice = 0 or null
   let liveBtcPrice: number | null = null;
   try {
     liveBtcPrice = await getIndexPrice('btc_usdc');
   } catch { /* ignore */ }
 
-  // Fetch both currencies
   const [btcRows, usdcRows] = await Promise.all([
     db.select().from(pnlSnapshots)
       .where(and(
@@ -624,13 +587,11 @@ export async function getCombinedPnlSnapshots(params: {
       .limit(limit),
   ]);
 
-  // Build maps keyed by date (keep latest snapshot per date)
   const btcMap = new Map<string, typeof btcRows[0]>();
   for (const r of btcRows) { if (!btcMap.has(r.date)) btcMap.set(r.date, r); }
   const usdcMap = new Map<string, typeof usdcRows[0]>();
   for (const r of usdcRows) { if (!usdcMap.has(r.date)) usdcMap.set(r.date, r); }
 
-  // Merge: use dates present in either map (fill missing side with 0)
   const allDates = Array.from(new Set([...Array.from(btcMap.keys()), ...Array.from(usdcMap.keys())])).sort();
 
   return allDates.map((date) => {
@@ -646,7 +607,6 @@ export async function getCombinedPnlSnapshots(params: {
     const btcUnrealized = parseFloat(btc?.unrealizedPnl ?? '0');
     const usdcUnrealized = parseFloat(usdc?.unrealizedPnl ?? '0');
 
-    // BTC price: prefer the snapshot's recorded price (must be > 0), fall back to live price
     const storedPrice = parseFloat(btc?.btcPrice ?? usdc?.btcPrice ?? '0');
     const btcPrice = storedPrice > 0 ? storedPrice : (liveBtcPrice ?? 0);
 
@@ -673,7 +633,6 @@ export async function getCombinedPnlSnapshots(params: {
       date,
       equity: String(equity),
       balance: String(balance),
-      // Raw per-currency balances (not converted) for display purposes
       btcBalance: String(btcBalance),
       usdcBalance: String(usdcBalance),
       totalPnl: String(totalPnl),
@@ -684,20 +643,6 @@ export async function getCombinedPnlSnapshots(params: {
   });
 }
 
-// ─── P&L Attribution ─────────────────────────────────────────────────────────
-
-/**
- * Returns per-period P&L attribution data.
- *
- * Attribution methodology (approximation):
- *   - ThetaPnL  ≈ avgTheta × Δt (hours between snapshots / 24)
- *   - DeltaPnL  ≈ avgDelta × ΔBTC_price (in USDC)
- *   - VegaPnL   ≈ (currentVega - prevVega) × 1  (vega change contribution)
- *   - Residual  = totalEquityChange - ThetaPnL - DeltaPnL - VegaPnL
- *
- * All values are in USDC denomination.
- * Greeks are taken from the USDC sub-account (options account).
- */
 export async function getPnlAttributionSnapshots(params: {
   startDate?: string;
   endDate?: string;
@@ -708,13 +653,11 @@ export async function getPnlAttributionSnapshots(params: {
 
   const limit = params.limit ?? 90;
 
-  // Fetch current BTC price as fallback
   let liveBtcPrice: number | null = null;
   try {
     liveBtcPrice = await getIndexPrice('btc_usdc');
   } catch { /* ignore */ }
 
-  // Fetch USDC snapshots (options account — has Greeks)
   const conditions = [eq(pnlSnapshots.currency, 'USDC')];
   if (params.startDate) conditions.push(gte(pnlSnapshots.date, params.startDate));
   if (params.endDate) conditions.push(lte(pnlSnapshots.date, params.endDate));
@@ -724,9 +667,8 @@ export async function getPnlAttributionSnapshots(params: {
     .from(pnlSnapshots)
     .where(and(...conditions))
     .orderBy(desc(pnlSnapshots.snapshotAt))
-    .limit(limit + 1); // fetch one extra for diff calculation
+    .limit(limit + 1);
 
-  // Also fetch BTC snapshots to compute combined equity
   const btcConditions = [eq(pnlSnapshots.currency, 'BTC')];
   if (params.startDate) btcConditions.push(gte(pnlSnapshots.date, params.startDate));
   if (params.endDate) btcConditions.push(lte(pnlSnapshots.date, params.endDate));
@@ -738,19 +680,16 @@ export async function getPnlAttributionSnapshots(params: {
     .orderBy(desc(pnlSnapshots.snapshotAt))
     .limit(limit + 1);
 
-  // Build maps keyed by date (keep latest snapshot per date)
   const usdcMap = new Map<string, typeof usdcRows[0]>();
   for (const r of usdcRows) { if (!usdcMap.has(r.date)) usdcMap.set(r.date, r); }
   const btcMap = new Map<string, typeof btcRows[0]>();
   for (const r of btcRows) { if (!btcMap.has(r.date)) btcMap.set(r.date, r); }
 
-  // Get all dates sorted ascending
   const allDates = Array.from(new Set([
     ...Array.from(usdcMap.keys()),
     ...Array.from(btcMap.keys()),
   ])).sort();
 
-  // Helper: compute combined USDC equity for a date
   const combinedEquity = (date: string): number => {
     const usdc = usdcMap.get(date);
     const btc = btcMap.get(date);
@@ -768,7 +707,6 @@ export async function getPnlAttributionSnapshots(params: {
     deltaPnl: number;
     vegaPnl: number;
     residual: number;
-    // raw Greeks at this snapshot
     deltaTotal: number;
     optionsTheta: number;
     optionsVega: number;
@@ -783,42 +721,28 @@ export async function getPnlAttributionSnapshots(params: {
     const prev = usdcMap.get(prevDate);
     const curr = usdcMap.get(currDate);
 
-    // Equity change (USDC denomination, combined BTC+USDC)
     const prevEquity = combinedEquity(prevDate);
     const currEquity = combinedEquity(currDate);
     const totalPnl = currEquity - prevEquity;
 
-    // BTC price at each snapshot
     const prevBtcPrice = parseFloat(prev?.btcPrice ?? btcMap.get(prevDate)?.btcPrice ?? '0') || (liveBtcPrice ?? 0);
     const currBtcPrice = parseFloat(curr?.btcPrice ?? btcMap.get(currDate)?.btcPrice ?? '0') || (liveBtcPrice ?? 0);
     const deltaBtcPrice = currBtcPrice - prevBtcPrice;
 
-    // Greeks at previous snapshot (used to estimate contribution over the period)
     const prevTheta = parseFloat(prev?.optionsTheta ?? '0');
     const prevVega = parseFloat(prev?.optionsVega ?? '0');
     const prevDelta = parseFloat(prev?.deltaTotal ?? '0');
     const currVega = parseFloat(curr?.optionsVega ?? '0');
 
-    // Time elapsed in days
     const prevTs = prev?.snapshotAt ?? 0;
     const currTs = curr?.snapshotAt ?? 0;
     const dtDays = prevTs > 0 && currTs > 0
       ? (currTs - prevTs) / (24 * 3600 * 1000)
-      : 1; // default 1 day
+      : 1;
 
-    // Theta contribution: theta (per day in currency) × elapsed days
-    // Deribit options_theta is in the settlement currency per day
-    // For USDC account: theta is in USDC directly
     const thetaPnl = prevTheta * dtDays;
-
-    // Delta contribution: delta (in BTC) × BTC price change (in USDC)
     const deltaPnl = prevDelta * deltaBtcPrice;
-
-    // Vega contribution: vega change × 1 (simplified — vega itself changes with vol)
-    // Better approximation: (currVega - prevVega) captures vol-driven vega P&L
-    const vegaPnl = (currVega - prevVega) * currBtcPrice * 0.01; // ~1% vol move contribution
-
-    // Residual = everything else (gamma, rho, pin risk, realized vol, etc.)
+    const vegaPnl = (currVega - prevVega) * currBtcPrice * 0.01;
     const residual = totalPnl - thetaPnl - deltaPnl - vegaPnl;
 
     result.push({

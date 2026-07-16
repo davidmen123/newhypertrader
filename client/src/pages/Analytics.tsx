@@ -40,7 +40,7 @@ function AnalyticsDashboard() {
   const { data: hourlyStatsResult, isLoading: hourlyLoading, refetch: refetchHourly } = trpc.analytics.hourlyStats.useQuery(dateRange);
   const { data: geoStatsResult, isLoading: geoLoading, refetch: refetchGeo } = trpc.analytics.geoStats.useQuery(dateRange);
   const { data: recentVisitorsResult, isLoading: recentLoading, refetch: refetchRecent } = trpc.analytics.recentVisitors.useQuery({ limit: 15 }, { refetchInterval: 10000 });
-  const { data: healthResult, refetch: refetchHealth } = trpc.analytics.health.useQuery({
+  const { data: healthResult, refetch: refetchHealth } = trpc.analytics.health.useQuery(undefined, {
     refetchInterval: 5000,
   });
   
