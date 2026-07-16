@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.29.0",
+    "date": "2026-07-16",
+    "zh": "使用关键词级别的智能翻译，自动翻译任意经济事件名称",
+    "en": "Economic calendar events now support intelligent keyword-based translation"
+  },
+  {
     "version": "1.28.0",
     "date": "2026-07-16",
     "zh": "补充PPI m/m中文翻译，确保API返回的所有事件都有中文翻译",
