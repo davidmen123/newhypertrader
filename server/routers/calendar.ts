@@ -282,9 +282,8 @@ async function fetchNasdaqEarningsFallback(dates: string[]): Promise<EarningsEve
   return results;
 }
 
-async function fetchForexFactoryRaw(): Promise<RawForexEvent[]> {
-  // Only thisweek is reliably available; nextweek returns 404
-  const url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json";
+async function fetchForexFactoryWeek(week: "thisweek" | "nextweek"): Promise<RawForexEvent[]> {
+  const url = `https://nfs.faireconomy.media/ff_calendar_${week}.json`;
 
   const res = await fetch(url, {
     headers: HEADERS,
@@ -292,10 +291,28 @@ async function fetchForexFactoryRaw(): Promise<RawForexEvent[]> {
   });
 
   if (!res.ok) {
+    if (week === "nextweek" && res.status === 404) {
+      return [];
+    }
     throw new Error(`ForexFactory API returned ${res.status}`);
   }
 
   return res.json() as Promise<RawForexEvent[]>;
+}
+
+async function fetchForexFactoryRaw(range: "week" | "month"): Promise<RawForexEvent[]> {
+  const thisWeekEvents = await fetchForexFactoryWeek("thisweek");
+  
+  if (range === "month") {
+    try {
+      const nextWeekEvents = await fetchForexFactoryWeek("nextweek");
+      return [...thisWeekEvents, ...nextWeekEvents];
+    } catch {
+      return thisWeekEvents;
+    }
+  }
+  
+  return thisWeekEvents;
 }
 
 // ─── Router ──────────────────────────────────────────────────────────────────
@@ -320,7 +337,7 @@ export const calendarRouter = router({
         return cached;
       }
 
-      const rawEvents = await fetchForexFactoryRaw();
+      const rawEvents = await fetchForexFactoryRaw(range);
 
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
