@@ -224,13 +224,13 @@ export async function logVisitor(data: InsertVisitorLog): Promise<void> {
     throw error;
   }
   try {
-    await db.execute(sql`CREATE TYPE IF NOT EXISTS deviceType AS ENUM ('desktop', 'mobile', 'tablet')`);
+    await db.execute(sql`CREATE TYPE IF NOT EXISTS "deviceType" AS ENUM ('desktop', 'mobile', 'tablet')`).catch(() => {});
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS visitor_logs (
-        id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         ip varchar(45) NOT NULL,
         userAgent text,
-        deviceType deviceType,
+        deviceType varchar(16),
         os varchar(64),
         browser varchar(64),
         page varchar(256),
