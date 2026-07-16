@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { BarChart3, Users, Globe, Smartphone, Laptop, Clock, Calendar, MapPin, ArrowLeft, Eye, Monitor, RefreshCw } from "lucide-react";
+import { BarChart3, Users, Globe, Smartphone, Laptop, Clock, Calendar, MapPin, ArrowLeft, Eye, Monitor, RefreshCw, Loader2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
 const today = new Date().toISOString().split("T")[0];
@@ -32,13 +32,13 @@ function AnalyticsDashboard() {
 
   const dateRange = getDateRange();
 
-  const { data: dailyStatsResult, isLoading: dailyLoading, refetch: refetchDaily } = trpc.analytics.dailyStats.useQuery(dateRange, { refetchInterval: 30000 });
-  const { data: deviceStatsResult, isLoading: deviceLoading, refetch: refetchDevice } = trpc.analytics.deviceStats.useQuery(dateRange, { refetchInterval: 30000 });
-  const { data: osStatsResult, isLoading: osLoading, refetch: refetchOs } = trpc.analytics.osStats.useQuery(dateRange, { refetchInterval: 30000 });
-  const { data: ipListResult, isLoading: ipLoading, refetch: refetchIp } = trpc.analytics.ipList.useQuery({ ...dateRange, limit: 20 }, { refetchInterval: 30000 });
-  const { data: browserStatsResult, isLoading: browserLoading, refetch: refetchBrowser } = trpc.analytics.browserStats.useQuery(dateRange, { refetchInterval: 30000 });
-  const { data: hourlyStatsResult, isLoading: hourlyLoading, refetch: refetchHourly } = trpc.analytics.hourlyStats.useQuery(dateRange, { refetchInterval: 30000 });
-  const { data: geoStatsResult, isLoading: geoLoading, refetch: refetchGeo } = trpc.analytics.geoStats.useQuery(dateRange, { refetchInterval: 30000 });
+  const { data: dailyStatsResult, isLoading: dailyLoading, refetch: refetchDaily } = trpc.analytics.dailyStats.useQuery(dateRange);
+  const { data: deviceStatsResult, isLoading: deviceLoading, refetch: refetchDevice } = trpc.analytics.deviceStats.useQuery(dateRange);
+  const { data: osStatsResult, isLoading: osLoading, refetch: refetchOs } = trpc.analytics.osStats.useQuery(dateRange);
+  const { data: ipListResult, isLoading: ipLoading, refetch: refetchIp } = trpc.analytics.ipList.useQuery({ ...dateRange, limit: 20 });
+  const { data: browserStatsResult, isLoading: browserLoading, refetch: refetchBrowser } = trpc.analytics.browserStats.useQuery(dateRange);
+  const { data: hourlyStatsResult, isLoading: hourlyLoading, refetch: refetchHourly } = trpc.analytics.hourlyStats.useQuery(dateRange);
+  const { data: geoStatsResult, isLoading: geoLoading, refetch: refetchGeo } = trpc.analytics.geoStats.useQuery(dateRange);
   const { data: recentVisitorsResult, isLoading: recentLoading, refetch: refetchRecent } = trpc.analytics.recentVisitors.useQuery({ limit: 15 }, { refetchInterval: 10000 });
   const { data: healthResult } = trpc.analytics.health.useQuery();
   
@@ -139,6 +139,13 @@ function AnalyticsDashboard() {
               ) : (
                 <>❌ 系统异常: {healthResult.message}</>
               )}
+            </div>
+          )}
+          
+          {(dailyLoading || deviceLoading || osLoading || ipLoading || browserLoading || hourlyLoading || geoLoading || recentLoading) && (
+            <div className="mt-4 flex items-center justify-center gap-2 text-slate-500">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span className="text-sm">数据加载中...</span>
             </div>
           )}
         </header>
