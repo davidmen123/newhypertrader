@@ -349,8 +349,10 @@ export const calendarRouter = router({
         startDate = new Date(today.getFullYear(), today.getMonth(), 1);
         endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
       } else {
-        startDate = today;
-        endDate = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const dayOfWeek = today.getDay();
+        const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        startDate = new Date(today.getTime() + mondayOffset * 24 * 60 * 60 * 1000);
+        endDate = new Date(startDate.getTime() + 6 * 24 * 60 * 60 * 1000);
       }
 
       const filtered: EconEvent[] = rawEvents
