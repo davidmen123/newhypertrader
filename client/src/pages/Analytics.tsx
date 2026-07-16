@@ -120,8 +120,17 @@ function AnalyticsDashboard() {
                   trackMutation.mutate(
                     { page: "/analytics", userAgent: navigator.userAgent },
                     {
-                      onSuccess: () => alert("✅ 测试上报成功！"),
-                      onError: () => alert("❌ 测试上报失败！"),
+                      onSuccess: (data) => {
+                        if (data?.success) {
+                          alert("✅ 测试上报成功！");
+                          refreshAll();
+                        } else {
+                          alert(`❌ 测试上报失败: ${data?.error || "未知错误"}`);
+                        }
+                      },
+                      onError: (error) => {
+                        alert(`❌ 测试上报失败: ${error.message || "网络错误"}`);
+                      },
                     }
                   );
                 }}

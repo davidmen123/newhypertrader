@@ -135,36 +135,41 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        console.log("[Analytics] Track API called with input:", { page: input.page, duration: input.duration });
-        const { deviceType, os, browser } = parseUserAgent(input.userAgent);
-        const ip = getClientIp(ctx.req);
-        console.log("[Analytics] Parsed data:", { ip, deviceType, os, browser });
-
-        let region: string | undefined;
-        let city: string | undefined;
         try {
-          const geo = await getIpGeo(ip);
-          region = geo.region || undefined;
-          city = geo.city || undefined;
-          console.log("[Analytics] Geo lookup result:", { region, city });
-        } catch (e) {
-          console.warn("[Analytics] IP geo lookup failed, skipping:", e);
+          console.log("[Analytics] Track API called with input:", { page: input.page, duration: input.duration });
+          const { deviceType, os, browser } = parseUserAgent(input.userAgent);
+          const ip = getClientIp(ctx.req);
+          console.log("[Analytics] Parsed data:", { ip, deviceType, os, browser });
+
+          let region: string | undefined;
+          let city: string | undefined;
+          try {
+            const geo = await getIpGeo(ip);
+            region = geo.region || undefined;
+            city = geo.city || undefined;
+            console.log("[Analytics] Geo lookup result:", { region, city });
+          } catch (e) {
+            console.warn("[Analytics] IP geo lookup failed, skipping:", e);
+          }
+
+          await logVisitor({
+            ip,
+            userAgent: input.userAgent ?? undefined,
+            deviceType,
+            os,
+            browser,
+            page: input.page ?? undefined,
+            referrer: input.referrer ?? undefined,
+            duration: input.duration ?? undefined,
+            region,
+            city,
+          });
+
+          return { success: true };
+        } catch (error) {
+          console.error("[Analytics] Track API error:", error);
+          return { success: false, error: String(error) };
         }
-
-        await logVisitor({
-          ip,
-          userAgent: input.userAgent ?? undefined,
-          deviceType,
-          os,
-          browser,
-          page: input.page ?? undefined,
-          referrer: input.referrer ?? undefined,
-          duration: input.duration ?? undefined,
-          region,
-          city,
-        });
-
-        return { success: true };
       }),
 
     dailyStats: publicProcedure
