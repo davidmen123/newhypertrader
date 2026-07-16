@@ -32,6 +32,7 @@ export const ECONOMIC_EVENT_TRANSLATIONS: Record<string, string> = {
   "Consumer Sentiment": "消费者信心",
   "Producer Price Index m/m": "PPI月率",
   "Core PPI m/m": "核心PPI月率",
+  "PPI m/m": "PPI月率",
   "Trade Balance": "贸易余额",
   "Factory Orders m/m": "工厂订单月率",
   "Industrial Production m/m": "工业生产月率",
