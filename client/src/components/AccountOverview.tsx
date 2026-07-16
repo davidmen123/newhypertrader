@@ -1,18 +1,21 @@
 import { type ReactNode, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLang } from "@/contexts/LangContext";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 function MetricTile({
   label,
   value,
   sub,
   tone = "neutral",
+  tooltip,
 }: {
   label: string;
   value: string;
   sub?: string;
   tone?: "neutral" | "profit" | "loss" | "warning";
+  tooltip?: string;
 }) {
   const color =
     tone === "profit"
@@ -31,8 +34,18 @@ function MetricTile({
         border: "1px solid var(--panel-border)",
       }}
     >
-      <div className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.58rem" }}>
+      <div className="flex items-center gap-1 text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.58rem" }}>
         {label}
+        {tooltip && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="text-muted-foreground/60 cursor-help" style={{ width: "12px", height: "12px" }} />
+            </TooltipTrigger>
+            <TooltipContent className="text-xs" style={{ fontSize: "0.7rem" }}>
+              {tooltip}
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
       <div className="num-display mt-2" style={{ color, fontSize: "1.02rem", lineHeight: 1.05 }}>
         {value}
@@ -357,6 +370,7 @@ export default function AccountOverview() {
               label={t("夏普比率", "Sharpe Ratio")}
               value={data.sharpeRatio != null && isFinite(data.sharpeRatio) ? fmt(data.sharpeRatio, 2) : "--"}
               tone={data.sharpeRatio != null && data.sharpeRatio >= 1 ? "profit" : "neutral"}
+              tooltip={t("衡量风险调整后的收益，>1为优秀", "Measures risk-adjusted return, >1 is excellent")}
             />
             <MetricTile
               label={t("年化收益率", "Annualized Return")}
@@ -367,6 +381,7 @@ export default function AccountOverview() {
               label={t("卡玛比率", "Calmar Ratio")}
               value={data.calmarRatio != null && isFinite(data.calmarRatio) ? fmt(data.calmarRatio, 2) : "--"}
               tone={data.calmarRatio != null && data.calmarRatio < 0 ? "loss" : data.calmarRatio != null && data.calmarRatio >= 1 ? "profit" : "neutral"}
+              tooltip={t("年化收益与最大回撤的比值，>2为优秀", "Annualized return / max drawdown ratio, >2 is excellent")}
             />
             <MetricTile
               label={t("运行天数", "Running Days")}
