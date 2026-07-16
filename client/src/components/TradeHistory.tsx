@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLang } from "@/contexts/LangContext";
-import { RefreshCw, Search } from "lucide-react";
+import { RefreshCw, Search, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Category = "ALL" | "PERP";
 
@@ -266,13 +267,35 @@ export default function TradeHistory() {
             <table className="w-full" style={{ borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--panel-border)" }}>
-                  {[t("时间", "Time"), t("交易对", "Symbol"), t("市场", "Market"), t("方向", "Side"), t("开平", "Open/Close"), t("平仓方式", "Close Method"), t("数量", "Qty"), t("成交价", "Price"), t("成交额", "Value"), t("手续费", "Fee"), t("盈亏", "PnL")].map((h) => (
+                  {[
+                    { label: t("时间", "Time"), key: "time" },
+                    { label: t("交易对", "Symbol"), key: "symbol" },
+                    { label: t("市场", "Market"), key: "market" },
+                    { label: t("方向", "Side"), key: "side" },
+                    { label: t("开平", "Open/Close"), key: "openclose" },
+                    { label: t("平仓方式", "Close Method"), key: "closemethod", tooltip: t("预设止损/止盈：提前设置的条件单/委托单;主动平仓：手动干预的方式进行市价止盈/止损", "Preset SL/TP: Pre-set conditional orders; Manual Close: Manual market exit") },
+                    { label: t("数量", "Qty"), key: "qty" },
+                    { label: t("成交价", "Price"), key: "price" },
+                    { label: t("成交额", "Value"), key: "value" },
+                    { label: t("手续费", "Fee"), key: "fee" },
+                    { label: t("盈亏", "PnL"), key: "pnl" },
+                  ].map((h) => (
                     <th
-                      key={h}
-                      className="text-left pb-2 pr-4"
+                      key={h.key}
+                      className={`text-left pb-2 pr-4 ${h.tooltip ? "flex items-center gap-1" : ""}`}
                       style={{ fontSize: "0.6rem", color: "var(--text-soft)", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 500 }}
                     >
-                      {h}
+                      {h.label}
+                      {h.tooltip && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="text-muted-foreground/60 cursor-help" style={{ width: "12px", height: "12px" }} />
+                          </TooltipTrigger>
+                          <TooltipContent className="text-xs" style={{ fontSize: "0.7rem" }}>
+                            {h.tooltip}
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                     </th>
                   ))}
                 </tr>

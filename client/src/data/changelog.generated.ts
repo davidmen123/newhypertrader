@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.37.0",
+    "date": "2026-07-16",
+    "zh": "历史成交平仓方式添加提示",
+    "en": "Added tooltip to close method"
+  },
+  {
     "version": "1.36.0",
     "date": "2026-07-16",
     "zh": "持仓明细杠杆和仓位价值添加提示",
