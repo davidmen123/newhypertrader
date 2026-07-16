@@ -15,7 +15,7 @@ export const directionEnum = pgEnum("direction", ["buy", "sell"]);
 export const deviceTypeEnum = pgEnum("deviceType", ["desktop", "mobile", "tablet"]);
 
 export const users = pgTable("users", {
-  id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+  id: integer("id").generatedAlwaysAsIdentity({ generated: "always" }).primaryKey(),
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
@@ -30,7 +30,7 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
 export const trades = pgTable("trades", {
-  id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+  id: integer("id").generatedAlwaysAsIdentity({ generated: "always" }).primaryKey(),
   tradeId: varchar("tradeId", { length: 64 }).notNull().unique(),
   orderId: varchar("orderId", { length: 64 }),
   instrument: varchar("instrument", { length: 128 }).notNull(),
@@ -54,7 +54,7 @@ export type Trade = typeof trades.$inferSelect;
 export type InsertTrade = typeof trades.$inferInsert;
 
 export const pnlSnapshots = pgTable("pnl_snapshots", {
-  id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+  id: integer("id").generatedAlwaysAsIdentity({ generated: "always" }).primaryKey(),
   currency: varchar("currency", { length: 16 }).notNull(),
   date: varchar("date", { length: 16 }).notNull(),
   equity: decimal("equity", { precision: 20, scale: 8 }).notNull(),
@@ -75,7 +75,7 @@ export type PnlSnapshot = typeof pnlSnapshots.$inferSelect;
 export type InsertPnlSnapshot = typeof pnlSnapshots.$inferInsert;
 
 export const pageViews = pgTable("page_views", {
-  id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+  id: integer("id").generatedAlwaysAsIdentity({ generated: "always" }).primaryKey(),
   count: bigint("count", { mode: "number" }).notNull().default(0),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
@@ -83,7 +83,7 @@ export const pageViews = pgTable("page_views", {
 export type PageView = typeof pageViews.$inferSelect;
 
 export const visitorLogs = pgTable("visitor_logs", {
-  id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+  id: integer("id").generatedAlwaysAsIdentity({ generated: "always" }).primaryKey(),
   ip: varchar("ip", { length: 45 }).notNull(),
   userAgent: text("userAgent"),
   deviceType: deviceTypeEnum("deviceType"),
