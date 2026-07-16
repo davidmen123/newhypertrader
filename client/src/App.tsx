@@ -62,7 +62,10 @@ function AnalyticsTracker() {
 
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [startTime, trackMutation]);
+    // Intentionally mount-only: trackMutation is a fresh object every render,
+    // so listing it as a dependency re-runs the effect after each mutation
+    // state change — an infinite tracking loop.
+  }, []);
 
   return null;
 }

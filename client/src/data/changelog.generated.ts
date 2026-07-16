@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.46.0",
+    "date": "2026-07-17",
+    "zh": "修复访问统计重复上报",
+    "en": "Fixed duplicated visit tracking"
+  },
+  {
     "version": "1.45.0",
     "date": "2026-07-17",
     "zh": "修复访问统计与计数的数据库故障",
