@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.32.0",
+    "date": "2026-07-16",
+    "zh": "本月模式下日期范围改为从月初1号到月末最后一天",
+    "en": "Fixed monthly calendar range to start from the 1st of the month"
+  },
+  {
     "version": "1.31.0",
     "date": "2026-07-16",
     "zh": "本月模式下同时获取本周和下周数据，确保显示整月经济事件",
