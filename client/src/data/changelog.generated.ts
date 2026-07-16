@@ -17,42 +17,6 @@ export const CHANGELOG: ChangelogEntry[] = [
     "en": "Fixed duplicated visit tracking"
   },
   {
-    "version": "1.45.0",
-    "date": "2026-07-17",
-    "zh": "修复访问统计与计数的数据库故障",
-    "en": "Fixed the analytics and page-view database failures"
-  },
-  {
-    "version": "1.44.0",
-    "date": "2026-07-16",
-    "zh": "添加自动刷新机制和手动刷新按钮",
-    "en": "添加自动刷新机制和手动刷新按钮"
-  },
-  {
-    "version": "1.43.0",
-    "date": "2026-07-16",
-    "zh": "IP地址自动转换为省份名称，保护访客隐私",
-    "en": "Auto convert IP to region name for privacy protection"
-  },
-  {
-    "version": "1.42.0",
-    "date": "2026-07-16",
-    "zh": "添加浏览器分布、访问时段、地理分布、实时访客功能和返回主页按钮",
-    "en": "Added browser distribution, hourly stats, geo distribution, recent visitors features and back to home button"
-  },
-  {
-    "version": "1.41.0",
-    "date": "2026-07-16",
-    "zh": "添加自动数据库迁移支持",
-    "en": "Added automatic database migration support for visitor_logs table"
-  },
-  {
-    "version": "1.40.0",
-    "date": "2026-07-16",
-    "zh": "新增网站访问统计可视化页面",
-    "en": "Added analytics dashboard page with daily trends, device distribution, OS stats, and IP list"
-  },
-  {
     "version": "1.39.0",
     "date": "2026-07-16",
     "zh": "新增网站访问统计功能",
