@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.33.0",
+    "date": "2026-07-16",
+    "zh": "本周模式下日期范围改为从本周一到本周日",
+    "en": "Fixed weekly calendar range to start from Monday and end on Sunday"
+  },
+  {
     "version": "1.32.0",
     "date": "2026-07-16",
     "zh": "本月模式下日期范围改为从月初1号到月末最后一天",
