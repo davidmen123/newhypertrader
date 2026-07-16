@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.31.0",
+    "date": "2026-07-16",
+    "zh": "本月模式下同时获取本周和下周数据，确保显示整月经济事件",
+    "en": "Fixed monthly calendar showing same data as weekly"
+  },
+  {
     "version": "1.30.0",
     "date": "2026-07-16",
     "zh": "移除与人名冲突的关键词，保留人名(如Warsh、Trump)和地名(如Chicago、Dallas)英文",
