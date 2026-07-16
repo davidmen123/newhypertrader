@@ -339,14 +339,18 @@ export const calendarRouter = router({
 
       const rawEvents = await fetchForexFactoryRaw(range);
 
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
+      let startDate: Date;
       let endDate: Date;
+
       if (range === "month") {
-        endDate = new Date(todayStart.getFullYear(), todayStart.getMonth() + 1, 0);
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
       } else {
-        endDate = new Date(todayStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+        startDate = today;
+        endDate = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
       }
 
       const filtered: EconEvent[] = rawEvents
@@ -357,7 +361,7 @@ export const calendarRouter = router({
 
           const d = new Date(e.date);
           if (isNaN(d.getTime())) return false;
-          if (d < todayStart || d > endDate) return false;
+          if (d < startDate || d > endDate) return false;
 
           return true;
         })
