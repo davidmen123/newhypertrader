@@ -79,9 +79,19 @@ function LeveragePanel({ ratio, lang }: { ratio: number; lang: string }) {
       }}
     >
       <div className="flex items-center justify-between">
-        <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.58rem" }}>
-          {t("总杠杆率", "Total Leverage")}
-        </span>
+        <div className="flex items-center gap-1">
+          <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.58rem" }}>
+            {t("总杠杆率", "Total Leverage")}
+          </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="text-muted-foreground/60 cursor-help" style={{ width: "12px", height: "12px" }} />
+            </TooltipTrigger>
+            <TooltipContent className="text-xs" style={{ fontSize: "0.7rem" }}>
+              {t("当前使用的总杠杆倍数", "Current total leverage multiplier")}
+            </TooltipContent>
+          </Tooltip>
+        </div>
         <span className="num-display" style={{ fontSize: "1rem", color }}>
           {leverage.toFixed(2)}x
         </span>
@@ -412,6 +422,7 @@ export default function AccountOverview() {
               value={expectancyUsdc != null && isFinite(expectancyUsdc) ? `${fmtSign(expectancyUsdc, 2)} USDC` : "--"}
               sub={t("每笔完整交易", "Per round trip")}
               tone={expectancyUsdc != null && expectancyUsdc > 0 ? "profit" : expectancyUsdc != null && expectancyUsdc < 0 ? "loss" : "neutral"}
+              tooltip={t("衡量每笔交易的平均预期收益", "Measures average expected return per trade")}
             />
             <MetricTile
               label={t("完整交易数", "Round Trips")}
