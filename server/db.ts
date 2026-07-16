@@ -228,8 +228,8 @@ export async function logVisitor(data: InsertVisitorLog): Promise<void> {
       CREATE TABLE IF NOT EXISTS visitor_logs (
         id SERIAL PRIMARY KEY,
         ip varchar(45) NOT NULL,
-        userAgent text,
-        deviceType varchar(16),
+        useragent text,
+        devicetype varchar(16),
         os varchar(64),
         browser varchar(64),
         page varchar(256),
@@ -237,7 +237,7 @@ export async function logVisitor(data: InsertVisitorLog): Promise<void> {
         duration integer,
         city varchar(64),
         region varchar(64),
-        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+        createdat timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `);
     const insertData: any = {
