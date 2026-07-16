@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { BarChart3, Users, Globe, Smartphone, Laptop, Clock, Calendar, MapPin, ArrowLeft, Eye, Monitor } from "lucide-react";
+import { BarChart3, Users, Globe, Smartphone, Laptop, Clock, Calendar, MapPin, ArrowLeft, Eye, Monitor, RefreshCw } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
 const today = new Date().toISOString().split("T")[0];
@@ -32,14 +32,25 @@ function AnalyticsDashboard() {
 
   const dateRange = getDateRange();
 
-  const { data: dailyStatsResult, isLoading: dailyLoading } = trpc.analytics.dailyStats.useQuery(dateRange);
-  const { data: deviceStatsResult, isLoading: deviceLoading } = trpc.analytics.deviceStats.useQuery(dateRange);
-  const { data: osStatsResult, isLoading: osLoading } = trpc.analytics.osStats.useQuery(dateRange);
-  const { data: ipListResult, isLoading: ipLoading } = trpc.analytics.ipList.useQuery({ ...dateRange, limit: 20 });
-  const { data: browserStatsResult, isLoading: browserLoading } = trpc.analytics.browserStats.useQuery(dateRange);
-  const { data: hourlyStatsResult, isLoading: hourlyLoading } = trpc.analytics.hourlyStats.useQuery(dateRange);
-  const { data: geoStatsResult, isLoading: geoLoading } = trpc.analytics.geoStats.useQuery(dateRange);
-  const { data: recentVisitorsResult, isLoading: recentLoading } = trpc.analytics.recentVisitors.useQuery({ limit: 15 });
+  const { data: dailyStatsResult, isLoading: dailyLoading, refetch: refetchDaily } = trpc.analytics.dailyStats.useQuery(dateRange, { refetchInterval: 30000 });
+  const { data: deviceStatsResult, isLoading: deviceLoading, refetch: refetchDevice } = trpc.analytics.deviceStats.useQuery(dateRange, { refetchInterval: 30000 });
+  const { data: osStatsResult, isLoading: osLoading, refetch: refetchOs } = trpc.analytics.osStats.useQuery(dateRange, { refetchInterval: 30000 });
+  const { data: ipListResult, isLoading: ipLoading, refetch: refetchIp } = trpc.analytics.ipList.useQuery({ ...dateRange, limit: 20 }, { refetchInterval: 30000 });
+  const { data: browserStatsResult, isLoading: browserLoading, refetch: refetchBrowser } = trpc.analytics.browserStats.useQuery(dateRange, { refetchInterval: 30000 });
+  const { data: hourlyStatsResult, isLoading: hourlyLoading, refetch: refetchHourly } = trpc.analytics.hourlyStats.useQuery(dateRange, { refetchInterval: 30000 });
+  const { data: geoStatsResult, isLoading: geoLoading, refetch: refetchGeo } = trpc.analytics.geoStats.useQuery(dateRange, { refetchInterval: 30000 });
+  const { data: recentVisitorsResult, isLoading: recentLoading, refetch: refetchRecent } = trpc.analytics.recentVisitors.useQuery({ limit: 15 }, { refetchInterval: 10000 });
+
+  const refreshAll = useCallback(() => {
+    refetchDaily();
+    refetchDevice();
+    refetchOs();
+    refetchIp();
+    refetchBrowser();
+    refetchHourly();
+    refetchGeo();
+    refetchRecent();
+  }, [refetchDaily, refetchDevice, refetchOs, refetchIp, refetchBrowser, refetchHourly, refetchGeo, refetchRecent]);
 
   const dailyStats = dailyStatsResult?.stats ?? [];
   const deviceStats = deviceStatsResult?.stats ?? [];
@@ -80,15 +91,26 @@ function AnalyticsDashboard() {
               </div>
               <h1 className="text-2xl lg:text-3xl font-bold text-slate-900">网站访问统计</h1>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.location.href = "/"}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              返回主页
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={refreshAll}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                刷新
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.location.href = "/"}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                返回主页
+              </Button>
+            </div>
           </div>
           <p className="text-slate-500">实时追踪您的网站访问数据</p>
         </header>
