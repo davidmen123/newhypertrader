@@ -41,6 +41,8 @@ function AnalyticsDashboard() {
   const { data: geoStatsResult, isLoading: geoLoading, refetch: refetchGeo } = trpc.analytics.geoStats.useQuery(dateRange, { refetchInterval: 30000 });
   const { data: recentVisitorsResult, isLoading: recentLoading, refetch: refetchRecent } = trpc.analytics.recentVisitors.useQuery({ limit: 15 }, { refetchInterval: 10000 });
   const { data: healthResult } = trpc.analytics.health.useQuery();
+  
+  const trackMutation = trpc.analytics.track.useMutation();
 
   const refreshAll = useCallback(() => {
     refetchDaily();
@@ -115,14 +117,13 @@ function AnalyticsDashboard() {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  const trackMutation = trpc.analytics.track.useMutation({
-                    onSuccess: () => alert("✅ 测试上报成功！"),
-                    onError: () => alert("❌ 测试上报失败！"),
-                  });
-                  trackMutation.mutate({
-                    page: "/analytics",
-                    userAgent: navigator.userAgent,
-                  });
+                  trackMutation.mutate(
+                    { page: "/analytics", userAgent: navigator.userAgent },
+                    {
+                      onSuccess: () => alert("✅ 测试上报成功！"),
+                      onError: () => alert("❌ 测试上报失败！"),
+                    }
+                  );
                 }}
                 className="flex items-center gap-2"
               >
