@@ -57,14 +57,19 @@ async function fetchYahooQuote(symbol: string, baseMode: "prevClose" | "24hAgo" 
             const timestamps: number[] = result?.timestamp ?? [];
             const closes: Array<number | null> = result?.indicators?.quote?.[0]?.close ?? [];
             const targetSeconds = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
-            let best: { distance: number; close: number } | null = null;
-            timestamps.forEach((timestamp, index) => {
-              const close = Number(closes[index]);
-              if (!Number.isFinite(timestamp) || !Number.isFinite(close) || close <= 0) return;
+            let bestDistance = Infinity;
+            let bestClose: number | null = null;
+            for (let i = 0; i < timestamps.length; i++) {
+              const timestamp = timestamps[i];
+              const close = Number(closes[i]);
+              if (!Number.isFinite(timestamp) || !Number.isFinite(close) || close <= 0) continue;
               const distance = Math.abs(timestamp - targetSeconds);
-              if (!best || distance < best.distance) best = { distance, close };
-            });
-            if (best) quote.prevClose = best.close;
+              if (distance < bestDistance) {
+                bestDistance = distance;
+                bestClose = close;
+              }
+            }
+            if (bestClose != null) quote.prevClose = bestClose;
           }
           if (quote.current != null) return quote;
         } catch (error) {
@@ -88,14 +93,19 @@ async function fetchYahooQuote(symbol: string, baseMode: "prevClose" | "24hAgo" 
               const timestamps: number[] = result?.timestamp ?? [];
               const closes: Array<number | null> = result?.indicators?.quote?.[0]?.close ?? [];
               const targetSeconds = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
-              let best: { distance: number; close: number } | null = null;
-              timestamps.forEach((timestamp, index) => {
-                const close = Number(closes[index]);
-                if (!Number.isFinite(timestamp) || !Number.isFinite(close) || close <= 0) return;
+              let bestDistance = Infinity;
+              let bestClose: number | null = null;
+              for (let i = 0; i < timestamps.length; i++) {
+                const timestamp = timestamps[i];
+                const close = Number(closes[i]);
+                if (!Number.isFinite(timestamp) || !Number.isFinite(close) || close <= 0) continue;
                 const distance = Math.abs(timestamp - targetSeconds);
-                if (!best || distance < best.distance) best = { distance, close };
-              });
-              if (best) quote.prevClose = best.close;
+                if (distance < bestDistance) {
+                  bestDistance = distance;
+                  bestClose = close;
+                }
+              }
+              if (bestClose != null) quote.prevClose = bestClose;
             }
             if (quote.current != null) return quote;
           } catch (fallbackError) {

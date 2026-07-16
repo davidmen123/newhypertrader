@@ -159,7 +159,7 @@ function getPerpDexes() {
     .map((dex) => dex.trim())
     .filter(Boolean);
   const dexes = configured?.length ? ["", ...configured] : DEFAULT_PERP_DEXS;
-  return [...new Set(dexes)];
+  return Array.from(new Set(dexes));
 }
 
 function logHyperliquidPositions(dex: string, state: HyperliquidClearinghouseState) {

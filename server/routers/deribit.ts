@@ -623,7 +623,7 @@ export const deribitRouter = router({
       maxDrawdownUsdc,
       maxDrawdownPct,
       // Calmar Ratio
-      calmarRatio: null, // Placeholder, will calculate below
+      calmarRatio: null as number | null, // Placeholder, will calculate below,
       // Greeks (USD-denominated)
       deltaTotal,
       optionsVega,

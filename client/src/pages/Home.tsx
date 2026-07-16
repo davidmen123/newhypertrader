@@ -179,7 +179,7 @@ export default function Home() {
                   title={lang === "en" ? "切换到中文" : "Switch to English"}
                   aria-label={lang === "en" ? "切换到中文" : "Switch to English"}
                 >
-                  {lang === "en" ? "CN" : "EN"}
+                  {lang === "en" ? "中" : "EN"}
                 </button>
               </div>
             </div>
