@@ -224,6 +224,23 @@ export async function logVisitor(data: InsertVisitorLog): Promise<void> {
     throw error;
   }
   try {
+    await db.execute(sql`CREATE TYPE IF NOT EXISTS deviceType AS ENUM ('desktop', 'mobile', 'tablet')`);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS visitor_logs (
+        id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        ip varchar(45) NOT NULL,
+        userAgent text,
+        deviceType deviceType,
+        os varchar(64),
+        browser varchar(64),
+        page varchar(256),
+        referrer text,
+        duration integer,
+        city varchar(64),
+        region varchar(64),
+        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
     const insertData: any = {
       ip: data.ip,
       userAgent: data.userAgent ?? null,
