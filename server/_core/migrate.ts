@@ -2,45 +2,54 @@ import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
+// All DDL below uses unquoted identifiers on purpose: PostgreSQL folds them
+// to lowercase, and drizzle/schema.ts declares the same lowercase column
+// names. Do not quote camelCase identifiers here — the two sides would stop
+// matching.
 export async function runMigrations(): Promise<void> {
   if (!process.env.DATABASE_URL) {
     console.log("[Migration] Skipping: DATABASE_URL not set");
     return;
   }
 
-  try {
-    const pool = postgres(process.env.DATABASE_URL, { max: 1 });
-    const db = drizzle(pool);
+  const pool = postgres(process.env.DATABASE_URL, { max: 1 });
+  const db = drizzle(pool);
 
+  // CREATE TYPE has no IF NOT EXISTS in PostgreSQL; swallow duplicates via
+  // exception handling instead.
+  const createEnum = async (name: string, values: string[]) => {
+    const literals = values.map((v) => `'${v}'`).join(", ");
+    try {
+      await db.execute(sql.raw(
+        `DO $$ BEGIN CREATE TYPE ${name} AS ENUM (${literals}); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`
+      ));
+      console.log(`[Migration] enum ${name} created/verified`);
+    } catch (error) {
+      console.error(`[Migration] enum ${name} failed:`, error);
+    }
+  };
+
+  const createTable = async (name: string, ddl: string) => {
+    try {
+      await db.execute(sql.raw(ddl));
+      console.log(`[Migration] ${name} table created/verified`);
+    } catch (error) {
+      console.error(`[Migration] ${name} table failed:`, error);
+    }
+  };
+
+  try {
     console.log("[Migration] Starting database migrations...");
 
-    try {
-      await db.execute(sql`CREATE TYPE IF NOT EXISTS deviceType AS ENUM ('desktop', 'mobile', 'tablet')`);
-      console.log("[Migration] deviceType enum created/verified");
-    } catch (e) {
-      console.log("[Migration] deviceType enum may already exist, skipping");
-    }
+    await createEnum("role", ["user", "admin"]);
+    await createEnum("direction", ["buy", "sell"]);
 
-    try {
-      await db.execute(sql`CREATE TYPE IF NOT EXISTS role AS ENUM ('user', 'admin')`);
-      console.log("[Migration] role enum created/verified");
-    } catch (e) {
-      console.log("[Migration] role enum may already exist, skipping");
-    }
-
-    try {
-      await db.execute(sql`CREATE TYPE IF NOT EXISTS direction AS ENUM ('buy', 'sell')`);
-      console.log("[Migration] direction enum created/verified");
-    } catch (e) {
-      console.log("[Migration] direction enum may already exist, skipping");
-    }
-
-    await db.execute(sql`
+    await createTable("visitor_logs", `
       CREATE TABLE IF NOT EXISTS visitor_logs (
-        id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         ip varchar(45) NOT NULL,
         userAgent text,
-        deviceType deviceType,
+        deviceType varchar(16),
         os varchar(64),
         browser varchar(64),
         page varchar(256),
@@ -49,13 +58,12 @@ export async function runMigrations(): Promise<void> {
         city varchar(64),
         region varchar(64),
         createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
+      )
     `);
-    console.log("[Migration] visitor_logs table created/verified");
 
-    await db.execute(sql`
+    await createTable("users", `
       CREATE TABLE IF NOT EXISTS users (
-        id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         openId varchar(64) NOT NULL UNIQUE,
         name text,
         email varchar(320),
@@ -64,13 +72,12 @@ export async function runMigrations(): Promise<void> {
         createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updatedAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
         lastSignedIn timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
+      )
     `);
-    console.log("[Migration] users table created/verified");
 
-    await db.execute(sql`
+    await createTable("trades", `
       CREATE TABLE IF NOT EXISTS trades (
-        id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         tradeId varchar(64) NOT NULL UNIQUE,
         orderId varchar(64),
         instrument varchar(128) NOT NULL,
@@ -88,13 +95,12 @@ export async function runMigrations(): Promise<void> {
         label varchar(128),
         tradeTimestamp bigint NOT NULL,
         createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
+      )
     `);
-    console.log("[Migration] trades table created/verified");
 
-    await db.execute(sql`
+    await createTable("pnl_snapshots", `
       CREATE TABLE IF NOT EXISTS pnl_snapshots (
-        id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         currency varchar(16) NOT NULL,
         date varchar(16) NOT NULL,
         equity decimal(20,8) NOT NULL,
@@ -110,26 +116,24 @@ export async function runMigrations(): Promise<void> {
         snapshotAt bigint NOT NULL,
         createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
         UNIQUE (currency, date)
-      );
+      )
     `);
-    console.log("[Migration] pnl_snapshots table created/verified");
 
-    await db.execute(sql`
+    await createTable("page_views", `
       CREATE TABLE IF NOT EXISTS page_views (
-        id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        id integer PRIMARY KEY,
         count bigint NOT NULL DEFAULT 0,
         updatedAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
+      )
     `);
-    console.log("[Migration] page_views table created/verified");
 
-    await db.execute(sql`ALTER TABLE visitor_logs ADD COLUMN IF NOT EXISTS city varchar(64)`);
-    await db.execute(sql`ALTER TABLE visitor_logs ADD COLUMN IF NOT EXISTS region varchar(64)`);
-    console.log("[Migration] visitor_logs columns checked");
+    await db.execute(sql`ALTER TABLE visitor_logs ADD COLUMN IF NOT EXISTS city varchar(64)`).catch(() => {});
+    await db.execute(sql`ALTER TABLE visitor_logs ADD COLUMN IF NOT EXISTS region varchar(64)`).catch(() => {});
 
-    await pool.end();
-    console.log("[Migration] All migrations completed successfully");
+    console.log("[Migration] All migrations completed");
   } catch (error) {
     console.error("[Migration] Failed to run migrations:", error);
+  } finally {
+    await pool.end().catch(() => {});
   }
 }

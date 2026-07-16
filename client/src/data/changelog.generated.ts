@@ -11,6 +11,42 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.45.0",
+    "date": "2026-07-17",
+    "zh": "修复访问统计与计数的数据库故障",
+    "en": "Fixed the analytics and page-view database failures"
+  },
+  {
+    "version": "1.44.0",
+    "date": "2026-07-16",
+    "zh": "添加自动刷新机制和手动刷新按钮",
+    "en": "添加自动刷新机制和手动刷新按钮"
+  },
+  {
+    "version": "1.43.0",
+    "date": "2026-07-16",
+    "zh": "IP地址自动转换为省份名称，保护访客隐私",
+    "en": "Auto convert IP to region name for privacy protection"
+  },
+  {
+    "version": "1.42.0",
+    "date": "2026-07-16",
+    "zh": "添加浏览器分布、访问时段、地理分布、实时访客功能和返回主页按钮",
+    "en": "Added browser distribution, hourly stats, geo distribution, recent visitors features and back to home button"
+  },
+  {
+    "version": "1.41.0",
+    "date": "2026-07-16",
+    "zh": "添加自动数据库迁移支持",
+    "en": "Added automatic database migration support for visitor_logs table"
+  },
+  {
+    "version": "1.40.0",
+    "date": "2026-07-16",
+    "zh": "新增网站访问统计可视化页面",
+    "en": "Added analytics dashboard page with daily trends, device distribution, OS stats, and IP list"
+  },
+  {
     "version": "1.39.0",
     "date": "2026-07-16",
     "zh": "新增网站访问统计功能",
@@ -49,67 +85,67 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     "version": "1.33.0",
     "date": "2026-07-16",
-    "zh": "本周范围改为周一至周日",
-    "en": "Fixed weekly calendar range"
+    "zh": "本周模式下日期范围改为从本周一到本周日",
+    "en": "Fixed weekly calendar range to start from Monday and end on Sunday"
   },
   {
     "version": "1.32.0",
     "date": "2026-07-16",
-    "zh": "本月范围改为月初至月末",
-    "en": "Fixed monthly calendar range"
+    "zh": "本月模式下日期范围改为从月初1号到月末最后一天",
+    "en": "Fixed monthly calendar range to start from the 1st of the month"
   },
   {
     "version": "1.31.0",
     "date": "2026-07-16",
-    "zh": "修复本月数据与本周相同",
-    "en": "Fixed monthly calendar data"
+    "zh": "本月模式下同时获取本周和下周数据，确保显示整月经济事件",
+    "en": "Fixed monthly calendar showing same data as weekly"
   },
   {
     "version": "1.30.0",
     "date": "2026-07-16",
-    "zh": "优化事件翻译，保留人名地名",
-    "en": "Optimized event translation"
+    "zh": "移除与人名冲突的关键词，保留人名(如Warsh、Trump)和地名(如Chicago、Dallas)英文",
+    "en": "Optimized event translation rules to preserve names and places in English"
   },
   {
     "version": "1.29.0",
     "date": "2026-07-16",
-    "zh": "经济事件支持智能关键词翻译",
-    "en": "Added keyword-based translation"
+    "zh": "使用关键词级别的智能翻译，自动翻译任意经济事件名称",
+    "en": "Economic calendar events now support intelligent keyword-based translation"
   },
   {
     "version": "1.28.0",
     "date": "2026-07-16",
-    "zh": "补充PPI月率中文翻译",
-    "en": "Added PPI m/m translation"
+    "zh": "补充PPI m/m中文翻译，确保API返回的所有事件都有中文翻译",
+    "en": "Added PPI m/m Chinese translation"
   },
   {
     "version": "1.27.0",
     "date": "2026-07-16",
-    "zh": "经济日历新增状态筛选",
-    "en": "Added status filter"
+    "zh": "经济日历新增已公布/未公布/全部状态筛选按钮",
+    "en": "Economic calendar now supports released/pending/all status filter"
   },
   {
     "version": "1.26.0",
     "date": "2026-07-16",
-    "zh": "补充经济事件中文翻译",
-    "en": "Added event translations"
+    "zh": "补充Fed主席作证、费城联储指数、密歇根大学等事件中文翻译",
+    "en": "Added Chinese translations for additional economic calendar events"
   },
   {
     "version": "1.25.0",
     "date": "2026-07-16",
-    "zh": "经济日历新增本周/本月切换",
-    "en": "Added week/month toggle"
+    "zh": "经济日历新增本周/本月时间范围切换",
+    "en": "Economic calendar now supports week/month time range toggle"
   },
   {
     "version": "1.24.0",
     "date": "2026-07-16",
-    "zh": "经济日历事件支持中英文切换",
-    "en": "Added Chinese/English toggle"
+    "zh": "经济日历事件名称支持中英文切换",
+    "en": "Economic calendar events now support Chinese/English toggle"
   },
   {
     "version": "1.23.0",
     "date": "2026-07-16",
-    "zh": "优化页脚行间距与字体",
+    "zh": "优化页脚底部行间距与字体大小",
     "en": "Improved footer bottom row spacing and font size"
   },
   {

@@ -224,7 +224,6 @@ export async function logVisitor(data: InsertVisitorLog): Promise<void> {
     throw error;
   }
   try {
-    await db.execute(sql`CREATE TYPE IF NOT EXISTS "deviceType" AS ENUM ('desktop', 'mobile', 'tablet')`).catch(() => {});
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS visitor_logs (
         id SERIAL PRIMARY KEY,
