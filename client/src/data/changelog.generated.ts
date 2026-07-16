@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.30.0",
+    "date": "2026-07-16",
+    "zh": "移除与人名冲突的关键词，保留人名(如Warsh、Trump)和地名(如Chicago、Dallas)英文",
+    "en": "Optimized event translation rules to preserve names and places in English"
+  },
+  {
     "version": "1.29.0",
     "date": "2026-07-16",
     "zh": "使用关键词级别的智能翻译，自动翻译任意经济事件名称",
