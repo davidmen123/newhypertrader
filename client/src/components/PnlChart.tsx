@@ -261,7 +261,7 @@ export default function PnlChart() {
   const labels: Record<SeriesKey, string> = {
     accountPerformance: lang === "zh" ? "账户盈亏 (%)" : "Account PnL (%)",
     btcBenchmark: lang === "zh" ? "BTC 涨跌幅 (%)" : "BTC Change (%)",
-    assetTrend: lang === "zh" ? "当前账户净值" : "Current Account Equity",
+    assetTrend: lang === "zh" ? "账户净值" : "Account Equity",
   };
 
   // Build chart data: account performance follows PnL, while BTC benchmark

@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.38.0",
+    "date": "2026-07-16",
+    "zh": "损益历史当前账户净值改账户净值",
+    "en": "Renamed current account equity to account equity"
+  },
+  {
     "version": "1.37.0",
     "date": "2026-07-16",
     "zh": "历史成交平仓方式添加提示",
