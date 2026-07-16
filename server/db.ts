@@ -250,14 +250,16 @@ export async function getPageViews(): Promise<number> {
 export async function logVisitor(data: InsertVisitorLog): Promise<void> {
   const db = await getDb();
   if (!db) {
-    console.warn("[Analytics] Database not available, cannot log visitor");
-    return;
+    const error = new Error("Database connection failed");
+    console.error("[Analytics] Database not available, cannot log visitor");
+    throw error;
   }
   try {
     await db.insert(visitorLogs).values(data);
     console.log("[Analytics] Visitor logged successfully:", data.page, data.deviceType);
   } catch (e) {
     console.error("[Analytics] Failed to log visitor:", e);
+    throw e;
   }
 }
 

@@ -135,6 +135,11 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
+        if (!process.env.DATABASE_URL) {
+          console.error("[Analytics] Track API failed: DATABASE_URL environment variable is not set");
+          return { success: false, error: "Database configuration error" };
+        }
+
         try {
           console.log("[Analytics] Track API called with input:", { page: input.page, duration: input.duration });
           const { deviceType, os, browser } = parseUserAgent(input.userAgent);
