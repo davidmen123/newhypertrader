@@ -40,6 +40,7 @@ function AnalyticsDashboard() {
   const { data: hourlyStatsResult, isLoading: hourlyLoading, refetch: refetchHourly } = trpc.analytics.hourlyStats.useQuery(dateRange, { refetchInterval: 30000 });
   const { data: geoStatsResult, isLoading: geoLoading, refetch: refetchGeo } = trpc.analytics.geoStats.useQuery(dateRange, { refetchInterval: 30000 });
   const { data: recentVisitorsResult, isLoading: recentLoading, refetch: refetchRecent } = trpc.analytics.recentVisitors.useQuery({ limit: 15 }, { refetchInterval: 10000 });
+  const { data: healthResult } = trpc.analytics.health.useQuery();
 
   const refreshAll = useCallback(() => {
     refetchDaily();
@@ -110,9 +111,35 @@ function AnalyticsDashboard() {
                 <ArrowLeft className="w-4 h-4" />
                 返回主页
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const trackMutation = trpc.analytics.track.useMutation({
+                    onSuccess: () => alert("✅ 测试上报成功！"),
+                    onError: () => alert("❌ 测试上报失败！"),
+                  });
+                  trackMutation.mutate({
+                    page: "/analytics",
+                    userAgent: navigator.userAgent,
+                  });
+                }}
+                className="flex items-center gap-2"
+              >
+                测试上报
+              </Button>
             </div>
           </div>
           <p className="text-slate-500">实时追踪您的网站访问数据</p>
+          {healthResult && (
+            <div className={`mt-2 px-4 py-2 rounded-lg text-sm ${healthResult.status === "ok" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+              {healthResult.status === "ok" ? (
+                <>✅ 系统正常运行 | 数据库记录数: {healthResult.visitorCount}</>
+              ) : (
+                <>❌ 系统异常: {healthResult.message}</>
+              )}
+            </div>
+          )}
         </header>
 
         <div className="flex flex-wrap gap-2 mb-6">

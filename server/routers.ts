@@ -7,8 +7,9 @@ import { deribitRouter } from "./routers/deribit.js";
 import { calendarRouter } from "./routers/calendar.js";
 import { bitgetRouter } from "./routers/bitget.js";
 import { hyperliquidRouter } from "./routers/hyperliquid.js";
-import { incrementPageViews, getPageViews, logVisitor, getDailyVisitorStats, getVisitorDeviceStats, getVisitorOsStats, getVisitorIpList, getVisitorBrowserStats, getVisitorHourlyStats, getVisitorGeoStats, getRecentVisitors } from "./db.js";
+import { incrementPageViews, getPageViews, logVisitor, getDailyVisitorStats, getVisitorDeviceStats, getVisitorOsStats, getVisitorIpList, getVisitorBrowserStats, getVisitorHourlyStats, getVisitorGeoStats, getRecentVisitors, getDb } from "./db.js";
 import { getIpGeo } from "./_core/ipGeo.js";
+import { sql } from "drizzle-orm";
 
 function parseUserAgent(userAgent?: string) {
   if (!userAgent) return { deviceType: undefined as "desktop" | "mobile" | "tablet" | undefined, os: undefined as string | undefined, browser: undefined as string | undefined };
@@ -103,6 +104,22 @@ export const appRouter = router({
   }),
 
   analytics: router({
+    health: publicProcedure
+      .query(async () => {
+        const db = await getDb();
+        if (!db) {
+          return { status: "error", message: "Database not available" };
+        }
+        try {
+          const result = await db.execute(sql`SELECT COUNT(*) as count FROM visitor_logs`);
+          const resultArray = result as unknown as Array<{ count: number }>;
+          const count = resultArray[0]?.count ?? 0;
+          return { status: "ok", message: "Analytics system is working", visitorCount: count };
+        } catch (e) {
+          return { status: "error", message: `Database query failed: ${e}` };
+        }
+      }),
+
     track: publicProcedure
       .input(
         z.object({
