@@ -23,9 +23,17 @@ function Router() {
 
 function AnalyticsTracker() {
   const [startTime] = useState(Date.now());
-  const trackMutation = trpc.analytics.track.useMutation();
+  const trackMutation = trpc.analytics.track.useMutation({
+    onSuccess: () => {
+      console.log("[Analytics] Track visit successful");
+    },
+    onError: (e) => {
+      console.error("[Analytics] Track visit error:", e);
+    },
+  });
 
   useEffect(() => {
+    console.log("[Analytics] AnalyticsTracker initialized, tracking visit to:", window.location.pathname);
     const trackVisit = async () => {
       try {
         await trackMutation.mutateAsync({

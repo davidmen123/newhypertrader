@@ -113,8 +113,10 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
+        console.log("[Analytics] Track API called with input:", { page: input.page, duration: input.duration });
         const { deviceType, os, browser } = parseUserAgent(input.userAgent);
         const ip = getClientIp(ctx.req);
+        console.log("[Analytics] Parsed data:", { ip, deviceType, os, browser });
 
         let region: string | undefined;
         let city: string | undefined;
@@ -122,6 +124,7 @@ export const appRouter = router({
           const geo = await getIpGeo(ip);
           region = geo.region || undefined;
           city = geo.city || undefined;
+          console.log("[Analytics] Geo lookup result:", { region, city });
         } catch (e) {
           console.warn("[Analytics] IP geo lookup failed, skipping:", e);
         }
