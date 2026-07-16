@@ -1,13 +1,7 @@
 {
   "installCommand": "corepack pnpm install --no-frozen-lockfile",
-  "buildCommand": "corepack pnpm run build",
+  "buildCommand": "corepack pnpm exec vite build",
   "outputDirectory": "dist/public",
-  "functions": {
-    "api/trpc/[...trpc].ts": {
-      "runtime": "@vercel/node@3.2.0",
-      "maxDuration": 10
-    }
-  },
   "rewrites": [
     {
       "source": "/api/:path*",
