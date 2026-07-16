@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.27.0",
+    "date": "2026-07-16",
+    "zh": "经济日历新增已公布/未公布/全部状态筛选按钮",
+    "en": "Economic calendar now supports released/pending/all status filter"
+  },
+  {
     "version": "1.26.0",
     "date": "2026-07-16",
     "zh": "补充Fed主席作证、费城联储指数、密歇根大学等事件中文翻译",
