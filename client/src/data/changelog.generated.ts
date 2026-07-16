@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.28.0",
+    "date": "2026-07-16",
+    "zh": "补充PPI m/m中文翻译，确保API返回的所有事件都有中文翻译",
+    "en": "Added PPI m/m Chinese translation"
+  },
+  {
     "version": "1.27.0",
     "date": "2026-07-16",
     "zh": "经济日历新增已公布/未公布/全部状态筛选按钮",
