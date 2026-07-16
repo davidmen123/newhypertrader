@@ -78,7 +78,6 @@ export const ECONOMIC_EVENT_TRANSLATIONS: Record<string, string> = {
   "FOMC Member Speech": "FOMC成员讲话",
   "Fed Chair Speech": "美联储主席讲话",
   "Fed Chairman Warsh Testifies": "美联储主席沃什作证",
-  "Philly Fed Manufacturing Index": "费城联储制造业指数",
   "President Trump Speaks": "特朗普总统讲话",
   "Prelim UoM Consumer Sentiment": "密歇根大学消费者信心初值",
   "Prelim UoM Inflation Expectations": "密歇根大学通胀预期初值",

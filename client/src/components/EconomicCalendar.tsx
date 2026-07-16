@@ -58,6 +58,7 @@ export default function EconomicCalendar() {
   const { lang } = useLang();
   const [minImportance, setMinImportance] = useState(2);
   const [range, setRange] = useState<"week" | "month">("week");
+  const [status, setStatus] = useState<"all" | "released" | "pending">("all");
 
   const { data, isLoading, error, refetch, isFetching } =
     trpc.calendar.economicCalendar.useQuery({ range }, {
@@ -65,7 +66,12 @@ export default function EconomicCalendar() {
     });
 
   const events = data ?? [];
-  const filtered = events.filter((e) => e.importance >= minImportance);
+  const filtered = events.filter((e) => {
+    if (e.importance < minImportance) return false;
+    if (status === "released") return e.actual != null && e.actual !== "";
+    if (status === "pending") return e.actual == null || e.actual === "";
+    return true;
+  });
 
   const filterLabels = {
     1: { zh: "全部", en: "All" },
@@ -76,6 +82,12 @@ export default function EconomicCalendar() {
   const rangeLabels = {
     week: { zh: "本周", en: "Week" },
     month: { zh: "本月", en: "Month" },
+  };
+
+  const statusLabels = {
+    all: { zh: "全部", en: "All" },
+    released: { zh: "已公布", en: "Released" },
+    pending: { zh: "未公布", en: "Pending" },
   };
 
   const colHeaders =
@@ -133,6 +145,18 @@ export default function EconomicCalendar() {
                 style={{ fontSize: "0.62rem", padding: "3px 10px" }}
               >
                 {filterLabels[level][lang as "zh" | "en"]}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-1">
+            {(["all", "released", "pending"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setStatus(s)}
+                className={`pill-tab ${status === s ? "active" : ""}`}
+                style={{ fontSize: "0.62rem", padding: "3px 10px" }}
+              >
+                {statusLabels[s][lang as "zh" | "en"]}
               </button>
             ))}
           </div>
