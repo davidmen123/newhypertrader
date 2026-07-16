@@ -13,74 +13,74 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     "version": "1.33.0",
     "date": "2026-07-16",
-    "zh": "本周模式下日期范围改为从本周一到本周日",
-    "en": "Fixed weekly calendar range to start from Monday and end on Sunday"
+    "zh": "本周范围改为周一至周日",
+    "en": "Fixed weekly calendar range"
   },
   {
     "version": "1.32.0",
     "date": "2026-07-16",
-    "zh": "本月模式下日期范围改为从月初1号到月末最后一天",
-    "en": "Fixed monthly calendar range to start from the 1st of the month"
+    "zh": "本月范围改为月初至月末",
+    "en": "Fixed monthly calendar range"
   },
   {
     "version": "1.31.0",
     "date": "2026-07-16",
-    "zh": "本月模式下同时获取本周和下周数据，确保显示整月经济事件",
-    "en": "Fixed monthly calendar showing same data as weekly"
+    "zh": "修复本月数据与本周相同",
+    "en": "Fixed monthly calendar data"
   },
   {
     "version": "1.30.0",
     "date": "2026-07-16",
-    "zh": "移除与人名冲突的关键词，保留人名(如Warsh、Trump)和地名(如Chicago、Dallas)英文",
-    "en": "Optimized event translation rules to preserve names and places in English"
+    "zh": "优化事件翻译，保留人名地名",
+    "en": "Optimized event translation"
   },
   {
     "version": "1.29.0",
     "date": "2026-07-16",
-    "zh": "使用关键词级别的智能翻译，自动翻译任意经济事件名称",
-    "en": "Economic calendar events now support intelligent keyword-based translation"
+    "zh": "经济事件支持智能关键词翻译",
+    "en": "Added keyword-based translation"
   },
   {
     "version": "1.28.0",
     "date": "2026-07-16",
-    "zh": "补充PPI m/m中文翻译，确保API返回的所有事件都有中文翻译",
-    "en": "Added PPI m/m Chinese translation"
+    "zh": "补充PPI月率中文翻译",
+    "en": "Added PPI m/m translation"
   },
   {
     "version": "1.27.0",
     "date": "2026-07-16",
-    "zh": "经济日历新增已公布/未公布/全部状态筛选按钮",
+    "zh": "经济日历新增状态筛选",
     "en": "Economic calendar now supports released/pending/all status filter"
   },
   {
     "version": "1.26.0",
     "date": "2026-07-16",
-    "zh": "补充Fed主席作证、费城联储指数、密歇根大学等事件中文翻译",
-    "en": "Added Chinese translations for additional economic calendar events"
+    "zh": "补充经济事件中文翻译",
+    "en": "Added economic event translations"
   },
   {
     "version": "1.25.0",
     "date": "2026-07-16",
-    "zh": "经济日历新增本周/本月时间范围切换",
-    "en": "Economic calendar now supports week/month time range toggle"
+    "zh": "经济日历新增本周/本月切换",
+    "en": "Added week/month toggle"
   },
   {
     "version": "1.24.0",
     "date": "2026-07-16",
-    "zh": "经济日历事件名称支持中英文切换",
-    "en": "Economic calendar events now support Chinese/English toggle"
+    "zh": "经济日历事件支持中英文切换",
+    "en": "Added Chinese/English toggle"
   },
   {
     "version": "1.23.0",
     "date": "2026-07-16",
-    "zh": "优化页脚底部行间距与字体大小",
-    "en": "Improved footer bottom row spacing and font size"
+    "zh": "优化页脚行间距与字体",
+    "en": "Improved footer spacing"
   },
   {
     "version": "1.22.0",
     "date": "2026-07-16",
-    "zh": "账户概览指标添加悬停提示说明",
-    "en": "Added tooltip explanations for account overview metrics"
+    "zh": "账户概览指标添加悬停提示",
+    "en": "Added metric tooltips"
   },
   {
     "version": "1.21.0",
@@ -115,14 +115,14 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     "version": "1.16.0",
     "date": "2026-07-08",
-    "zh": "历史成交、持仓明细与当前委托展示对齐 Hyperliquid",
-    "en": "Aligned trade history, positions and open orders with Hyperliquid"
+    "zh": "交易展示对齐Hyperliquid",
+    "en": "Aligned with Hyperliquid"
   },
   {
     "version": "1.15.0",
     "date": "2026-07-08",
-    "zh": "账户概览补充夏普比率、运行天数与平均持仓时长",
-    "en": "Added account overview metrics such as Sharpe ratio, running days and average holding time"
+    "zh": "账户概览补充夏普比率等指标",
+    "en": "Added Sharpe ratio metrics"
   },
   {
     "version": "1.14.0",
@@ -133,8 +133,8 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     "version": "1.13.0",
     "date": "2026-07-08",
-    "zh": "实时更新指示移到标题栏Live Account后面",
-    "en": "Moved the live indicator next to Live Account"
+    "zh": "实时指示移到标题栏",
+    "en": "Moved live indicator"
   },
   {
     "version": "1.12.0",
