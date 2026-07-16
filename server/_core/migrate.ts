@@ -27,6 +27,8 @@ export async function runMigrations(): Promise<void> {
           page varchar(256),
           referrer text,
           duration int,
+          city varchar(64),
+          region varchar(64),
           createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
           PRIMARY KEY (id)
         )
@@ -34,6 +36,14 @@ export async function runMigrations(): Promise<void> {
       console.log("[Migration] visitor_logs table created successfully");
     } else {
       console.log("[Migration] visitor_logs table already exists");
+      console.log("[Migration] Checking for missing columns...");
+      try {
+        await db.execute(sql`ALTER TABLE visitor_logs ADD COLUMN IF NOT EXISTS city varchar(64)`);
+        await db.execute(sql`ALTER TABLE visitor_logs ADD COLUMN IF NOT EXISTS region varchar(64)`);
+        console.log("[Migration] Columns city and region added successfully");
+      } catch (colError) {
+        console.log("[Migration] Columns may already exist, skipping...");
+      }
     }
   } catch (error) {
     console.error("[Migration] Failed to run migrations:", error);

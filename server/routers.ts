@@ -7,7 +7,7 @@ import { deribitRouter } from "./routers/deribit.js";
 import { calendarRouter } from "./routers/calendar.js";
 import { bitgetRouter } from "./routers/bitget.js";
 import { hyperliquidRouter } from "./routers/hyperliquid.js";
-import { incrementPageViews, getPageViews, logVisitor, getDailyVisitorStats, getVisitorDeviceStats, getVisitorOsStats, getVisitorIpList } from "./db.js";
+import { incrementPageViews, getPageViews, logVisitor, getDailyVisitorStats, getVisitorDeviceStats, getVisitorOsStats, getVisitorIpList, getVisitorBrowserStats, getVisitorHourlyStats, getVisitorGeoStats, getRecentVisitors } from "./db.js";
 
 function parseUserAgent(userAgent?: string) {
   if (!userAgent) return { deviceType: undefined as "desktop" | "mobile" | "tablet" | undefined, os: undefined as string | undefined, browser: undefined as string | undefined };
@@ -176,6 +176,53 @@ export const appRouter = router({
       .query(async ({ input }) => {
         const ips = await getVisitorIpList(input);
         return { ips };
+      }),
+
+    browserStats: publicProcedure
+      .input(
+        z.object({
+          startDate: z.string().optional(),
+          endDate: z.string().optional(),
+        }).optional()
+      )
+      .query(async ({ input }) => {
+        const stats = await getVisitorBrowserStats(input);
+        return { stats };
+      }),
+
+    hourlyStats: publicProcedure
+      .input(
+        z.object({
+          startDate: z.string().optional(),
+          endDate: z.string().optional(),
+        }).optional()
+      )
+      .query(async ({ input }) => {
+        const stats = await getVisitorHourlyStats(input);
+        return { stats };
+      }),
+
+    geoStats: publicProcedure
+      .input(
+        z.object({
+          startDate: z.string().optional(),
+          endDate: z.string().optional(),
+        }).optional()
+      )
+      .query(async ({ input }) => {
+        const stats = await getVisitorGeoStats(input);
+        return { stats };
+      }),
+
+    recentVisitors: publicProcedure
+      .input(
+        z.object({
+          limit: z.number().optional(),
+        }).optional()
+      )
+      .query(async ({ input }) => {
+        const visitors = await getRecentVisitors(input?.limit);
+        return { visitors };
       }),
   }),
 });

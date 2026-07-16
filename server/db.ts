@@ -387,6 +387,131 @@ export async function getVisitorIpList(params?: {
     : baseQuery.groupBy(visitorLogs.ip).orderBy(desc(sql`MAX(${visitorLogs.createdAt})`)).limit(params?.limit ?? 50);
 }
 
+export async function getVisitorBrowserStats(params?: {
+  startDate?: string;
+  endDate?: string;
+}): Promise<Array<{ browser: string | null; count: number; percentage: number }>> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const getWhereClause = () => {
+    if (params?.startDate && params?.endDate) {
+      return and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, new Date(params.endDate)));
+    }
+    if (params?.startDate) return gte(visitorLogs.createdAt, new Date(params.startDate));
+    if (params?.endDate) return lte(visitorLogs.createdAt, new Date(params.endDate));
+    return undefined;
+  };
+
+  const whereClause = getWhereClause();
+
+  const [totalResult, result] = await Promise.all([
+    whereClause ? db.select({ total: sql<number>`COUNT(*)` }).from(visitorLogs).where(whereClause) : db.select({ total: sql<number>`COUNT(*)` }).from(visitorLogs),
+    whereClause
+      ? db.select({ browser: visitorLogs.browser, count: sql<number>`COUNT(*)` }).from(visitorLogs).where(whereClause).groupBy(visitorLogs.browser).orderBy(desc(sql`COUNT(*)`))
+      : db.select({ browser: visitorLogs.browser, count: sql<number>`COUNT(*)` }).from(visitorLogs).groupBy(visitorLogs.browser).orderBy(desc(sql`COUNT(*)`)),
+  ]);
+
+  const total = totalResult[0]?.total ?? 0;
+  return result.map((row) => ({
+    browser: row.browser,
+    count: row.count,
+    percentage: total > 0 ? Math.round((row.count / total) * 100) : 0,
+  }));
+}
+
+export async function getVisitorHourlyStats(params?: {
+  startDate?: string;
+  endDate?: string;
+}): Promise<Array<{ hour: number; visits: number; percentage: number }>> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const getWhereClause = () => {
+    if (params?.startDate && params?.endDate) {
+      return and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, new Date(params.endDate)));
+    }
+    if (params?.startDate) return gte(visitorLogs.createdAt, new Date(params.startDate));
+    if (params?.endDate) return lte(visitorLogs.createdAt, new Date(params.endDate));
+    return undefined;
+  };
+
+  const whereClause = getWhereClause();
+
+  const [totalResult, result] = await Promise.all([
+    whereClause ? db.select({ total: sql<number>`COUNT(*)` }).from(visitorLogs).where(whereClause) : db.select({ total: sql<number>`COUNT(*)` }).from(visitorLogs),
+    whereClause
+      ? db.select({ hour: sql<number>`HOUR(${visitorLogs.createdAt})`, visits: sql<number>`COUNT(*)` }).from(visitorLogs).where(whereClause).groupBy(sql`HOUR(${visitorLogs.createdAt})`).orderBy(sql`HOUR(${visitorLogs.createdAt})`)
+      : db.select({ hour: sql<number>`HOUR(${visitorLogs.createdAt})`, visits: sql<number>`COUNT(*)` }).from(visitorLogs).groupBy(sql`HOUR(${visitorLogs.createdAt})`).orderBy(sql`HOUR(${visitorLogs.createdAt})`),
+  ]);
+
+  const total = totalResult[0]?.total ?? 0;
+  const hourlyData = result.map((row) => ({
+    hour: row.hour,
+    visits: row.visits,
+    percentage: total > 0 ? Math.round((row.visits / total) * 100) : 0,
+  }));
+
+  const fullDay: Array<{ hour: number; visits: number; percentage: number }> = [];
+  for (let h = 0; h < 24; h++) {
+    const existing = hourlyData.find((d) => d.hour === h);
+    fullDay.push(existing || { hour: h, visits: 0, percentage: 0 });
+  }
+  return fullDay;
+}
+
+export async function getVisitorGeoStats(params?: {
+  startDate?: string;
+  endDate?: string;
+}): Promise<Array<{ region: string | null; city: string | null; count: number; percentage: number }>> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const getWhereClause = () => {
+    if (params?.startDate && params?.endDate) {
+      return and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, new Date(params.endDate)));
+    }
+    if (params?.startDate) return gte(visitorLogs.createdAt, new Date(params.startDate));
+    if (params?.endDate) return lte(visitorLogs.createdAt, new Date(params.endDate));
+    return undefined;
+  };
+
+  const whereClause = getWhereClause();
+
+  const [totalResult, result] = await Promise.all([
+    whereClause ? db.select({ total: sql<number>`COUNT(*)` }).from(visitorLogs).where(whereClause) : db.select({ total: sql<number>`COUNT(*)` }).from(visitorLogs),
+    whereClause
+      ? db.select({ region: visitorLogs.region, city: visitorLogs.city, count: sql<number>`COUNT(*)` }).from(visitorLogs).where(whereClause).groupBy(visitorLogs.region, visitorLogs.city).orderBy(desc(sql`COUNT(*)`))
+      : db.select({ region: visitorLogs.region, city: visitorLogs.city, count: sql<number>`COUNT(*)` }).from(visitorLogs).groupBy(visitorLogs.region, visitorLogs.city).orderBy(desc(sql`COUNT(*)`)),
+  ]);
+
+  const total = totalResult[0]?.total ?? 0;
+  return result.map((row) => ({
+    region: row.region,
+    city: row.city,
+    count: row.count,
+    percentage: total > 0 ? Math.round((row.count / total) * 100) : 0,
+  }));
+}
+
+export async function getRecentVisitors(limit?: number): Promise<Array<{ ip: string; page: string | null; deviceType: string | null; os: string | null; browser: string | null; createdAt: string }>> {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select({
+      ip: visitorLogs.ip,
+      page: visitorLogs.page,
+      deviceType: visitorLogs.deviceType,
+      os: visitorLogs.os,
+      browser: visitorLogs.browser,
+      createdAt: sql<string>`${visitorLogs.createdAt}`,
+    })
+    .from(visitorLogs)
+    .orderBy(desc(visitorLogs.createdAt))
+    .limit(limit ?? 20);
+}
+
 /**
  * Returns the earliest recorded snapshot for each currency.
  * Used to compute total P&L = currentEquity - initialBalance.

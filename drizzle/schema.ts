@@ -102,6 +102,8 @@ export const visitorLogs = mysqlTable("visitor_logs", {
   page: varchar("page", { length: 256 }),
   referrer: text("referrer"),
   duration: int("duration"),
+  city: varchar("city", { length: 64 }),
+  region: varchar("region", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
