@@ -68,8 +68,10 @@ export default function EconomicCalendar() {
   const events = data ?? [];
   const filtered = events.filter((e) => {
     if (e.importance < minImportance) return false;
-    if (status === "released") return e.actual != null && e.actual !== "";
-    if (status === "pending") return e.actual == null || e.actual === "";
+    const eventTime = new Date(e.dateRaw).getTime();
+    const now = Date.now();
+    if (status === "released") return eventTime < now;
+    if (status === "pending") return eventTime >= now;
     return true;
   });
 
