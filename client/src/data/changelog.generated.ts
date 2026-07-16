@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.25.0",
+    "date": "2026-07-16",
+    "zh": "经济日历新增本周/本月时间范围切换",
+    "en": "Economic calendar now supports week/month time range toggle"
+  },
+  {
     "version": "1.24.0",
     "date": "2026-07-16",
     "zh": "经济日历事件名称支持中英文切换",
