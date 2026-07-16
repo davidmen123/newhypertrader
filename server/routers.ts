@@ -116,9 +116,15 @@ export const appRouter = router({
         const { deviceType, os, browser } = parseUserAgent(input.userAgent);
         const ip = getClientIp(ctx.req);
 
-        const geoPromise = getIpGeo(ip);
-
-        const { region, city } = await geoPromise;
+        let region: string | undefined;
+        let city: string | undefined;
+        try {
+          const geo = await getIpGeo(ip);
+          region = geo.region || undefined;
+          city = geo.city || undefined;
+        } catch (e) {
+          console.warn("[Analytics] IP geo lookup failed, skipping:", e);
+        }
 
         await logVisitor({
           ip,

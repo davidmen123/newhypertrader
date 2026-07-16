@@ -23,24 +23,33 @@ function Router() {
 
 function AnalyticsTracker() {
   const [startTime] = useState(Date.now());
-  const trackMutation = trpc.analytics.track.useMutation({
-    onError: () => {},
-  });
+  const trackMutation = trpc.analytics.track.useMutation();
 
   useEffect(() => {
-    trackMutation.mutate({
-      page: window.location.pathname,
-      userAgent: navigator.userAgent,
-      referrer: document.referrer,
-    });
+    const trackVisit = async () => {
+      try {
+        await trackMutation.mutateAsync({
+          page: window.location.pathname,
+          userAgent: navigator.userAgent,
+          referrer: document.referrer,
+        });
+      } catch (e) {
+        console.warn("[Analytics] Track visit failed:", e);
+      }
+    };
+    trackVisit();
 
     const handleBeforeUnload = () => {
       const duration = Math.round((Date.now() - startTime) / 1000);
-      trackMutation.mutate({
-        page: window.location.pathname,
-        duration,
-        userAgent: navigator.userAgent,
-      });
+      try {
+        trackMutation.mutate({
+          page: window.location.pathname,
+          duration,
+          userAgent: navigator.userAgent,
+        });
+      } catch (e) {
+        console.warn("[Analytics] Track duration failed:", e);
+      }
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);

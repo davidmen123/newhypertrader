@@ -18,7 +18,7 @@ export async function getIpGeo(ip: string): Promise<IpGeoResult> {
 
   try {
     const response = await axios.get(`http://ip-api.com/json/${ip}`, {
-      timeout: 5000,
+      timeout: 2000,
       params: {
         fields: "regionName,city",
       },
@@ -42,6 +42,7 @@ export async function getIpGeo(ip: string): Promise<IpGeoResult> {
 
     return result;
   } catch (error) {
+    console.warn("[IP Geo] Lookup failed for ip:", ip, error);
     return { region: "未知地区", city: "" };
   }
 }
