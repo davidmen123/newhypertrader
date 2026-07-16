@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import { createPool } from "mysql2/promise";
 
 export async function runMigrations(): Promise<void> {
   if (!process.env.DATABASE_URL) {
@@ -8,7 +9,13 @@ export async function runMigrations(): Promise<void> {
   }
 
   try {
-    const db = drizzle(process.env.DATABASE_URL);
+    const pool = createPool({
+      uri: process.env.DATABASE_URL,
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0,
+    });
+    const db = drizzle(pool);
 
     const visitorLogsTableExists = await db.execute(sql`SHOW TABLES LIKE 'visitor_logs'`);
     const resultArray = visitorLogsTableExists as unknown as Array<unknown>;
