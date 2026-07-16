@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.26.0",
+    "date": "2026-07-16",
+    "zh": "补充Fed主席作证、费城联储指数、密歇根大学等事件中文翻译",
+    "en": "Added Chinese translations for additional economic calendar events"
+  },
+  {
     "version": "1.25.0",
     "date": "2026-07-16",
     "zh": "经济日历新增本周/本月时间范围切换",
