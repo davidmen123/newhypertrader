@@ -1,4 +1,120 @@
-export const ECONOMIC_EVENT_TRANSLATIONS: Record<string, string> = {
+const KEYWORD_TRANSLATIONS: Record<string, string> = {
+  "m/m": "月率",
+  "y/y": "年率",
+  "q/q": "季率",
+  "Fed": "美联储",
+  "FOMC": "FOMC",
+  "CPI": "CPI",
+  "PPI": "PPI",
+  "GDP": "GDP",
+  "PMI": "PMI",
+  "PCE": "PCE",
+  "ISM": "ISM",
+  "EIA": "EIA",
+  "API": "API",
+  "JOLTS": "JOLTS",
+  "NFIB": "NFIB",
+  "UoM": "密歇根大学",
+  "Retail Sales": "零售销售",
+  "Unemployment": "失业",
+  "Consumer": "消费者",
+  "Manufacturing": "制造业",
+  "Services": "服务业",
+  "Core": "核心",
+  "Prelim": "初值",
+  "Final": "终值",
+  "Advance": "初值",
+  "Index": "指数",
+  "Change": "变化",
+  "Rate": "率",
+  "Claims": "申请人数",
+  "Sentiment": "信心",
+  "Confidence": "信心",
+  "Expectations": "预期",
+  "Conditions": "状况",
+  "Orders": "订单",
+  "Stocks": "库存",
+  "Inventories": "库存",
+  "Sales": "销售",
+  "Production": "生产",
+  "Capacity": "产能",
+  "Utilization": "利用率",
+  "Balance": "余额",
+  "Budget": "预算",
+  "Trade": "贸易",
+  "Housing": "住房",
+  "Building": "建筑",
+  "Permits": "许可",
+  "Starts": "开工",
+  "Jobless": "失业",
+  "Continuing": "续请",
+  "Initial": "初请",
+  "Non-Farm": "非农",
+  "Nonfarm": "非农",
+  "Employment": "就业",
+  "Payrolls": "就业人数",
+  "Labor": "劳动",
+  "Force": "力",
+  "Participation": "参与",
+  "Hourly": "时薪",
+  "Earnings": "收入",
+  "Weekly": "每周",
+  "Hours": "工时",
+  "Personal": "个人",
+  "Income": "收入",
+  "Spending": "支出",
+  "Consumption": "消费",
+  "Expenditures": "支出",
+  "Price": "价格",
+  "Deflator": "平减指数",
+  "Durable": "耐用",
+  "Goods": "品",
+  "Factory": "工厂",
+  "Industrial": "工业",
+  "Wholesale": "批发",
+  "Business": "商业",
+  "Transportation": "运输",
+  "Control": "控制",
+  "Group": "组",
+  "Auto": "汽车",
+  "Ex": "除",
+  "Excluding": "除",
+  "Crude": "原油",
+  "Oil": "油",
+  "Gasoline": "汽油",
+  "Distillate": "馏分油",
+  "Natural": "天然",
+  "Gas": "气",
+  "Storage": "库存",
+  "Bond": "债券",
+  "Note": "国债",
+  "Bill": "国库券",
+  "Auction": "拍卖",
+  "Chairman": "主席",
+  "Chair": "主席",
+  "Governor": "理事",
+  "Member": "成员",
+  "Speech": "讲话",
+  "Testifies": "作证",
+  "Decision": "决议",
+  "Meeting": "会议",
+  "Minutes": "纪要",
+  "Interest": "利率",
+  "Sheet": "表",
+  "Productivity": "生产力",
+  "Unit": "单位",
+  "Costs": "成本",
+  "Cuts": "裁员",
+  "Challenger": "挑战者",
+  "Pending": "签约",
+  "Home": "房屋",
+  "New": "新",
+  "University": "大学",
+  "of": "",
+  "the": "",
+};
+
+const FULL_TRANSLATIONS: Record<string, string> = {
   "Core CPI": "核心CPI",
   "CPI m/m": "CPI月率",
   "CPI y/y": "CPI年率",
@@ -100,3 +216,27 @@ export const ECONOMIC_EVENT_TRANSLATIONS: Record<string, string> = {
   "PCE Deflator": "PCE平减指数",
   "Core PCE Deflator": "核心PCE平减指数",
 };
+
+export function translateEvent(eventName: string): string {
+  if (FULL_TRANSLATIONS[eventName]) {
+    return FULL_TRANSLATIONS[eventName];
+  }
+
+  let result = eventName;
+  const sortedKeywords = Object.keys(KEYWORD_TRANSLATIONS).sort(
+    (a, b) => b.length - a.length
+  );
+
+  for (const keyword of sortedKeywords) {
+    const regex = new RegExp(keyword, "gi");
+    result = result.replace(regex, KEYWORD_TRANSLATIONS[keyword]);
+  }
+
+  result = result.replace(/\s+/g, "").replace(/^核心核心/, "核心");
+
+  if (result === "") {
+    return eventName;
+  }
+
+  return result;
+}

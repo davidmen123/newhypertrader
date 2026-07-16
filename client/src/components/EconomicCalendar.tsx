@@ -6,7 +6,7 @@ import { useLang } from "@/contexts/LangContext";
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { ECONOMIC_EVENT_TRANSLATIONS } from "@/lib/event-i18n";
+import { translateEvent } from "@/lib/event-i18n";
 
 function ImportanceBadge({ level, lang }: { level: number; lang: string }) {
   const labels = {
@@ -276,7 +276,7 @@ export default function EconomicCalendar() {
                       maxWidth: 300,
                     }}
                   >
-                    {lang === "zh" ? (ECONOMIC_EVENT_TRANSLATIONS[event.event] || event.event) : event.event}
+                    {lang === "zh" ? translateEvent(event.event) : event.event}
                   </td>
                   <td style={{ padding: "8px 10px" }}>
                     <ImportanceBadge level={event.importance} lang={lang} />
