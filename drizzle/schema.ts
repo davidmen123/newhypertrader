@@ -91,8 +91,8 @@ export type PageView = typeof pageViews.$inferSelect;
 export const visitorLogs = pgTable("visitor_logs", {
   id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
   ip: varchar("ip", { length: 45 }).notNull(),
-  userAgent: text("userAgent"),
-  deviceType: varchar("deviceType", { length: 16 }),
+  userAgent: text("useragent"),
+  deviceType: varchar("devicetype", { length: 16 }),
   os: varchar("os", { length: 64 }),
   browser: varchar("browser", { length: 64 }),
   page: varchar("page", { length: 256 }),
@@ -100,7 +100,7 @@ export const visitorLogs = pgTable("visitor_logs", {
   duration: integer("duration"),
   city: varchar("city", { length: 64 }),
   region: varchar("region", { length: 64 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdAt: timestamp("createdat").defaultNow().notNull(),
 });
 
 export type VisitorLog = typeof visitorLogs.$inferSelect;
