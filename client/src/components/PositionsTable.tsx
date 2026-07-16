@@ -1,6 +1,7 @@
 import { trpc } from "@/lib/trpc";
 import { useLang } from "@/contexts/LangContext";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type HyperliquidPosition = {
   category: string;
@@ -114,11 +115,31 @@ export default function PositionsTable() {
                   <th>{t("市场", "Market")}</th>
                   <th>{t("方向", "Side")}</th>
                   <th>{t("数量", "Size")}</th>
-                  <th>{t("仓位价值", "Position Value")}</th>
+                  <th className="flex items-center gap-1">
+                    {t("仓位价值", "Position Value")}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="text-muted-foreground/60 cursor-help" style={{ width: "12px", height: "12px" }} />
+                      </TooltipTrigger>
+                      <TooltipContent className="text-xs" style={{ fontSize: "0.7rem" }}>
+                        {t("显示当前的持仓市值（数量*开仓均价）", "Position value at current mark price")}
+                      </TooltipContent>
+                    </Tooltip>
+                  </th>
                   <th>{t("可平", "Available")}</th>
                   <th>{t("均价", "Avg Price")}</th>
                   <th>{t("标记价", "Mark")}</th>
-                  <th>{t("杠杆", "Lev.")}</th>
+                  <th className="flex items-center gap-1">
+                    {t("杠杆", "Lev.")}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="text-muted-foreground/60 cursor-help" style={{ width: "12px", height: "12px" }} />
+                      </TooltipTrigger>
+                      <TooltipContent className="text-xs" style={{ fontSize: "0.7rem" }}>
+                        {t("此为名义杠杆，核心风险看实际杠杆，即\"总杠杆率\"", "This is nominal leverage; core risk depends on actual leverage (Total Leverage)")}
+                      </TooltipContent>
+                    </Tooltip>
+                  </th>
                   <th>{t("保证金", "Margin")}</th>
                   <th>{t("未实现盈亏", "Unrealized")}</th>
                   <th>{t("收益率", "ROI")}</th>
