@@ -106,9 +106,14 @@ export const appRouter = router({
   analytics: router({
     health: publicProcedure
       .query(async () => {
+        const hasDbUrl = !!process.env.DATABASE_URL;
+        if (!hasDbUrl) {
+          return { status: "error", message: "DATABASE_URL environment variable is not set" };
+        }
+        
         const db = await getDb();
         if (!db) {
-          return { status: "error", message: "Database not available" };
+          return { status: "error", message: "Database connection failed. Check DATABASE_URL is correct" };
         }
         try {
           const result = await db.execute(sql`SELECT COUNT(*) as count FROM visitor_logs`);
