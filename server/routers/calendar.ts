@@ -6,6 +6,7 @@
  * - earningsCalendar: Top 50 US stocks earnings for the next 7 days
  *   Source: Alpha Vantage free API (no key required for demo)
  */
+import { z } from "zod";
 import { publicProcedure, router } from "../_core/trpc.js";
 
 // ─── In-memory cache ─────────────────────────────────────────────────────────
@@ -303,56 +304,66 @@ export const calendarRouter = router({
    * US important economic events for the current week
    * Cached for 30 minutes to avoid rate limiting
    */
-  economicCalendar: publicProcedure.query(async () => {
-    const CACHE_KEY = "economic_calendar_thisweek";
-    const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
-
-    // Try cache first
-    const cached = getCached<EconEvent[]>(CACHE_KEY);
-    if (cached) {
-      return cached;
-    }
-
-    // Fetch fresh data
-    const rawEvents = await fetchForexFactoryRaw();
-
-    // Filter: USD only, Medium+ impact, within next 7 days from today
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const sevenDaysLater = new Date(todayStart.getTime() + 7 * 24 * 60 * 60 * 1000);
-
-    const filtered: EconEvent[] = rawEvents
-      .filter((e) => {
-        if (!e.country || e.country.toUpperCase() !== "USD") return false;
-        const level = IMPACT_MAP[e.impact] ?? 0;
-        if (level < 1) return false; // exclude Holiday and Low by default (frontend can filter further)
-
-        const d = new Date(e.date);
-        if (isNaN(d.getTime())) return false;
-        if (d < todayStart || d > sevenDaysLater) return false;
-
-        return true;
+  economicCalendar: publicProcedure
+    .input(
+      z.object({
+        range: z.enum(["week", "month"]).optional().default("week"),
       })
-      .map((e) => {
-        const d = new Date(e.date);
-        return {
-          id: `${e.date}-${e.title}`,
-          dateRaw: e.date,
-          dateUtc8: toUtc8Display(e.date),
-          dateIso: d.toISOString(),
-          event: e.title,
-          impact: e.impact,
-          importance: IMPACT_MAP[e.impact] ?? 1,
-          forecast: e.forecast || null,
-          previous: e.previous || null,
-          actual: e.actual || null,
-        };
-      })
-      .sort((a, b) => a.dateIso.localeCompare(b.dateIso));
+    )
+    .query(async ({ input }) => {
+      const { range } = input;
+      const CACHE_KEY = `economic_calendar_${range}`;
+      const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
-    setCached(CACHE_KEY, filtered, CACHE_TTL);
-    return filtered;
-  }),
+      const cached = getCached<EconEvent[]>(CACHE_KEY);
+      if (cached) {
+        return cached;
+      }
+
+      const rawEvents = await fetchForexFactoryRaw();
+
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      let endDate: Date;
+      if (range === "month") {
+        endDate = new Date(todayStart.getFullYear(), todayStart.getMonth() + 1, 0);
+      } else {
+        endDate = new Date(todayStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+      }
+
+      const filtered: EconEvent[] = rawEvents
+        .filter((e) => {
+          if (!e.country || e.country.toUpperCase() !== "USD") return false;
+          const level = IMPACT_MAP[e.impact] ?? 0;
+          if (level < 1) return false;
+
+          const d = new Date(e.date);
+          if (isNaN(d.getTime())) return false;
+          if (d < todayStart || d > endDate) return false;
+
+          return true;
+        })
+        .map((e) => {
+          const d = new Date(e.date);
+          return {
+            id: `${e.date}-${e.title}`,
+            dateRaw: e.date,
+            dateUtc8: toUtc8Display(e.date),
+            dateIso: d.toISOString(),
+            event: e.title,
+            impact: e.impact,
+            importance: IMPACT_MAP[e.impact] ?? 1,
+            forecast: e.forecast || null,
+            previous: e.previous || null,
+            actual: e.actual || null,
+          };
+        })
+        .sort((a, b) => a.dateIso.localeCompare(b.dateIso));
+
+      setCached(CACHE_KEY, filtered, CACHE_TTL);
+      return filtered;
+    }),
 
   /**
    * Top 50 US stocks earnings calendar for the next 7 days

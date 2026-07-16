@@ -57,9 +57,10 @@ function ImportanceBadge({ level, lang }: { level: number; lang: string }) {
 export default function EconomicCalendar() {
   const { lang } = useLang();
   const [minImportance, setMinImportance] = useState(2);
+  const [range, setRange] = useState<"week" | "month">("week");
 
   const { data, isLoading, error, refetch, isFetching } =
-    trpc.calendar.economicCalendar.useQuery(undefined, {
+    trpc.calendar.economicCalendar.useQuery({ range }, {
       refetchInterval: 10 * 60 * 1000, // refresh every 10 min
     });
 
@@ -70,6 +71,11 @@ export default function EconomicCalendar() {
     1: { zh: "全部", en: "All" },
     2: { zh: "中高", en: "Med+" },
     3: { zh: "高", en: "High" },
+  };
+
+  const rangeLabels = {
+    week: { zh: "本周", en: "Week" },
+    month: { zh: "本月", en: "Month" },
   };
 
   const colHeaders =
@@ -101,11 +107,23 @@ export default function EconomicCalendar() {
             style={{ fontSize: "0.68rem", letterSpacing: "0.06em" }}
           >
             {lang === "zh"
-              ? "本周重要经济事件 · UTC+8 时间"
-              : "This week's key events · UTC+8"}
+              ? `${range === "week" ? "本周" : "本月"}重要经济事件 · UTC+8 时间`
+              : `${range === "week" ? "This week's" : "This month's"} key events · UTC+8`}
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <div className="flex gap-1">
+            {(["week", "month"] as const).map((r) => (
+              <button
+                key={r}
+                onClick={() => setRange(r)}
+                className={`pill-tab ${range === r ? "active" : ""}`}
+                style={{ fontSize: "0.62rem", padding: "3px 10px" }}
+              >
+                {rangeLabels[r][lang as "zh" | "en"]}
+              </button>
+            ))}
+          </div>
           <div className="flex gap-1">
             {([1, 2, 3] as const).map((level) => (
               <button
