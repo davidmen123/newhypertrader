@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.23.0",
+    "date": "2026-07-16",
+    "zh": "优化页脚底部行间距与字体大小",
+    "en": "Improved footer bottom row spacing and font size"
+  },
+  {
     "version": "1.22.0",
     "date": "2026-07-16",
     "zh": "账户概览指标添加悬停提示说明",
