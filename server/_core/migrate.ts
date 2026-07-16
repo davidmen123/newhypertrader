@@ -1,6 +1,17 @@
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { createPool, parseUrl } from "mysql2/promise";
+import { createPool } from "mysql2/promise";
+
+function parseDatabaseUrl(url: string) {
+  const parsed = new URL(url);
+  return {
+    host: parsed.hostname,
+    port: parseInt(parsed.port) || 3306,
+    user: parsed.username,
+    password: parsed.password,
+    database: parsed.pathname.substring(1),
+  };
+}
 
 export async function runMigrations(): Promise<void> {
   if (!process.env.DATABASE_URL) {
@@ -9,7 +20,7 @@ export async function runMigrations(): Promise<void> {
   }
 
   try {
-    const config = parseUrl(process.env.DATABASE_URL);
+    const config = parseDatabaseUrl(process.env.DATABASE_URL);
     const pool = createPool({
       ...config,
       waitForConnections: true,

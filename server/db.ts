@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { createPool, parseUrl } from "mysql2/promise";
+import { createPool } from "mysql2/promise";
 import { InsertUser, InsertTrade, InsertPnlSnapshot, InsertVisitorLog, pnlSnapshots, trades, users, pageViews, visitorLogs } from "../drizzle/schema.js";
 import { ENV } from './_core/env.js';
 import { getIndexPrice } from './deribit.js';
@@ -8,17 +8,29 @@ import { getIndexPrice } from './deribit.js';
 let _db: any = null;
 let _pool: any = null;
 
+function parseDatabaseUrl(url: string) {
+  const parsed = new URL(url);
+  return {
+    host: parsed.hostname,
+    port: parseInt(parsed.port) || 3306,
+    user: parsed.username,
+    password: parsed.password,
+    database: parsed.pathname.substring(1),
+  };
+}
+
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
       if (!_pool) {
-        const config = parseUrl(process.env.DATABASE_URL);
+        const config = parseDatabaseUrl(process.env.DATABASE_URL);
         _pool = createPool({
           ...config,
           waitForConnections: true,
           connectionLimit: 10,
           queueLimit: 0,
+          charset: "utf8mb4",
         });
       }
       _db = drizzle(_pool);
