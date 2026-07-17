@@ -10,6 +10,11 @@
 // the generated file, and amend it into the same commit. Commits without the
 // trailer are ignored, so routine refactors/fixes stay out of the changelog.
 //
+// The changelog is visitor-facing, so work on the private analytics dashboard
+// (/analytics) is deliberately kept out of it: don't add a 更新 trailer to those
+// commits. EXCLUDED_SHAS below covers the analytics commits that were trailered
+// before this rule existed.
+//
 // Pre-convention history (before this trailer workflow existed) is backfilled
 // by the SEED list below — one condensed line per release.
 
@@ -28,6 +33,21 @@ const SEED = [
   { version: "1.5.0", date: "2026-07-07", zh: "修复损益曲线并新增累积资金费", en: "PnL range fixes and net funding stat" },
 ];
 
+// Analytics-dashboard commits that carry a 更新 trailer from before the
+// "keep /analytics out of the changelog" rule. Listed by SHA so the trailers
+// can stay in git history untouched.
+const EXCLUDED_SHAS = new Set([
+  "37f98db", // 新增网站访问统计功能
+  "5fe37cc", // 新增网站访问统计可视化页面
+  "457aee6", // 添加自动数据库迁移支持
+  "dec04c8", // 添加浏览器分布、访问时段、地理分布、实时访客功能
+  "d99891e", // IP地址自动转换为省份名称
+  "95928d6", // 添加自动刷新机制和手动刷新按钮
+  "54fb847", // 修复访问统计与计数的数据库故障
+  "479dbdf", // 修复访问统计重复上报
+  "9b49c8b", // 精简访问统计相关版本日志
+]);
+
 function matchTrailer(body, regex) {
   const match = body.match(regex);
   return match ? match[1].trim() : null;
@@ -36,8 +56,8 @@ function matchTrailer(body, regex) {
 function readTrailerCommits() {
   let raw = "";
   try {
-    // Record sep = \x1e, field sep = \x1f. Fields: date, full body.
-    raw = execSync("git log --reverse --date=short --format=%ad%x1f%B%x1e", {
+    // Record sep = \x1e, field sep = \x1f. Fields: short sha, date, full body.
+    raw = execSync("git log --reverse --date=short --format=%h%x1f%ad%x1f%B%x1e", {
       encoding: "utf8",
       maxBuffer: 32 * 1024 * 1024,
     });
@@ -49,14 +69,14 @@ function readTrailerCommits() {
   for (const record of raw.split("\x1e")) {
     const trimmed = record.trim();
     if (!trimmed) continue;
-    const sep = trimmed.indexOf("\x1f");
-    if (sep === -1) continue;
-    const date = trimmed.slice(0, sep).trim();
-    const body = trimmed.slice(sep + 1);
+    const [sha, date, ...rest] = trimmed.split("\x1f");
+    if (!date || rest.length === 0) continue;
+    const body = rest.join("\x1f");
+    if (EXCLUDED_SHAS.has(sha.trim())) continue;
     const zh = matchTrailer(body, /^更新[:：]\s*(.+)$/m);
     if (!zh) continue;
     const en = matchTrailer(body, /^Changelog-EN[:：]\s*(.+)$/im) || zh;
-    commits.push({ date, zh, en });
+    commits.push({ date: date.trim(), zh, en });
   }
   return commits;
 }
