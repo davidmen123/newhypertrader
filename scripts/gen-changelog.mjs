@@ -48,6 +48,28 @@ const EXCLUDED_SHAS = new Set([
   "9b49c8b", // 精简访问统计相关版本日志
 ]);
 
+// Entries whose committed trailer overran the 15-character Chinese limit, or
+// read too much like an internal commit note. Rewritten here (keyed by SHA) so
+// the original commit messages stay untouched. Keep new zh text <= 15 chars.
+const OVERRIDES = new Map([
+  ["c361f1a", { zh: "行情新增日经与韩国指数", en: "Added Nikkei and KOSPI tickers" }],
+  ["2a3b5cf", { zh: "行情卡新增EMA20与RSI", en: "Added EMA20 and RSI to ticker cards" }],
+  ["2432f1f", { zh: "实时更新指示移至标题栏", en: "Moved the live indicator to the header" }],
+  ["dab2cf2", { zh: "账户概览补充绩效指标", en: "Added performance metrics to the overview" }],
+  ["a51ed29", { zh: "成交与持仓展示对齐交易所", en: "Aligned trade and position views with the exchange" }],
+  ["0f7945f", { zh: "行情新增ETH与恒生指数", en: "Added ETH and Hang Seng tickers" }],
+  ["663bf7a", { zh: "经济日历新增周月切换", en: "Added week/month toggle to the calendar" }],
+  ["493e154", { zh: "补充经济事件中文翻译", en: "Added Chinese translations for more events" }],
+  ["845ff08", { zh: "经济日历新增状态筛选", en: "Added a status filter to the calendar" }],
+  ["87ca55c", { zh: "补全PPI等事件翻译", en: "Completed translations for PPI and more" }],
+  ["5ea4ae3", { zh: "经济事件支持智能翻译", en: "Smarter economic-event translation" }],
+  ["913116a", { zh: "事件翻译保留人名地名", en: "Translation keeps names and places in English" }],
+  ["0ceeff6", { zh: "本月视图补全整月事件", en: "Month view now fetches the full month" }],
+  ["6a9b1d9", { zh: "本月范围改为完整月份", en: "Month range spans the whole month" }],
+  ["a53efaa", { zh: "本周范围改为周一至周日", en: "Week range runs Monday to Sunday" }],
+  ["f48238f", { zh: "公布状态改按事件时间", en: "Publish status now follows event time" }],
+]);
+
 function matchTrailer(body, regex) {
   const match = body.match(regex);
   return match ? match[1].trim() : null;
@@ -72,11 +94,17 @@ function readTrailerCommits() {
     const [sha, date, ...rest] = trimmed.split("\x1f");
     if (!date || rest.length === 0) continue;
     const body = rest.join("\x1f");
-    if (EXCLUDED_SHAS.has(sha.trim())) continue;
+    const shortSha = sha.trim();
+    if (EXCLUDED_SHAS.has(shortSha)) continue;
     const zh = matchTrailer(body, /^更新[:：]\s*(.+)$/m);
     if (!zh) continue;
     const en = matchTrailer(body, /^Changelog-EN[:：]\s*(.+)$/im) || zh;
-    commits.push({ date: date.trim(), zh, en });
+    const override = OVERRIDES.get(shortSha);
+    commits.push({
+      date: date.trim(),
+      zh: override?.zh ?? zh,
+      en: override?.en ?? en,
+    });
   }
   return commits;
 }
