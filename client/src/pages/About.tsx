@@ -33,6 +33,21 @@ const OUTLINE = [
   { zh: "总结串讲：温格老师和 Sober 老师疑问解答", en: "Wrap-up and Q&A: with Wenge and Sober" },
 ];
 
+// Selected topics from the internal live-session archive (节选), shown as a
+// numbered catalog. Titles are owner-provided; keep the "…… 等等" tail honest.
+const LIVE_SESSIONS = [
+  { zh: "AI时代的存储周期", en: "The storage cycle in the AI era" },
+  { zh: "以交易为生进阶版", en: "Trading for a Living: Advanced" },
+  { zh: "交易的5个极简步骤", en: "Five minimalist steps to a trade" },
+  { zh: "如何通过双币策略有效指数增强", en: "Effective index enhancement with dual-currency strategies" },
+  { zh: "如何利用VCP交易法，筛选强势股", en: "Using VCP to screen strong stocks" },
+  { zh: "从三篇论文解析TQQQ的择时策略", en: "TQQQ timing strategies, decoded from three papers" },
+  { zh: "2026年温格的四大认知升级", en: "Wenge's four cognitive upgrades of 2026" },
+  { zh: "常用的四个经典骑牛策略", en: "Four classic bull-riding strategies" },
+  { zh: "均线之大周期极简策略", en: "Minimalist moving-average strategies on large timeframes" },
+  { zh: "格兰威尔八大法则", en: "Granville's Eight Rules" },
+];
+
 export default function About() {
   const { lang } = useLang();
   const t = (b: { zh: string; en: string }) => (lang === "zh" ? b.zh : b.en);
@@ -45,6 +60,19 @@ export default function About() {
         en: "Wenge Private VIP — a hands-on community centered on trading.",
       })}
     >
+      {/* Hero visual — black-gold ridge-into-chart banner, works on both themes */}
+      <div
+        className="rounded-xl overflow-hidden fade-in mb-8"
+        style={{ border: "1px solid var(--panel-border)", background: "#000" }}
+      >
+        <img
+          src="/images/about-hero.png"
+          alt={lang === "zh" ? "山脊化作上升行情的抽象横幅" : "Abstract banner of a mountain ridge turning into a rising chart"}
+          className="w-full block"
+          loading="lazy"
+        />
+      </div>
+
       <div className="mb-6" style={{ fontSize: "0.95rem", lineHeight: 1.9, color: "var(--text-soft)" }}>
         {lang === "zh" ? "我们专注于两种模式：" : "We focus on two modes:"}
       </div>
@@ -106,6 +134,41 @@ export default function About() {
             </li>
           ))}
         </ol>
+      </div>
+
+      {/* Live sessions — selected topics from the internal live archive */}
+      <div className="glass-card px-5 py-6 sm:px-8 sm:py-7 fade-in mb-6">
+        <div className="text-muted-foreground tracking-widest uppercase mb-2" style={{ fontSize: "0.6rem" }}>
+          {lang === "zh" ? "主题直播" : "Live Sessions"}
+        </div>
+        <div className="text-foreground mb-1" style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "1.15rem", fontWeight: 500 }}>
+          {lang === "zh" ? "内部主题直播课程（节选）" : "Live Topic Sessions (Selected)"}
+        </div>
+        <p className="mb-5" style={{ fontSize: "0.85rem", lineHeight: 1.9, color: "var(--text-soft)" }}>
+          {lang === "zh"
+            ? "体系课之外，社群内部持续进行的主题直播，覆盖宏观周期、策略拆解与认知升级。"
+            : "Beyond the core course: ongoing internal live sessions on macro cycles, strategy teardowns and mental models."}
+        </p>
+
+        <ol className="grid gap-x-8 sm:grid-cols-2">
+          {LIVE_SESSIONS.map((topic, index) => (
+            <li key={index} className="flex gap-3 sm:gap-4 py-2.5">
+              <span
+                className="num-display flex-shrink-0"
+                style={{ fontSize: "0.72rem", color: "rgb(215 187 114 / 95%)", paddingTop: "0.1rem", minWidth: "1.6rem" }}
+              >
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <span style={{ fontSize: "0.86rem", lineHeight: 1.7, color: "var(--text-soft)" }}>{t(topic)}</span>
+            </li>
+          ))}
+        </ol>
+        <div
+          className="pt-3 mt-1 text-right"
+          style={{ borderTop: "1px solid var(--panel-border)", fontSize: "0.8rem", color: "var(--text-faint)" }}
+        >
+          {lang === "zh" ? "…… 等等" : "…… and more"}
+        </div>
       </div>
 
       {/* Contact / apply */}

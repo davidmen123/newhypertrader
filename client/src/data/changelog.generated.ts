@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.43.0",
+    "date": "2026-07-18",
+    "zh": "社群页新增直播课程节选",
+    "en": "Added live session topics to the community page"
+  },
+  {
     "version": "1.42.0",
     "date": "2026-07-18",
     "zh": "常见问题新增三条问答",
