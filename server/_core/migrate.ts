@@ -127,6 +127,16 @@ export async function runMigrations(): Promise<void> {
       )
     `);
 
+    await createTable("feedback", `
+      CREATE TABLE IF NOT EXISTS feedback (
+        id SERIAL PRIMARY KEY,
+        content text NOT NULL,
+        contact varchar(200),
+        page varchar(256),
+        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     await db.execute(sql`ALTER TABLE visitor_logs ADD COLUMN IF NOT EXISTS city varchar(64)`).catch(() => {});
     await db.execute(sql`ALTER TABLE visitor_logs ADD COLUMN IF NOT EXISTS region varchar(64)`).catch(() => {});
 

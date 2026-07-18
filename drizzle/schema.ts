@@ -105,3 +105,16 @@ export const visitorLogs = pgTable("visitor_logs", {
 
 export type VisitorLog = typeof visitorLogs.$inferSelect;
 export type InsertVisitorLog = typeof visitorLogs.$inferInsert;
+
+// Anonymous site feedback ("意见反馈" floating widget). Anyone can submit,
+// no login required; a copy is emailed to the site owner on submission.
+export const feedback = pgTable("feedback", {
+  id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+  content: text("content").notNull(),
+  contact: varchar("contact", { length: 200 }),
+  page: varchar("page", { length: 256 }),
+  createdAt: timestamp("createdat").defaultNow().notNull(),
+});
+
+export type Feedback = typeof feedback.$inferSelect;
+export type InsertFeedback = typeof feedback.$inferInsert;

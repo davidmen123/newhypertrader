@@ -67,6 +67,17 @@ const en = {
   noData: "No data",
   autoRefresh: "Auto-refresh enabled",
   refresh: "Refresh",
+  // Feedback widget
+  feedback: "Feedback",
+  feedbackDesc: "Questions or suggestions? We'd love to hear from you.",
+  feedbackPlaceholder: "Type your feedback here…",
+  feedbackContactLabel: "Contact (optional)",
+  feedbackContactPlaceholder: "Email / WeChat / Telegram",
+  feedbackSubmit: "Submit",
+  feedbackSending: "Sending…",
+  feedbackThanks: "Thank you! Your feedback has been sent.",
+  feedbackError: "Failed to send. Please try again later.",
+  feedbackTooMany: "Too many submissions. Please try again later.",
 };
 
 const zh: typeof en = {
@@ -129,6 +140,17 @@ const zh: typeof en = {
   noData: "暂无数据",
   autoRefresh: "自动刷新已开启",
   refresh: "刷新",
+  // Feedback widget
+  feedback: "意见反馈",
+  feedbackDesc: "有疑问或建议？欢迎告诉我们。",
+  feedbackPlaceholder: "请输入您的意见或建议…",
+  feedbackContactLabel: "联系方式（选填）",
+  feedbackContactPlaceholder: "邮箱 / 微信 / Telegram",
+  feedbackSubmit: "提交反馈",
+  feedbackSending: "发送中…",
+  feedbackThanks: "感谢您的反馈，我们已收到！",
+  feedbackError: "发送失败，请稍后再试",
+  feedbackTooMany: "提交太频繁，请稍后再试",
 };
 
 export const translations = { en, zh };

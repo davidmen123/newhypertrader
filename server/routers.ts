@@ -7,6 +7,7 @@ import { deribitRouter } from "./routers/deribit.js";
 import { calendarRouter } from "./routers/calendar.js";
 import { bitgetRouter } from "./routers/bitget.js";
 import { hyperliquidRouter } from "./routers/hyperliquid.js";
+import { feedbackRouter } from "./routers/feedback.js";
 import { incrementPageViews, getPageViews, logVisitor, updateVisitorDuration, getDailyVisitorStats, getVisitorDeviceStats, getVisitorOsStats, getVisitorIpList, getVisitorBrowserStats, getVisitorHourlyStats, getVisitorGeoStats, getRecentVisitors, getDb } from "./db.js";
 import { getIpGeo } from "./_core/ipGeo.js";
 import { sql } from "drizzle-orm";
@@ -103,6 +104,7 @@ export const appRouter = router({
   bitget: bitgetRouter,
   hyperliquid: hyperliquidRouter,
   calendar: calendarRouter,
+  feedback: feedbackRouter,
 
   pageViews: router({
     // Called on each page load to increment counter and return total
