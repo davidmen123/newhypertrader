@@ -11,6 +11,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.40.0",
+    "date": "2026-07-18",
+    "zh": "新增意见反馈悬浮窗",
+    "en": "Added feedback widget"
+  },
+  {
     "version": "1.39.0",
     "date": "2026-07-18",
     "zh": "新增常见问题区块",
