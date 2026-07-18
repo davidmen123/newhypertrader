@@ -1,7 +1,7 @@
 import { type ReactNode, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLang } from "@/contexts/LangContext";
-import { RefreshCw, Info } from "lucide-react";
+import { Info, RefreshCw } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 function MetricTile({
@@ -209,6 +209,19 @@ export default function AccountOverview() {
   const totalPnlBtc = totalPnlUsdc != null && data.btcPrice > 0 ? totalPnlUsdc / data.btcPrice : null;
   const totalPnlDisplay = isBtc ? totalPnlBtc : isCny ? (data.totalPnlCny ?? null) : totalPnlUsdc;
   const pnlTone = totalPnlUsdc != null && totalPnlUsdc >= 0 ? "profit" : "loss";
+  const fmtUsdcDenom = (v: number | null | undefined) => {
+    if (v == null || !isFinite(v)) return "--";
+    if (isBtc) return data.btcPrice > 0 ? `${fmt(v / data.btcPrice, 4)} BTC` : "--";
+    if (isCny) return data.usdCnyRate != null ? `${fmt(v * data.usdCnyRate, 2)} CNY` : "--";
+    return `${fmt(v, 2)} USDC`;
+  };
+  const marginUsedUsdc = data.imUsdc ?? null;
+  const marginUsedPct =
+    marginUsedUsdc != null && data.totalEquityUsdc > 0
+      ? (marginUsedUsdc / data.totalEquityUsdc) * 100
+      : null;
+  const annualizedPct = data.annualizedReturnPct ?? null;
+  const annualizedSampleWeak = data.runningDays != null && data.runningDays < 30;
   const winRate = metricsData?.winRate ?? null;
   const plRatio = metricsData?.plRatio ?? null;
   const expectancyUsdc = metricsData?.expectancyUsdc ?? null;
@@ -357,14 +370,31 @@ export default function AccountOverview() {
               </div>
             </div>
 
-            <MetricTile
-              label={t("总盈亏", "Total PnL")}
-              value={totalPnlDisplay != null ? `${fmtSign(totalPnlDisplay, isBtc ? 4 : 2)} ${equityUnit}` : "--"}
-              sub={data.totalPnlPct != null ? `${data.totalPnlPct >= 0 ? "+" : ""}${data.totalPnlPct.toFixed(2)}%` : undefined}
-              tone={pnlTone}
-            />
+            <div className="grid gap-3">
+              <MetricTile
+                label={t("总盈亏", "Total PnL")}
+                value={totalPnlDisplay != null ? `${fmtSign(totalPnlDisplay, isBtc ? 4 : 2)} ${equityUnit}` : "--"}
+                sub={data.totalPnlPct != null ? `${data.totalPnlPct >= 0 ? "+" : ""}${data.totalPnlPct.toFixed(2)}%` : undefined}
+                tone={pnlTone}
+              />
+              <MetricTile
+                label={t("可用余额", "Available Balance")}
+                value={fmtUsdcDenom(data.availableUsdc)}
+                sub={t("可开仓 · 可提现", "Free to trade / withdraw")}
+                tooltip={t("当前未占用、可自由支配的资金", "Unallocated funds, free to trade or withdraw")}
+              />
+            </div>
 
-            <LeveragePanel ratio={data.marginUsageRatio} lang={lang} />
+            <div className="grid gap-3">
+              <LeveragePanel ratio={data.marginUsageRatio} lang={lang} />
+              <MetricTile
+                label={t("已用保证金", "Margin Used")}
+                value={fmtUsdcDenom(marginUsedUsdc)}
+                sub={marginUsedPct != null ? t(`占用净值 ${marginUsedPct.toFixed(1)}%`, `${marginUsedPct.toFixed(1)}% of equity`) : undefined}
+                tone={marginUsedPct != null && marginUsedPct >= 50 ? "warning" : "neutral"}
+                tooltip={t("当前持仓占用的保证金总额", "Total margin occupied by open positions")}
+              />
+            </div>
           </div>
         </div>
 
@@ -384,14 +414,37 @@ export default function AccountOverview() {
             />
             <MetricTile
               label={t("年化收益率", "Annualized Return")}
-              value="--"
-              tone="neutral"
+              value={annualizedPct != null && isFinite(annualizedPct) ? `${fmtSign(annualizedPct, 2)}%` : "--"}
+              sub={annualizedPct != null && annualizedSampleWeak ? t("样本不足 · 仅供参考", "Small sample · indicative only") : undefined}
+              tone={
+                annualizedPct == null || annualizedSampleWeak
+                  ? "neutral"
+                  : annualizedPct >= 0
+                  ? "profit"
+                  : "loss"
+              }
+              tooltip={t(
+                "按复利年化：（当前净值 ÷ 初始净值）^(365 ÷ 运行天数) − 1。运行天数越短，年化放大越失真；运行 < 30 天时仅供参考。",
+                "Compounded: (current equity ÷ initial equity)^(365 ÷ running days) − 1. Short track records exaggerate the figure; treat as indicative below 30 days."
+              )}
             />
             <MetricTile
               label={t("卡玛比率", "Calmar Ratio")}
               value={data.calmarRatio != null && isFinite(data.calmarRatio) ? fmt(data.calmarRatio, 2) : "--"}
-              tone={data.calmarRatio != null && data.calmarRatio < 0 ? "loss" : data.calmarRatio != null && data.calmarRatio >= 1 ? "profit" : "neutral"}
-              tooltip={t("年化收益与最大回撤的比值，>2为优秀", "Annualized return / max drawdown ratio, >2 is excellent")}
+              sub={data.calmarRatio != null && annualizedSampleWeak ? t("样本不足 · 仅供参考", "Small sample · indicative only") : undefined}
+              tone={
+                data.calmarRatio == null || annualizedSampleWeak
+                  ? "neutral"
+                  : data.calmarRatio < 0
+                  ? "loss"
+                  : data.calmarRatio >= 1
+                  ? "profit"
+                  : "neutral"
+              }
+              tooltip={t(
+                "年化收益与最大回撤的比值，>2为优秀。分子为年化收益，运行 < 30 天时同样受短样本放大影响，仅供参考。",
+                "Annualized return / max drawdown ratio, >2 is excellent. Built on the annualized figure, so short track records (< 30 days) distort it too — indicative only."
+              )}
             />
             <MetricTile
               label={t("运行天数", "Running Days")}
