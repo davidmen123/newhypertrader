@@ -10,6 +10,7 @@ import { LangProvider } from "./contexts/LangContext";
 import Home from "./pages/Home";
 import Analytics from "./pages/Analytics";
 import Faq from "./pages/Faq";
+import About from "./pages/About";
 import { trpc } from "@/lib/trpc";
 
 function Router() {
@@ -17,6 +18,8 @@ function Router() {
     <Switch>
       <Route path={"/"} component={Home} />
       <Route path={"/faq"} component={Faq} />
+      {/* Unlisted: reachable only via direct URL, no homepage/nav link. */}
+      <Route path={"/about"} component={About} />
       <Route path={"/analytics"} component={Analytics} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
