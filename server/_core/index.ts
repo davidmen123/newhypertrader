@@ -32,10 +32,36 @@ async function startServer() {
     serveStatic(app);
   }
 
-  const port = parseInt(process.env.PORT || "3000");
+  // Preview environments (e.g. Kimi Work) launch the dev script as
+  // `npm run dev -- --port <p> --host <h>` and probe that exact port.
+  // Honor CLI args first, then env vars, then the local default.
+  function resolveListenTarget(): { port: number; host: string } {
+    const args = process.argv.slice(2);
+    let cliPort: number | undefined;
+    let cliHost: string | undefined;
+    for (let i = 0; i < args.length; i++) {
+      const arg = args[i];
+      if ((arg === "--port" || arg === "-p") && args[i + 1]) {
+        cliPort = parseInt(args[++i], 10);
+      } else if (arg.startsWith("--port=")) {
+        cliPort = parseInt(arg.slice("--port=".length), 10);
+      } else if (arg === "--host" && args[i + 1]) {
+        cliHost = args[++i];
+      } else if (arg.startsWith("--host=")) {
+        cliHost = arg.slice("--host=".length);
+      }
+    }
+    const envPort = parseInt(process.env.PORT || "", 10);
+    return {
+      port: Number.isFinite(cliPort) ? (cliPort as number) : Number.isFinite(envPort) ? envPort : 3000,
+      host: cliHost ?? process.env.HOST ?? "127.0.0.1",
+    };
+  }
 
-  server.listen(port, "127.0.0.1", () => {
-    console.log(`Server running on http://127.0.0.1:${port}/`);
+  const { port, host } = resolveListenTarget();
+
+  server.listen(port, host, () => {
+    console.log(`Server running on http://${host}:${port}/`);
   });
 }
 
