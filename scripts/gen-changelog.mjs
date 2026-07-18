@@ -68,6 +68,7 @@ const OVERRIDES = new Map([
   ["6a9b1d9", { zh: "本月范围改为完整月份", en: "Month range spans the whole month" }],
   ["a53efaa", { zh: "本周范围改为周一至周日", en: "Week range runs Monday to Sunday" }],
   ["f48238f", { zh: "公布状态改按事件时间", en: "Publish status now follows event time" }],
+  ["74dc6c5", { zh: "页面UI优化", en: "Page UI refinements" }],
 ]);
 
 function matchTrailer(body, regex) {
