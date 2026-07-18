@@ -1,5 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
+import FaqSection from "@/components/FaqSection";
 import LiveTicker from "@/components/LiveTicker";
 import PositionsTable from "@/components/PositionsTable";
 import OpenOrdersTable from "@/components/OpenOrdersTable";
@@ -350,6 +351,11 @@ export default function Home() {
           {/* 8. Earnings Calendar — default collapsed */}
           <CollapsibleSection label={tr.earningsCalendar} defaultOpen={false}>
             <EarningsCalendar />
+          </CollapsibleSection>
+
+          {/* 9. FAQ — default collapsed, expands on demand to show all entries */}
+          <CollapsibleSection label={lang === "zh" ? "常见问题" : "FAQ"} defaultOpen={false}>
+            <FaqSection />
           </CollapsibleSection>
 
         </div>
