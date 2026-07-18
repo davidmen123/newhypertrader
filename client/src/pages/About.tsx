@@ -5,7 +5,9 @@ import PageShell from "@/components/PageShell";
 const MODES = [
   {
     icon: Sprout,
+    img: "/images/mode-farmer.png",
     name: { zh: "农民模式", en: "Farmer Mode" },
+    alt: { zh: "金色线条勾勒的农民田间播种", en: "Golden line art of a farmer sowing in the field" },
     body: {
       zh: "中长周期的投资标的选择，等进入击球区，便与社群成员一同投入。模式很像农民的春耕秋收，故称「农民模式」。",
       en: "Selecting medium-to-long-term positions and, once they enter the strike zone, committing together with the community. Like a farmer's sowing and harvest — hence \"Farmer Mode\".",
@@ -13,7 +15,9 @@ const MODES = [
   },
   {
     icon: Crosshair,
+    img: "/images/mode-hunter.png",
     name: { zh: "猎人模式", en: "Hunter Mode" },
+    alt: { zh: "金色线条勾勒的猎人草丛中瞄准", en: "Golden line art of a hunter aiming among the reeds" },
     body: {
       zh: "依靠固定的狙击模式等待时机出现，更重视技术面。一旦出现技术面信号，则扣下扳机。模式很像猎人狩猎，故称「猎人模式」。",
       en: "Waiting for the moment with a fixed sniping playbook, focused on technicals. When a technical signal appears, pull the trigger. Like a hunter's stalk — hence \"Hunter Mode\".",
@@ -60,19 +64,6 @@ export default function About() {
         en: "Wenge Private VIP — a hands-on community centered on trading.",
       })}
     >
-      {/* Hero visual — black-gold ridge-into-chart banner, works on both themes */}
-      <div
-        className="rounded-xl overflow-hidden fade-in mb-8"
-        style={{ border: "1px solid var(--panel-border)", background: "#000" }}
-      >
-        <img
-          src="/images/about-hero.png"
-          alt={lang === "zh" ? "山脊化作上升行情的抽象横幅" : "Abstract banner of a mountain ridge turning into a rising chart"}
-          className="w-full block"
-          loading="lazy"
-        />
-      </div>
-
       <div className="mb-6" style={{ fontSize: "0.95rem", lineHeight: 1.9, color: "var(--text-soft)" }}>
         {lang === "zh" ? "我们专注于两种模式：" : "We focus on two modes:"}
       </div>
@@ -81,19 +72,22 @@ export default function About() {
         {MODES.map((mode) => {
           const Icon = mode.icon;
           return (
-            <div key={mode.name.en} className="glass-card px-5 py-6 sm:px-6 sm:py-7 fade-in">
-              <div className="flex items-center gap-3 mb-3">
-                <span
-                  className="flex items-center justify-center rounded-full"
-                  style={{ width: 38, height: 38, background: "rgb(215 187 114 / 16%)", color: "rgb(215 187 114 / 95%)", flexShrink: 0 }}
-                >
-                  <Icon size={19} />
-                </span>
-                <h2 className="text-xl font-light" style={{ fontFamily: "Cormorant Garamond, serif" }}>
-                  {t(mode.name)}
-                </h2>
+            <div key={mode.name.en} className="glass-card overflow-hidden fade-in">
+              <img src={mode.img} alt={t(mode.alt)} className="w-full block" loading="lazy" />
+              <div className="px-5 py-6 sm:px-6 sm:py-7">
+                <div className="flex items-center gap-3 mb-3">
+                  <span
+                    className="flex items-center justify-center rounded-full"
+                    style={{ width: 38, height: 38, background: "rgb(215 187 114 / 16%)", color: "rgb(215 187 114 / 95%)", flexShrink: 0 }}
+                  >
+                    <Icon size={19} />
+                  </span>
+                  <h2 className="text-xl font-light" style={{ fontFamily: "Cormorant Garamond, serif" }}>
+                    {t(mode.name)}
+                  </h2>
+                </div>
+                <p style={{ fontSize: "0.88rem", lineHeight: 1.9, color: "var(--text-soft)" }}>{t(mode.body)}</p>
               </div>
-              <p style={{ fontSize: "0.88rem", lineHeight: 1.9, color: "var(--text-soft)" }}>{t(mode.body)}</p>
             </div>
           );
         })}
