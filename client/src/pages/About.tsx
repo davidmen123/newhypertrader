@@ -1,4 +1,4 @@
-import { Sprout, Crosshair } from "lucide-react";
+import { Sprout, Crosshair, Mail, MessageCircle } from "lucide-react";
 import { useLang } from "@/contexts/LangContext";
 import PageShell from "@/components/PageShell";
 
@@ -21,6 +21,18 @@ const MODES = [
   },
 ];
 
+const OUTLINE = [
+  { zh: "交易本质：概率思维的觉醒与技术分析的本质", en: "The nature of trading: awakening to probabilistic thinking and the essence of technical analysis" },
+  { zh: "市场结构：读懂趋势的骨架，识别趋势与震荡", en: "Market structure: reading the skeleton of trends, distinguishing trend from range" },
+  { zh: "关键位置：识别支撑阻力和筹码密集区", en: "Key levels: identifying support, resistance and high-volume zones" },
+  { zh: "价格行为：K线信号的扣板时刻", en: "Price action: the trigger moment in candlestick signals" },
+  { zh: "量价关系：动力验证之成交量与量价真相", en: "Volume and price: confirming momentum — the truth of volume-price" },
+  { zh: "交易计划：一笔交易的结构化流程", en: "The trade plan: a structured process for a single trade" },
+  { zh: "交易执行：从计划到复盘的单笔闭环", en: "Execution: the single-trade loop from plan to review" },
+  { zh: "风险管理：构建回撤控制机制，实现稳健增长", en: "Risk management: building drawdown control for steady growth" },
+  { zh: "总结串讲：温格老师和 Sober 老师疑问解答", en: "Wrap-up and Q&A: with Wenge and Sober" },
+];
+
 export default function About() {
   const { lang } = useLang();
   const t = (b: { zh: string; en: string }) => (lang === "zh" ? b.zh : b.en);
@@ -37,7 +49,7 @@ export default function About() {
         {lang === "zh" ? "我们专注于两种模式：" : "We focus on two modes:"}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 mb-6">
+      <div className="grid gap-4 sm:grid-cols-2 mb-8">
         {MODES.map((mode) => {
           const Icon = mode.icon;
           return (
@@ -59,25 +71,88 @@ export default function About() {
         })}
       </div>
 
-      <div
-        className="rounded-xl px-5 py-6 sm:px-7 sm:py-7 fade-in"
-        style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}
-      >
+      {/* Course + outline */}
+      <div className="glass-card px-5 py-6 sm:px-8 sm:py-7 fade-in mb-6">
         <div className="text-muted-foreground tracking-widest uppercase mb-2" style={{ fontSize: "0.6rem" }}>
           {lang === "zh" ? "配套课程" : "Companion Course"}
         </div>
-        <div className="text-foreground mb-2" style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "1.05rem", fontWeight: 500 }}>
-          {t({
-            zh: "《不预测也能交易盈利的概率体系课 · 8讲》",
-            en: "The Probability System: Profiting Without Prediction · 8 Lessons",
-          })}
+        <div className="text-foreground mb-1" style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "1.15rem", fontWeight: 500 }}>
+          {t({ zh: "《不预测也能交易盈利的概率体系课》", en: "The Probability System: Profiting Without Prediction" })}
         </div>
-        <p style={{ fontSize: "0.88rem", lineHeight: 1.9, color: "var(--text-soft)" }}>
+        <p className="mb-5" style={{ fontSize: "0.85rem", lineHeight: 1.9, color: "var(--text-soft)" }}>
           {t({
-            zh: "猎人模式拥有专属的系列课，并配套实盘陪跑与社群实战练习，帮助学员从「知」到「行」。",
-            en: "Hunter Mode comes with its own course series, paired with live-account mentoring and hands-on community practice — helping members go from knowing to doing.",
+            zh: "猎人模式的专属系列课，配套实盘陪跑与社群实战练习，帮助学员从「知」到「行」。",
+            en: "The Hunter Mode course series, with live-account mentoring and hands-on community practice — from knowing to doing.",
           })}
         </p>
+
+        <div className="text-muted-foreground tracking-widest uppercase mb-3" style={{ fontSize: "0.6rem" }}>
+          {lang === "zh" ? "课程大纲" : "Course Outline"}
+        </div>
+        <ol className="flex flex-col">
+          {OUTLINE.map((lesson, index) => (
+            <li
+              key={index}
+              className="flex gap-3 sm:gap-4 py-2.5"
+              style={{ borderTop: index === 0 ? "none" : "1px solid var(--panel-border)" }}
+            >
+              <span
+                className="num-display flex-shrink-0"
+                style={{ fontSize: "0.72rem", color: "rgb(215 187 114 / 95%)", paddingTop: "0.1rem", minWidth: "3.4rem" }}
+              >
+                Lesson {index + 1}
+              </span>
+              <span style={{ fontSize: "0.86rem", lineHeight: 1.7, color: "var(--text-soft)" }}>{t(lesson)}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      {/* Contact / apply */}
+      <div
+        className="rounded-xl px-5 py-6 sm:px-8 sm:py-7 fade-in"
+        style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}
+      >
+        <div className="text-muted-foreground tracking-widest uppercase mb-4" style={{ fontSize: "0.6rem" }}>
+          {lang === "zh" ? "了解 / 申请加入" : "Learn More / Apply"}
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <div className="flex items-start gap-3">
+            <Mail size={16} className="flex-shrink-0" style={{ color: "rgb(215 187 114 / 95%)", marginTop: "0.15rem" }} />
+            <div>
+              <div className="text-foreground mb-0.5" style={{ fontSize: "0.9rem", fontWeight: 500 }}>
+                {lang === "zh" ? "申请了解社群" : "Apply to learn about the community"}
+              </div>
+              <div style={{ fontSize: "0.85rem", lineHeight: 1.8, color: "var(--text-soft)" }}>
+                {lang === "zh" ? "发送邮件至 " : "Email "}
+                <a href="mailto:pnlnotes@gmail.com" className="num-display hover:opacity-75 transition-opacity" style={{ color: "rgb(215 187 114 / 95%)" }}>
+                  pnlnotes@gmail.com
+                </a>
+                {lang === "zh" ? "，请在申请内容中留下您的微信。" : ", and include your WeChat in the message."}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <MessageCircle size={16} className="flex-shrink-0" style={{ color: "rgb(215 187 114 / 95%)", marginTop: "0.15rem" }} />
+            <div>
+              <div className="text-foreground mb-0.5" style={{ fontSize: "0.9rem", fontWeight: 500 }}>
+                {lang === "zh" ? "了解课程" : "Learn about the course"}
+              </div>
+              <div className="flex flex-col gap-1" style={{ fontSize: "0.85rem", lineHeight: 1.8, color: "var(--text-soft)" }}>
+                <span>
+                  {lang === "zh" ? "温格微信：" : "Wenge WeChat: "}
+                  <span className="num-display text-foreground">web3_0101</span>
+                </span>
+                <span>
+                  {lang === "zh" ? "社群助手微信：" : "Assistant WeChat: "}
+                  <span className="num-display text-foreground">yuanyuan-asd</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </PageShell>
   );
