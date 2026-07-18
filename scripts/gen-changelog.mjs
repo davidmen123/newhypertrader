@@ -69,6 +69,7 @@ const OVERRIDES = new Map([
   ["a53efaa", { zh: "本周范围改为周一至周日", en: "Week range runs Monday to Sunday" }],
   ["f48238f", { zh: "公布状态改按事件时间", en: "Publish status now follows event time" }],
   ["74dc6c5", { zh: "页面UI优化", en: "Page UI refinements" }],
+  ["6e88fd3", { zh: "常见问题优化", en: "FAQ refinements" }],
 ]);
 
 function matchTrailer(body, regex) {
