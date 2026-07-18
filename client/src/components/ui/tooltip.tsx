@@ -3,6 +3,11 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 
 import { cn } from "@/lib/utils";
 
+// Radix only opens tooltips on hover or keyboard focus, which means touch
+// users can never see them. This context lets the trigger toggle the tooltip
+// on tap instead. See TooltipTrigger below.
+const TooltipToggleContext = React.createContext<(() => void) | null>(null);
+
 function TooltipProvider({
   delayDuration = 0,
   ...props
@@ -17,19 +22,48 @@ function TooltipProvider({
 }
 
 function Tooltip({
+  children,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Root>) {
+  const [open, setOpen] = React.useState(false);
+  const toggle = React.useCallback(() => setOpen((v) => !v), []);
   return (
     <TooltipProvider>
-      <TooltipPrimitive.Root data-slot="tooltip" {...props} />
+      <TooltipPrimitive.Root
+        data-slot="tooltip"
+        {...props}
+        open={open}
+        onOpenChange={setOpen}
+      >
+        <TooltipToggleContext.Provider value={toggle}>
+          {children}
+        </TooltipToggleContext.Provider>
+      </TooltipPrimitive.Root>
     </TooltipProvider>
   );
 }
 
 function TooltipTrigger({
+  onPointerDown,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
-  return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />;
+  const toggle = React.useContext(TooltipToggleContext);
+  return (
+    <TooltipPrimitive.Trigger
+      data-slot="tooltip-trigger"
+      {...props}
+      onPointerDown={(event) => {
+        onPointerDown?.(event);
+        if (event.defaultPrevented) return;
+        if (event.pointerType === "touch" && toggle) {
+          // preventDefault suppresses the follow-up focus and click events,
+          // which radix would treat as "do not open" / "close immediately".
+          event.preventDefault();
+          toggle();
+        }
+      }}
+    />
+  );
 }
 
 function TooltipContent({
@@ -44,7 +78,7 @@ function TooltipContent({
         data-slot="tooltip-content"
         sideOffset={sideOffset}
         className={cn(
-          "bg-foreground text-background animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-fit origin-(--radix-tooltip-content-transform-origin) rounded-md px-3 py-1.5 text-xs text-balance",
+          "bg-foreground text-background animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-fit max-w-[calc(100vw-2rem)] origin-(--radix-tooltip-content-transform-origin) rounded-md px-3 py-1.5 text-xs text-balance",
           className
         )}
         {...props}
