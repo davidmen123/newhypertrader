@@ -55,4 +55,25 @@ export const FAQS: FaqEntry[] = [
       en: "The more volatile the instrument, the smaller the preset risk; the calmer it is, the larger the preset risk.",
     },
   },
+  {
+    q: { zh: "必须同样的资金吗？", en: "Do I need the same amount of capital?" },
+    a: {
+      zh: "不需要，根据自己的情况按照比例即可。",
+      en: "No—simply scale the proportions to your own situation.",
+    },
+  },
+  {
+    q: { zh: "现货交易可以吗？", en: "Can I trade spot?" },
+    a: {
+      zh: "当然可以的，只是现货在订单类型上的叫法有时不一样，详细可回看第【219期】内部课程。",
+      en: "Of course—spot orders just sometimes use different order-type names; see internal session 219.",
+    },
+  },
+  {
+    q: { zh: "现货也必须要提前设止损吗？", en: "Do I have to set a stop-loss in advance for spot trades too?" },
+    a: {
+      zh: "是的，既然选择了「猎人模式」，就严格按照猎人模式的规则执行。",
+      en: "Yes—since you have chosen Hunter Mode, follow its rules strictly.",
+    },
+  },
 ];
