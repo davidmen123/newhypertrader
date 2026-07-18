@@ -1,16 +1,31 @@
-import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNull, lte, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { InsertUser, InsertTrade, InsertPnlSnapshot, InsertVisitorLog, pnlSnapshots, trades, users, pageViews, visitorLogs } from "../drizzle/schema.js";
 import { ENV } from './_core/env.js';
 import { getIndexPrice } from './deribit.js';
 
-// createdat is stored in UTC and the frontend sends UTC "YYYY-MM-DD" bounds.
-// new Date("2026-07-16") is 00:00:00Z, so filtering createdat <= that dropped
-// every same-day visit (they all have a time component). Extend the end bound
-// to the last instant of the day so the range is inclusive.
-function endOfDayUtc(dateStr: string): Date {
-  return new Date(`${dateStr.slice(0, 10)}T23:59:59.999Z`);
+// Visitor-analytics day boundaries are UTC+8 calendar days (Asia/Shanghai):
+// the audience and the owner are in China, so "today" means 00:00–24:00 +08.
+// The frontend sends plain "YYYY-MM-DD" bounds, so pin them to +08:00 here.
+function startOfDayUtc8(dateStr: string): Date {
+  return new Date(`${dateStr.slice(0, 10)}T00:00:00.000+08:00`);
+}
+function endOfDayUtc8(dateStr: string): Date {
+  return new Date(`${dateStr.slice(0, 10)}T23:59:59.999+08:00`);
+}
+// createdat is a naive timestamp stored as UTC wall-clock. Shift it to UTC+8
+// wall-clock for day/hour bucketing so charts read in China local time.
+const createdAtUtc8 = sql`(${visitorLogs.createdAt} AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Shanghai'`;
+
+// Shared filter for all visitor stats: UTC+8 date bounds, and excluding the
+// /analytics dashboard itself so the owner's own visits (and test pings sent
+// from that page) never pollute the numbers. NULL pages stay included.
+function visitorAnalyticsWhere(params?: { startDate?: string; endDate?: string }) {
+  const conditions = [or(isNull(visitorLogs.page), ne(visitorLogs.page, "/analytics"))];
+  if (params?.startDate) conditions.push(gte(visitorLogs.createdAt, startOfDayUtc8(params.startDate)));
+  if (params?.endDate) conditions.push(lte(visitorLogs.createdAt, endOfDayUtc8(params.endDate)));
+  return and(...conditions);
 }
 
 let _db: any = null;
@@ -232,22 +247,6 @@ export async function logVisitor(data: InsertVisitorLog): Promise<number | null>
     throw error;
   }
   try {
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS visitor_logs (
-        id SERIAL PRIMARY KEY,
-        ip varchar(45) NOT NULL,
-        useragent text,
-        devicetype varchar(16),
-        os varchar(64),
-        browser varchar(64),
-        page varchar(256),
-        referrer text,
-        duration integer,
-        city varchar(64),
-        region varchar(64),
-        createdat timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
     const insertData: any = {
       ip: data.ip,
       userAgent: data.userAgent ?? null,
@@ -289,58 +288,51 @@ export async function getDailyVisitorStats(params?: {
   const db = await getDb();
   if (!db) return [];
 
-  if (params?.startDate && params?.endDate) {
-    return db
-      .select({
-        date: sql<string>`DATE(${visitorLogs.createdAt})`,
-        visits: sql<number>`COUNT(*)`,
-        uniqueIps: sql<number>`COUNT(DISTINCT ${visitorLogs.ip})`,
-        avgDuration: sql<number>`COALESCE(AVG(${visitorLogs.duration}), 0)`,
-      })
-      .from(visitorLogs)
-      .where(and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, endOfDayUtc(params.endDate))))
-      .groupBy(sql`DATE(${visitorLogs.createdAt})`)
-      .orderBy(desc(sql`DATE(${visitorLogs.createdAt})`));
-  }
-
-  if (params?.startDate) {
-    return db
-      .select({
-        date: sql<string>`DATE(${visitorLogs.createdAt})`,
-        visits: sql<number>`COUNT(*)`,
-        uniqueIps: sql<number>`COUNT(DISTINCT ${visitorLogs.ip})`,
-        avgDuration: sql<number>`COALESCE(AVG(${visitorLogs.duration}), 0)`,
-      })
-      .from(visitorLogs)
-      .where(gte(visitorLogs.createdAt, new Date(params.startDate)))
-      .groupBy(sql`DATE(${visitorLogs.createdAt})`)
-      .orderBy(desc(sql`DATE(${visitorLogs.createdAt})`));
-  }
-
-  if (params?.endDate) {
-    return db
-      .select({
-        date: sql<string>`DATE(${visitorLogs.createdAt})`,
-        visits: sql<number>`COUNT(*)`,
-        uniqueIps: sql<number>`COUNT(DISTINCT ${visitorLogs.ip})`,
-        avgDuration: sql<number>`COALESCE(AVG(${visitorLogs.duration}), 0)`,
-      })
-      .from(visitorLogs)
-      .where(lte(visitorLogs.createdAt, endOfDayUtc(params.endDate)))
-      .groupBy(sql`DATE(${visitorLogs.createdAt})`)
-      .orderBy(desc(sql`DATE(${visitorLogs.createdAt})`));
-  }
-
   return db
     .select({
-      date: sql<string>`DATE(${visitorLogs.createdAt})`,
+      date: sql<string>`DATE(${createdAtUtc8})`,
       visits: sql<number>`COUNT(*)`,
       uniqueIps: sql<number>`COUNT(DISTINCT ${visitorLogs.ip})`,
       avgDuration: sql<number>`COALESCE(AVG(${visitorLogs.duration}), 0)`,
     })
     .from(visitorLogs)
-    .groupBy(sql`DATE(${visitorLogs.createdAt})`)
-    .orderBy(desc(sql`DATE(${visitorLogs.createdAt})`));
+    .where(visitorAnalyticsWhere(params))
+    .groupBy(sql`DATE(${createdAtUtc8})`)
+    .orderBy(sql`DATE(${createdAtUtc8})`);
+}
+
+// Period totals with range-correct semantics: unique visitors are deduped
+// across the whole range (not summed per day, which double-counts repeat
+// visitors), and avg dwell is a row-level average weighted by visits rather
+// than an average of daily averages.
+export async function getVisitorSummary(params?: {
+  startDate?: string;
+  endDate?: string;
+}): Promise<{ visits: number; uniqueIps: number; avgDuration: number }> {
+  const db = await getDb();
+  if (!db) return { visits: 0, uniqueIps: 0, avgDuration: 0 };
+
+  const rows = await db
+    .select({
+      visits: sql<number>`COUNT(*)`,
+      uniqueIps: sql<number>`COUNT(DISTINCT ${visitorLogs.ip})`,
+      avgDuration: sql<number>`COALESCE(AVG(${visitorLogs.duration}), 0)`,
+    })
+    .from(visitorLogs)
+    .where(visitorAnalyticsWhere(params));
+  const row = rows[0];
+  return {
+    visits: row?.visits ?? 0,
+    uniqueIps: row?.uniqueIps ?? 0,
+    avgDuration: Math.round(row?.avgDuration ?? 0),
+  };
+}
+
+export async function getVisitorLogCount(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const rows = await db.select({ count: sql<number>`COUNT(*)` }).from(visitorLogs);
+  return rows[0]?.count ?? 0;
 }
 
 export async function getVisitorDeviceStats(params?: {
@@ -350,26 +342,16 @@ export async function getVisitorDeviceStats(params?: {
   const db = await getDb();
   if (!db) return [];
 
-  const getWhereClause = () => {
-    if (params?.startDate && params?.endDate) {
-      return and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, endOfDayUtc(params.endDate)));
-    }
-    if (params?.startDate) return gte(visitorLogs.createdAt, new Date(params.startDate));
-    if (params?.endDate) return lte(visitorLogs.createdAt, endOfDayUtc(params.endDate));
-    return undefined;
-  };
+  const rows = await db
+    .select({ deviceType: visitorLogs.deviceType, count: sql<number>`COUNT(*)` })
+    .from(visitorLogs)
+    .where(visitorAnalyticsWhere(params))
+    .groupBy(visitorLogs.deviceType)
+    .orderBy(desc(sql`COUNT(*)`));
 
-  const whereClause = getWhereClause();
-
-  const [totalResult, result] = await Promise.all([
-    whereClause ? db.select({ total: sql<number>`COUNT(*)` }).from(visitorLogs).where(whereClause) : db.select({ total: sql<number>`COUNT(*)` }).from(visitorLogs),
-    whereClause
-      ? db.select({ deviceType: visitorLogs.deviceType, count: sql<number>`COUNT(*)` }).from(visitorLogs).where(whereClause).groupBy(visitorLogs.deviceType).orderBy(desc(sql`COUNT(*)`))
-      : db.select({ deviceType: visitorLogs.deviceType, count: sql<number>`COUNT(*)` }).from(visitorLogs).groupBy(visitorLogs.deviceType).orderBy(desc(sql`COUNT(*)`)),
-  ]);
-
-  const total = totalResult[0]?.total ?? 0;
-  return result.map((row: { deviceType: string | null; count: number }) => ({
+  // Percentages derive from the grouped counts — no separate COUNT(*) round trip.
+  const total = rows.reduce((sum: number, row: { count: number }) => sum + row.count, 0);
+  return rows.map((row: { deviceType: string | null; count: number }) => ({
     deviceType: row.deviceType,
     count: row.count,
     percentage: total > 0 ? Math.round((row.count / total) * 100) : 0,
@@ -383,63 +365,19 @@ export async function getVisitorOsStats(params?: {
   const db = await getDb();
   if (!db) return [];
 
-  const getWhereClause = () => {
-    if (params?.startDate && params?.endDate) {
-      return and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, endOfDayUtc(params.endDate)));
-    }
-    if (params?.startDate) return gte(visitorLogs.createdAt, new Date(params.startDate));
-    if (params?.endDate) return lte(visitorLogs.createdAt, endOfDayUtc(params.endDate));
-    return undefined;
-  };
+  const rows = await db
+    .select({ os: visitorLogs.os, count: sql<number>`COUNT(*)` })
+    .from(visitorLogs)
+    .where(visitorAnalyticsWhere(params))
+    .groupBy(visitorLogs.os)
+    .orderBy(desc(sql`COUNT(*)`));
 
-  const whereClause = getWhereClause();
-
-  const [totalResult, result] = await Promise.all([
-    whereClause ? db.select({ total: sql<number>`COUNT(*)` }).from(visitorLogs).where(whereClause) : db.select({ total: sql<number>`COUNT(*)` }).from(visitorLogs),
-    whereClause
-      ? db.select({ os: visitorLogs.os, count: sql<number>`COUNT(*)` }).from(visitorLogs).where(whereClause).groupBy(visitorLogs.os).orderBy(desc(sql`COUNT(*)`))
-      : db.select({ os: visitorLogs.os, count: sql<number>`COUNT(*)` }).from(visitorLogs).groupBy(visitorLogs.os).orderBy(desc(sql`COUNT(*)`)),
-  ]);
-
-  const total = totalResult[0]?.total ?? 0;
-  return result.map((row: { os: string | null; count: number }) => ({
+  const total = rows.reduce((sum: number, row: { count: number }) => sum + row.count, 0);
+  return rows.map((row: { os: string | null; count: number }) => ({
     os: row.os,
     count: row.count,
     percentage: total > 0 ? Math.round((row.count / total) * 100) : 0,
   }));
-}
-
-export async function getVisitorIpList(params?: {
-  startDate?: string;
-  endDate?: string;
-  limit?: number;
-}): Promise<Array<{ region: string | null; city: string | null; visits: number; lastVisit: string }>> {
-  const db = await getDb();
-  if (!db) return [];
-
-  const getWhereClause = () => {
-    if (params?.startDate && params?.endDate) {
-      return and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, endOfDayUtc(params.endDate)));
-    }
-    if (params?.startDate) return gte(visitorLogs.createdAt, new Date(params.startDate));
-    if (params?.endDate) return lte(visitorLogs.createdAt, endOfDayUtc(params.endDate));
-    return undefined;
-  };
-
-  const whereClause = getWhereClause();
-
-  const baseQuery = db
-    .select({
-      region: visitorLogs.region,
-      city: visitorLogs.city,
-      visits: sql<number>`COUNT(*)`,
-      lastVisit: sql<string>`MAX(${visitorLogs.createdAt})`,
-    })
-    .from(visitorLogs);
-
-  return whereClause
-    ? baseQuery.where(whereClause).groupBy(visitorLogs.region, visitorLogs.city).orderBy(desc(sql`MAX(${visitorLogs.createdAt})`)).limit(params?.limit ?? 50)
-    : baseQuery.groupBy(visitorLogs.region, visitorLogs.city).orderBy(desc(sql`MAX(${visitorLogs.createdAt})`)).limit(params?.limit ?? 50);
 }
 
 export async function getVisitorBrowserStats(params?: {
@@ -449,26 +387,15 @@ export async function getVisitorBrowserStats(params?: {
   const db = await getDb();
   if (!db) return [];
 
-  const getWhereClause = () => {
-    if (params?.startDate && params?.endDate) {
-      return and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, endOfDayUtc(params.endDate)));
-    }
-    if (params?.startDate) return gte(visitorLogs.createdAt, new Date(params.startDate));
-    if (params?.endDate) return lte(visitorLogs.createdAt, endOfDayUtc(params.endDate));
-    return undefined;
-  };
+  const rows = await db
+    .select({ browser: visitorLogs.browser, count: sql<number>`COUNT(*)` })
+    .from(visitorLogs)
+    .where(visitorAnalyticsWhere(params))
+    .groupBy(visitorLogs.browser)
+    .orderBy(desc(sql`COUNT(*)`));
 
-  const whereClause = getWhereClause();
-
-  const [totalResult, result] = await Promise.all([
-    whereClause ? db.select({ total: sql<number>`COUNT(*)` }).from(visitorLogs).where(whereClause) : db.select({ total: sql<number>`COUNT(*)` }).from(visitorLogs),
-    whereClause
-      ? db.select({ browser: visitorLogs.browser, count: sql<number>`COUNT(*)` }).from(visitorLogs).where(whereClause).groupBy(visitorLogs.browser).orderBy(desc(sql`COUNT(*)`))
-      : db.select({ browser: visitorLogs.browser, count: sql<number>`COUNT(*)` }).from(visitorLogs).groupBy(visitorLogs.browser).orderBy(desc(sql`COUNT(*)`)),
-  ]);
-
-  const total = totalResult[0]?.total ?? 0;
-  return result.map((row: { browser: string | null; count: number }) => ({
+  const total = rows.reduce((sum: number, row: { count: number }) => sum + row.count, 0);
+  return rows.map((row: { browser: string | null; count: number }) => ({
     browser: row.browser,
     count: row.count,
     percentage: total > 0 ? Math.round((row.count / total) * 100) : 0,
@@ -482,35 +409,20 @@ export async function getVisitorHourlyStats(params?: {
   const db = await getDb();
   if (!db) return [];
 
-  const getWhereClause = () => {
-    if (params?.startDate && params?.endDate) {
-      return and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, endOfDayUtc(params.endDate)));
-    }
-    if (params?.startDate) return gte(visitorLogs.createdAt, new Date(params.startDate));
-    if (params?.endDate) return lte(visitorLogs.createdAt, endOfDayUtc(params.endDate));
-    return undefined;
-  };
+  const rows = await db
+    .select({ hour: sql<number>`EXTRACT(HOUR FROM ${createdAtUtc8})`, visits: sql<number>`COUNT(*)` })
+    .from(visitorLogs)
+    .where(visitorAnalyticsWhere(params))
+    .groupBy(sql`EXTRACT(HOUR FROM ${createdAtUtc8})`)
+    .orderBy(sql`EXTRACT(HOUR FROM ${createdAtUtc8})`);
 
-  const whereClause = getWhereClause();
-
-  const [totalResult, result] = await Promise.all([
-    whereClause ? db.select({ total: sql<number>`COUNT(*)` }).from(visitorLogs).where(whereClause) : db.select({ total: sql<number>`COUNT(*)` }).from(visitorLogs),
-    whereClause
-      ? db.select({ hour: sql<number>`EXTRACT(HOUR FROM ${visitorLogs.createdAt})`, visits: sql<number>`COUNT(*)` }).from(visitorLogs).where(whereClause).groupBy(sql`EXTRACT(HOUR FROM ${visitorLogs.createdAt})`).orderBy(sql`EXTRACT(HOUR FROM ${visitorLogs.createdAt})`)
-      : db.select({ hour: sql<number>`EXTRACT(HOUR FROM ${visitorLogs.createdAt})`, visits: sql<number>`COUNT(*)` }).from(visitorLogs).groupBy(sql`EXTRACT(HOUR FROM ${visitorLogs.createdAt})`).orderBy(sql`EXTRACT(HOUR FROM ${visitorLogs.createdAt})`),
-  ]);
-
-  const total = totalResult[0]?.total ?? 0;
-  const hourlyData = result.map((row: { hour: number; visits: number }) => ({
-    hour: row.hour,
-    visits: row.visits,
-    percentage: total > 0 ? Math.round((row.visits / total) * 100) : 0,
-  }));
+  const total = rows.reduce((sum: number, row: { visits: number }) => sum + row.visits, 0);
+  const byHour = new Map<number, number>(rows.map((row: { hour: number; visits: number }) => [row.hour, row.visits]));
 
   const fullDay: Array<{ hour: number; visits: number; percentage: number }> = [];
   for (let h = 0; h < 24; h++) {
-    const existing = hourlyData.find((d: { hour: number }) => d.hour === h);
-    fullDay.push(existing || { hour: h, visits: 0, percentage: 0 });
+    const visits = byHour.get(h) ?? 0;
+    fullDay.push({ hour: h, visits, percentage: total > 0 ? Math.round((visits / total) * 100) : 0 });
   }
   return fullDay;
 }
@@ -522,26 +434,15 @@ export async function getVisitorGeoStats(params?: {
   const db = await getDb();
   if (!db) return [];
 
-  const getWhereClause = () => {
-    if (params?.startDate && params?.endDate) {
-      return and(gte(visitorLogs.createdAt, new Date(params.startDate)), lte(visitorLogs.createdAt, endOfDayUtc(params.endDate)));
-    }
-    if (params?.startDate) return gte(visitorLogs.createdAt, new Date(params.startDate));
-    if (params?.endDate) return lte(visitorLogs.createdAt, endOfDayUtc(params.endDate));
-    return undefined;
-  };
+  const rows = await db
+    .select({ region: visitorLogs.region, city: visitorLogs.city, count: sql<number>`COUNT(*)` })
+    .from(visitorLogs)
+    .where(visitorAnalyticsWhere(params))
+    .groupBy(visitorLogs.region, visitorLogs.city)
+    .orderBy(desc(sql`COUNT(*)`));
 
-  const whereClause = getWhereClause();
-
-  const [totalResult, result] = await Promise.all([
-    whereClause ? db.select({ total: sql<number>`COUNT(*)` }).from(visitorLogs).where(whereClause) : db.select({ total: sql<number>`COUNT(*)` }).from(visitorLogs),
-    whereClause
-      ? db.select({ region: visitorLogs.region, city: visitorLogs.city, count: sql<number>`COUNT(*)` }).from(visitorLogs).where(whereClause).groupBy(visitorLogs.region, visitorLogs.city).orderBy(desc(sql`COUNT(*)`))
-      : db.select({ region: visitorLogs.region, city: visitorLogs.city, count: sql<number>`COUNT(*)` }).from(visitorLogs).groupBy(visitorLogs.region, visitorLogs.city).orderBy(desc(sql`COUNT(*)`)),
-  ]);
-
-  const total = totalResult[0]?.total ?? 0;
-  return result.map((row: { region: string | null; city: string | null; count: number }) => ({
+  const total = rows.reduce((sum: number, row: { count: number }) => sum + row.count, 0);
+  return rows.map((row: { region: string | null; city: string | null; count: number }) => ({
     region: row.region,
     city: row.city,
     count: row.count,
@@ -561,9 +462,10 @@ export async function getRecentVisitors(limit?: number): Promise<Array<{ region:
       deviceType: visitorLogs.deviceType,
       os: visitorLogs.os,
       browser: visitorLogs.browser,
-      createdAt: sql<string>`${visitorLogs.createdAt}`,
+      createdAt: sql<string>`${visitorLogs.createdAt} AT TIME ZONE 'UTC'`,
     })
     .from(visitorLogs)
+    .where(visitorAnalyticsWhere())
     .orderBy(desc(visitorLogs.createdAt))
     .limit(limit ?? 20);
 }

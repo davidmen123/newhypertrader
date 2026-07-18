@@ -8,9 +8,8 @@ import { calendarRouter } from "./routers/calendar.js";
 import { bitgetRouter } from "./routers/bitget.js";
 import { hyperliquidRouter } from "./routers/hyperliquid.js";
 import { feedbackRouter } from "./routers/feedback.js";
-import { incrementPageViews, getPageViews, logVisitor, updateVisitorDuration, getDailyVisitorStats, getVisitorDeviceStats, getVisitorOsStats, getVisitorIpList, getVisitorBrowserStats, getVisitorHourlyStats, getVisitorGeoStats, getRecentVisitors, getDb } from "./db.js";
+import { incrementPageViews, getPageViews, logVisitor, updateVisitorDuration, getVisitorSummary, getVisitorLogCount, getDailyVisitorStats, getVisitorDeviceStats, getVisitorOsStats, getVisitorBrowserStats, getVisitorHourlyStats, getVisitorGeoStats, getRecentVisitors } from "./db.js";
 import { getIpGeo } from "./_core/ipGeo.js";
-import { sql } from "drizzle-orm";
 
 function parseUserAgent(userAgent?: string) {
   if (!userAgent) return { deviceType: undefined as "desktop" | "mobile" | "tablet" | undefined, os: undefined as string | undefined, browser: undefined as string | undefined };
@@ -120,27 +119,6 @@ export const appRouter = router({
   }),
 
   analytics: router({
-    health: publicProcedure
-      .query(async () => {
-        const hasDbUrl = !!process.env.DATABASE_URL;
-        if (!hasDbUrl) {
-          return { status: "error", message: "DATABASE_URL environment variable is not set" };
-        }
-        
-        const db = await getDb();
-        if (!db) {
-          return { status: "error", message: "Database connection failed. Check DATABASE_URL is correct" };
-        }
-        try {
-          const result = await db.execute(sql`SELECT COUNT(*) as count FROM visitor_logs`);
-          const resultArray = result as unknown as Array<{ count: number }>;
-          const count = resultArray[0]?.count ?? 0;
-          return { status: "ok", message: "Analytics system is working", visitorCount: count };
-        } catch (e) {
-          return { status: "error", message: `Database query failed: ${e}` };
-        }
-      }),
-
     track: publicProcedure
       .input(
         z.object({
@@ -199,7 +177,10 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    dailyStats: publicProcedure
+    // One aggregate round trip for the whole dashboard: all stat slices run in
+    // parallel server-side and come back in a single payload. The 5s/10s per-widget
+    // polling of the old per-section endpoints is replaced by one 30s refetch.
+    overview: publicProcedure
       .input(
         z.object({
           startDate: z.string().optional(),
@@ -207,92 +188,19 @@ export const appRouter = router({
         }).optional()
       )
       .query(async ({ input }) => {
-        const stats = await getDailyVisitorStats(input);
-        return { stats };
-      }),
-
-    deviceStats: publicProcedure
-      .input(
-        z.object({
-          startDate: z.string().optional(),
-          endDate: z.string().optional(),
-        }).optional()
-      )
-      .query(async ({ input }) => {
-        const stats = await getVisitorDeviceStats(input);
-        return { stats };
-      }),
-
-    osStats: publicProcedure
-      .input(
-        z.object({
-          startDate: z.string().optional(),
-          endDate: z.string().optional(),
-        }).optional()
-      )
-      .query(async ({ input }) => {
-        const stats = await getVisitorOsStats(input);
-        return { stats };
-      }),
-
-    ipList: publicProcedure
-      .input(
-        z.object({
-          startDate: z.string().optional(),
-          endDate: z.string().optional(),
-          limit: z.number().optional(),
-        }).optional()
-      )
-      .query(async ({ input }) => {
-        const ips = await getVisitorIpList(input);
-        return { ips };
-      }),
-
-    browserStats: publicProcedure
-      .input(
-        z.object({
-          startDate: z.string().optional(),
-          endDate: z.string().optional(),
-        }).optional()
-      )
-      .query(async ({ input }) => {
-        const stats = await getVisitorBrowserStats(input);
-        return { stats };
-      }),
-
-    hourlyStats: publicProcedure
-      .input(
-        z.object({
-          startDate: z.string().optional(),
-          endDate: z.string().optional(),
-        }).optional()
-      )
-      .query(async ({ input }) => {
-        const stats = await getVisitorHourlyStats(input);
-        return { stats };
-      }),
-
-    geoStats: publicProcedure
-      .input(
-        z.object({
-          startDate: z.string().optional(),
-          endDate: z.string().optional(),
-        }).optional()
-      )
-      .query(async ({ input }) => {
-        const stats = await getVisitorGeoStats(input);
-        return { stats };
-      }),
-
-    recentVisitors: publicProcedure
-      .input(
-        z.object({
-          limit: z.number().optional(),
-        }).optional()
-      )
-      .query(async ({ input }) => {
-        const visitors = await getRecentVisitors(input?.limit);
-        return { visitors };
+        const range = { startDate: input?.startDate, endDate: input?.endDate };
+        const [summary, daily, device, os, browser, hourly, geo, recent, totalRecords] = await Promise.all([
+          getVisitorSummary(range),
+          getDailyVisitorStats(range),
+          getVisitorDeviceStats(range),
+          getVisitorOsStats(range),
+          getVisitorBrowserStats(range),
+          getVisitorHourlyStats(range),
+          getVisitorGeoStats(range),
+          getRecentVisitors(15),
+          getVisitorLogCount(),
+        ]);
+        return { summary, daily, device, os, browser, hourly, geo, recent, totalRecords };
       }),
   }),
 });

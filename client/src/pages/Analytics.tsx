@@ -1,553 +1,505 @@
-import { useState, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { BarChart3, Users, Globe, Smartphone, Laptop, Clock, Calendar, MapPin, ArrowLeft, Eye, Monitor, RefreshCw, Loader2 } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import { trpc } from "@/lib/trpc";
+import { ArrowLeft, Clock, Globe, Info, Laptop, MapPin, Monitor, RefreshCw, Smartphone } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-const today = new Date().toISOString().split("T")[0];
-const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-
-function formatDuration(seconds: number): string {
-  if (seconds < 60) return `${seconds}秒`;
-  if (seconds < 3600) return `${Math.round(seconds / 60)}分钟`;
-  return `${Math.round(seconds / 3600)}小时${Math.round((seconds % 3600) / 60)}分钟`;
+// ─── UTC+8 date helpers ────────────────────────────────────────────────────
+// All dates on this page are UTC+8 calendar days (Asia/Shanghai).
+function utc8DateStr(time: number): string {
+  return new Date(time + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
-function AnalyticsDashboard() {
-  const [selectedPeriod, setSelectedPeriod] = useState<"today" | "week" | "custom">("week");
-  const [customStartDate, setCustomStartDate] = useState(oneWeekAgo);
-  const [customEndDate, setCustomEndDate] = useState(today);
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-  const getDateRange = () => {
-    if (selectedPeriod === "today") {
-      return { startDate: today, endDate: today };
-    }
-    if (selectedPeriod === "week") {
-      return { startDate: oneWeekAgo, endDate: today };
-    }
-    return { startDate: customStartDate, endDate: customEndDate };
-  };
+// ─── Formatters ────────────────────────────────────────────────────────────
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds} 秒`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)} 分钟`;
+  return `${Math.floor(seconds / 3600)} 小时 ${Math.round((seconds % 3600) / 60)} 分`;
+}
 
-  const dateRange = getDateRange();
+function formatDayLabel(dateStr: string): string {
+  const [, month, day] = dateStr.slice(0, 10).split("-");
+  return `${Number(month)}/${Number(day)}`;
+}
 
-  const { data: dailyStatsResult, isLoading: dailyLoading, refetch: refetchDaily } = trpc.analytics.dailyStats.useQuery(dateRange);
-  const { data: deviceStatsResult, isLoading: deviceLoading, refetch: refetchDevice } = trpc.analytics.deviceStats.useQuery(dateRange);
-  const { data: osStatsResult, isLoading: osLoading, refetch: refetchOs } = trpc.analytics.osStats.useQuery(dateRange);
-  const { data: ipListResult, isLoading: ipLoading, refetch: refetchIp } = trpc.analytics.ipList.useQuery({ ...dateRange, limit: 20 });
-  const { data: browserStatsResult, isLoading: browserLoading, refetch: refetchBrowser } = trpc.analytics.browserStats.useQuery(dateRange);
-  const { data: hourlyStatsResult, isLoading: hourlyLoading, refetch: refetchHourly } = trpc.analytics.hourlyStats.useQuery(dateRange);
-  const { data: geoStatsResult, isLoading: geoLoading, refetch: refetchGeo } = trpc.analytics.geoStats.useQuery(dateRange);
-  const { data: recentVisitorsResult, isLoading: recentLoading, refetch: refetchRecent } = trpc.analytics.recentVisitors.useQuery({ limit: 15 }, { refetchInterval: 10000 });
-  const { data: healthResult, refetch: refetchHealth } = trpc.analytics.health.useQuery(undefined, {
-    refetchInterval: 5000,
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "刚刚";
+  if (minutes < 60) return `${minutes} 分钟前`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} 小时前`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} 天前`;
+  return new Date(iso).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", month: "numeric", day: "numeric" });
+}
+
+function absoluteTime(iso: string): string {
+  return new Date(iso).toLocaleString("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
-  
-  const trackMutation = trpc.analytics.track.useMutation();
+}
 
-  const refreshAll = useCallback(() => {
-    refetchDaily();
-    refetchDevice();
-    refetchOs();
-    refetchIp();
-    refetchBrowser();
-    refetchHourly();
-    refetchGeo();
-    refetchRecent();
-    refetchHealth();
-  }, [refetchDaily, refetchDevice, refetchOs, refetchIp, refetchBrowser, refetchHourly, refetchGeo, refetchRecent, refetchHealth]);
+// ─── Design tokens (aligned with the main site) ────────────────────────────
+const GREEN = "oklch(68% 0.15 145)";
+const GOLD = "rgb(215 187 114)";
+const BLUE = "oklch(72% 0.08 230)";
+const NEUTRAL = "var(--metric-neutral)";
 
-  const dailyStats = dailyStatsResult?.stats ?? [];
-  const deviceStats = deviceStatsResult?.stats ?? [];
-  const osStats = osStatsResult?.stats ?? [];
-  const ipList = ipListResult?.ips ?? [];
-  const browserStats = browserStatsResult?.stats ?? [];
-  const hourlyStats = hourlyStatsResult?.stats ?? [];
-  const geoStats = geoStatsResult?.stats ?? [];
-  const recentVisitors = recentVisitorsResult?.visitors ?? [];
+// ─── Building blocks ───────────────────────────────────────────────────────
+function Panel({ title, sub, children, className = "" }: { title: string; sub?: string; children: ReactNode; className?: string }) {
+  return (
+    <div className={`glass-card px-5 py-5 sm:px-6 ${className}`}>
+      <div className="flex items-baseline justify-between mb-4">
+        <h3 className="text-base font-light" style={{ fontFamily: "Cormorant Garamond, serif" }}>
+          {title}
+        </h3>
+        {sub && <span className="text-muted-foreground/55" style={{ fontSize: "0.66rem" }}>{sub}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
 
-  const totalVisits = dailyStats.reduce((sum: number, day: { visits: number }) => sum + day.visits, 0);
-  const totalUniqueIps = dailyStats.reduce((sum: number, day: { uniqueIps: number }) => sum + day.uniqueIps, 0);
-  const avgDuration = dailyStats.length
-    ? Math.round(dailyStats.reduce((sum: number, day: { avgDuration: number }) => sum + (day.avgDuration ?? 0), 0) / dailyStats.length)
-    : 0;
+function KpiTile({ label, value, sub, tooltip }: { label: string; value: string; sub?: string; tooltip?: string }) {
+  return (
+    <div
+      className="rounded-lg px-4 py-3"
+      style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}
+    >
+      <div className="flex items-center gap-1 text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.58rem" }}>
+        {label}
+        {tooltip && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="text-muted-foreground/60 cursor-help" style={{ width: "12px", height: "12px" }} />
+            </TooltipTrigger>
+            <TooltipContent className="text-xs" style={{ fontSize: "0.7rem" }}>
+              {tooltip}
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+      <div className="num-display mt-2" style={{ color: NEUTRAL, fontSize: "1.4rem", lineHeight: 1.05 }}>
+        {value}
+      </div>
+      {sub && (
+        <div className="text-muted-foreground/55 mt-1" style={{ fontSize: "0.66rem" }}>
+          {sub}
+        </div>
+      )}
+    </div>
+  );
+}
 
-  const totalDesktop = deviceStats.find((d: { deviceType: string | null }) => d.deviceType === "desktop")?.count ?? 0;
-  const totalMobile = deviceStats.find((d: { deviceType: string | null }) => d.deviceType === "mobile")?.count ?? 0;
-  const totalTablet = deviceStats.find((d: { deviceType: string | null }) => d.deviceType === "tablet")?.count ?? 0;
+function EmptyState() {
+  return <div className="text-center py-10 text-muted-foreground/60 text-sm">暂无数据</div>;
+}
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return `${date.getMonth() + 1}/${date.getDate()}`;
-  };
+function HBarRow({ label, value, pct, widthPct, color }: { label: string; value: string; pct: string; widthPct: number; color: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="w-24 shrink-0 truncate text-muted-foreground" style={{ fontSize: "0.72rem" }}>
+        {label}
+      </span>
+      <div className="flex-1">
+        <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--panel-border)" }}>
+          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${widthPct}%`, background: color }} />
+        </div>
+      </div>
+      <span className="num-display w-12 text-right shrink-0" style={{ fontSize: "0.72rem" }}>{value}</span>
+      <span className="num-display w-10 text-right shrink-0 text-muted-foreground/60" style={{ fontSize: "0.66rem" }}>{pct}</span>
+    </div>
+  );
+}
 
-  const formatHour = (hour: number) => {
-    return `${hour.toString().padStart(2, "0")}:00`;
-  };
+const DEVICE_META: Record<string, { label: string; color: string }> = {
+  desktop: { label: "桌面端", color: BLUE },
+  mobile: { label: "移动端", color: GREEN },
+  tablet: { label: "平板", color: GOLD },
+};
+
+function deviceLabel(deviceType: string | null): string {
+  return DEVICE_META[deviceType ?? ""]?.label ?? "未知";
+}
+
+function deviceIcon(deviceType: string | null) {
+  const style = { width: "12px", height: "12px" };
+  if (deviceType === "desktop") return <Laptop style={style} />;
+  if (deviceType === "mobile") return <Smartphone style={style} />;
+  if (deviceType === "tablet") return <Smartphone style={style} />;
+  return <Globe style={style} />;
+}
+
+// ─── Dashboard ─────────────────────────────────────────────────────────────
+type Period = "today" | "week" | "month" | "custom";
+
+const PERIODS: Array<{ key: Period; label: string }> = [
+  { key: "today", label: "今日" },
+  { key: "week", label: "近 7 天" },
+  { key: "month", label: "近 30 天" },
+  { key: "custom", label: "自定义" },
+];
+
+function AnalyticsDashboard() {
+  const [period, setPeriod] = useState<Period>("week");
+  const [customStart, setCustomStart] = useState(() => utc8DateStr(Date.now() - 6 * DAY_MS));
+  const [customEnd, setCustomEnd] = useState(() => utc8DateStr(Date.now()));
+
+  const now = Date.now();
+  const dateRange = (() => {
+    if (period === "today") return { startDate: utc8DateStr(now), endDate: utc8DateStr(now) };
+    if (period === "week") return { startDate: utc8DateStr(now - 6 * DAY_MS), endDate: utc8DateStr(now) };
+    if (period === "month") return { startDate: utc8DateStr(now - 29 * DAY_MS), endDate: utc8DateStr(now) };
+    return { startDate: customStart, endDate: customEnd };
+  })();
+
+  const { data, isLoading, isFetching, refetch } = trpc.analytics.overview.useQuery(dateRange, {
+    refetchInterval: 30_000,
+  });
+
+  const summary = data?.summary ?? { visits: 0, uniqueIps: 0, avgDuration: 0 };
+  const daily = data?.daily ?? [];
+  const device = data?.device ?? [];
+  const os = data?.os ?? [];
+  const browser = data?.browser ?? [];
+  const hourly = data?.hourly ?? [];
+  const geo = data?.geo ?? [];
+  const recent = data?.recent ?? [];
+
+  const deviceTotal = device.reduce((sum, d) => sum + d.count, 0);
+  const mobileCount = device.filter((d) => d.deviceType === "mobile" || d.deviceType === "tablet").reduce((sum, d) => sum + d.count, 0);
+  const mobilePct = deviceTotal > 0 ? Math.round((mobileCount / deviceTotal) * 100) : 0;
+
+  const maxDailyVisits = daily.reduce((m, d) => Math.max(m, d.visits), 0) || 1;
+  const maxHourlyVisits = hourly.reduce((m, h) => Math.max(m, h.visits), 0) || 1;
+  const peakHour = hourly.reduce((best, h) => (h.visits > (best?.visits ?? -1) ? h : best), hourly[0]);
+  const maxGeoCount = geo.reduce((m, g) => Math.max(m, g.count), 0) || 1;
+  const maxBrowserCount = browser.reduce((m, b) => Math.max(m, b.count), 0) || 1;
+  const maxOsCount = os.reduce((m, o) => Math.max(m, o.count), 0) || 1;
+  const labelEvery = Math.max(1, Math.ceil(daily.length / 15));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6 lg:p-10">
-      <div className="max-w-7xl mx-auto">
-        <header className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-600 rounded-lg">
-                <BarChart3 className="w-6 h-6 text-white" />
-              </div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-slate-900">网站访问统计</h1>
+    <div className="min-h-screen px-4 sm:px-8 py-6 sm:py-8" style={{ background: "var(--background)", color: "var(--foreground)" }}>
+      <div className="max-w-6xl mx-auto space-y-5">
+        {/* Header */}
+        <div className="glass-card px-5 sm:px-8 py-5 sm:py-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-light" style={{ fontFamily: "Cormorant Garamond, serif" }}>
+                访问统计
+              </h2>
+              <div className="mt-2" style={{ width: 40, height: 1, background: "rgb(215 187 114 / 62%)" }} />
+              <p className="text-muted-foreground/70 mt-2" style={{ fontSize: "0.72rem" }}>
+                网站访问数据 · 时间均为 UTC+8 · 不含本页访问
+              </p>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={refreshAll}
-                className="flex items-center gap-2"
+            <div className="flex flex-wrap items-center gap-2">
+              {PERIODS.map((p) => (
+                <button key={p.key} onClick={() => setPeriod(p.key)} className={`pill-tab ${period === p.key ? "active" : ""}`}>
+                  {p.label}
+                </button>
+              ))}
+              <button
+                onClick={() => refetch()}
+                className="text-muted-foreground hover:text-foreground transition-colors p-1"
+                title="刷新"
               >
-                <RefreshCw className="w-4 h-4" />
-                刷新
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.location.href = "/"}
-                className="flex items-center gap-2"
+                <RefreshCw size={13} className={isFetching ? "animate-spin" : ""} />
+              </button>
+              <a
+                href="/"
+                className="text-muted-foreground hover:text-foreground transition-colors p-1"
+                title="返回主页"
               >
-                <ArrowLeft className="w-4 h-4" />
-                返回主页
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  trackMutation.mutate(
-                    { page: "/analytics", userAgent: navigator.userAgent },
-                    {
-                      onSuccess: (data) => {
-                        if (data?.success) {
-                          alert("✅ 测试上报成功！");
-                          refreshAll();
-                        } else {
-                          alert(`❌ 测试上报失败: ${data?.error || "未知错误"}`);
-                        }
-                      },
-                      onError: (error) => {
-                        alert(`❌ 测试上报失败: ${error.message || "网络错误"}`);
-                      },
-                    }
-                  );
-                }}
-                className="flex items-center gap-2"
-              >
-                测试上报
-              </Button>
+                <ArrowLeft size={14} />
+              </a>
             </div>
           </div>
-          <p className="text-slate-500">实时追踪您的网站访问数据</p>
-          {healthResult && (
-            <div className={`mt-2 px-4 py-2 rounded-lg text-sm ${healthResult.status === "ok" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
-              {healthResult.status === "ok" ? (
-                <>✅ 系统正常运行 | 数据库记录数: {healthResult.visitorCount}</>
+          {period === "custom" && (
+            <div className="mt-4 flex items-center gap-2">
+              <input
+                type="date"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                className="px-3 py-1.5 text-sm rounded-lg bg-transparent focus:outline-none"
+                style={{ border: "1px solid var(--panel-border)", color: "var(--foreground)" }}
+              />
+              <span className="text-muted-foreground/50">—</span>
+              <input
+                type="date"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                className="px-3 py-1.5 text-sm rounded-lg bg-transparent focus:outline-none"
+                style={{ border: "1px solid var(--panel-border)", color: "var(--foreground)" }}
+              />
+            </div>
+          )}
+        </div>
+
+        {isLoading ? (
+          <div className="glass-card px-8 py-16 text-center text-muted-foreground text-sm animate-pulse">加载访问数据...</div>
+        ) : (
+          <>
+            {/* KPI row */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <KpiTile label="总访问量" value={summary.visits.toLocaleString()} sub="页面访问次数（PV）" />
+              <KpiTile
+                label="独立访客"
+                value={summary.uniqueIps.toLocaleString()}
+                sub="按 IP 区间去重"
+                tooltip="整个时间范围内按 IP 去重的访客数，同一访客多次访问只计一次"
+              />
+              <KpiTile
+                label="平均停留"
+                value={formatDuration(summary.avgDuration)}
+                sub="按访问加权的平均时长"
+              />
+              <KpiTile
+                label="移动端占比"
+                value={`${mobilePct}%`}
+                sub={`${mobileCount.toLocaleString()} / ${deviceTotal.toLocaleString()} 次访问`}
+              />
+            </div>
+
+            {/* Daily trend */}
+            <Panel title="访问趋势" sub="按天（UTC+8）">
+              {daily.length === 0 ? (
+                <EmptyState />
               ) : (
-                <>❌ 系统异常: {healthResult.message}</>
-              )}
-            </div>
-          )}
-          
-          {(dailyLoading || deviceLoading || osLoading || ipLoading || browserLoading || hourlyLoading || geoLoading || recentLoading) && (
-            <div className="mt-4 flex items-center justify-center gap-2 text-slate-500">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span className="text-sm">数据加载中...</span>
-            </div>
-          )}
-        </header>
-
-        <div className="flex flex-wrap gap-2 mb-6">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setSelectedPeriod("today")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                selectedPeriod === "today"
-                  ? "bg-blue-600 text-white"
-                  : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
-              }`}
-            >
-              今日
-            </button>
-            <button
-              onClick={() => setSelectedPeriod("week")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                selectedPeriod === "week"
-                  ? "bg-blue-600 text-white"
-                  : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
-              }`}
-            >
-              本周
-            </button>
-            <button
-              onClick={() => setSelectedPeriod("custom")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                selectedPeriod === "custom"
-                  ? "bg-blue-600 text-white"
-                  : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
-              }`}
-            >
-              自定义
-            </button>
-          </div>
-          {selectedPeriod === "custom" && (
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-slate-400" />
-              <input
-                type="date"
-                value={customStartDate}
-                onChange={(e) => setCustomStartDate(e.target.value)}
-                className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <span className="text-slate-400">-</span>
-              <input
-                type="date"
-                value={customEndDate}
-                onChange={(e) => setCustomEndDate(e.target.value)}
-                className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          )}
-        </div>
-
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <Card className="shadow-sm border-slate-200">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <Users className="w-5 h-5 text-blue-500" />
-                <Badge variant="secondary" className="text-xs">总访问量</Badge>
-              </div>
-              <div className="text-2xl font-bold text-slate-900">{totalVisits.toLocaleString()}</div>
-              <div className="text-xs text-slate-500 mt-1">页面访问次数</div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-sm border-slate-200">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <Globe className="w-5 h-5 text-green-500" />
-                <Badge variant="secondary" className="text-xs">独立IP</Badge>
-              </div>
-              <div className="text-2xl font-bold text-slate-900">{totalUniqueIps.toLocaleString()}</div>
-              <div className="text-xs text-slate-500 mt-1">不同访客来源</div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-sm border-slate-200">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <Laptop className="w-5 h-5 text-purple-500" />
-                <Badge variant="secondary" className="text-xs">桌面端</Badge>
-              </div>
-              <div className="text-2xl font-bold text-slate-900">{totalDesktop.toLocaleString()}</div>
-              <div className="text-xs text-slate-500 mt-1">电脑访问</div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-sm border-slate-200">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <Smartphone className="w-5 h-5 text-orange-500" />
-                <Badge variant="secondary" className="text-xs">移动端</Badge>
-              </div>
-              <div className="text-2xl font-bold text-slate-900">{totalMobile.toLocaleString()}</div>
-              <div className="text-xs text-slate-500 mt-1">手机访问</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Tabs defaultValue="daily" className="mb-6">
-          <TabsList>
-            <TabsTrigger value="daily">每日趋势</TabsTrigger>
-            <TabsTrigger value="device">设备分布</TabsTrigger>
-            <TabsTrigger value="browser">浏览器</TabsTrigger>
-            <TabsTrigger value="hourly">访问时段</TabsTrigger>
-            <TabsTrigger value="geo">地理分布</TabsTrigger>
-            <TabsTrigger value="recent">实时访客</TabsTrigger>
-            <TabsTrigger value="ips">访问地区</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="daily" className="mt-0">
-            <Card className="shadow-sm border-slate-200">
-              <CardHeader>
-                <CardTitle className="text-lg">每日访问趋势</CardTitle>
-                <CardDescription>按日期统计访问量和独立IP数</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {dailyLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <div>
+                  <div className="flex items-end gap-[3px]" style={{ height: "10rem" }}>
+                    {daily.map((d) => (
+                      <div key={d.date} className="flex-1 flex items-end justify-center gap-[2px] min-w-0" title={`${d.date} · 访问 ${d.visits} · 访客 ${d.uniqueIps}`}>
+                        <div
+                          className="flex-1 rounded-t-sm transition-all duration-500"
+                          style={{ height: `${(d.visits / maxDailyVisits) * 100}%`, background: GREEN, minHeight: d.visits > 0 ? "3px" : "0" }}
+                        />
+                        <div
+                          className="rounded-t-sm transition-all duration-500"
+                          style={{ width: "35%", height: `${(d.uniqueIps / maxDailyVisits) * 100}%`, background: GOLD, minHeight: d.uniqueIps > 0 ? "3px" : "0" }}
+                        />
+                      </div>
+                    ))}
                   </div>
-                ) : dailyStats.length === 0 ? (
-                  <div className="text-center py-12 text-slate-500">暂无数据</div>
+                  <div className="flex gap-[3px] mt-2">
+                    {daily.map((d, i) => (
+                      <div key={d.date} className="flex-1 text-center text-muted-foreground/55 truncate" style={{ fontSize: "0.58rem" }}>
+                        {i % labelEvery === 0 || i === daily.length - 1 ? formatDayLabel(d.date) : ""}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-4 mt-3">
+                    <span className="flex items-center gap-1.5 text-muted-foreground/70" style={{ fontSize: "0.66rem" }}>
+                      <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: GREEN }} />
+                      访问量
+                    </span>
+                    <span className="flex items-center gap-1.5 text-muted-foreground/70" style={{ fontSize: "0.66rem" }}>
+                      <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: GOLD }} />
+                      独立访客
+                    </span>
+                  </div>
+                </div>
+              )}
+            </Panel>
+
+            {/* Hourly + Device */}
+            <div className="grid gap-5 lg:grid-cols-2">
+              <Panel title="访问时段" sub={peakHour && peakHour.visits > 0 ? `高峰 ${String(peakHour.hour).padStart(2, "0")}:00（UTC+8）` : "UTC+8"}>
+                {hourly.every((h) => h.visits === 0) ? (
+                  <EmptyState />
+                ) : (
+                  <div>
+                    <div className="flex items-end gap-[2px]" style={{ height: "8rem" }}>
+                      {hourly.map((h) => (
+                        <div key={h.hour} className="flex-1 flex items-end min-w-0" title={`${String(h.hour).padStart(2, "0")}:00 · ${h.visits} 次`}>
+                          <div
+                            className="w-full rounded-t-sm transition-all duration-500"
+                            style={{
+                              height: `${(h.visits / maxHourlyVisits) * 100}%`,
+                              background: h.hour === peakHour?.hour && h.visits > 0 ? GOLD : GREEN,
+                              minHeight: h.visits > 0 ? "3px" : "0",
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-[2px] mt-2">
+                      {hourly.map((h) => (
+                        <div key={h.hour} className="flex-1 text-center text-muted-foreground/55" style={{ fontSize: "0.58rem" }}>
+                          {h.hour % 3 === 0 ? String(h.hour).padStart(2, "0") : ""}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </Panel>
+
+              <Panel title="设备分布" sub={`共 ${deviceTotal.toLocaleString()} 次访问`}>
+                {device.length === 0 ? (
+                  <EmptyState />
                 ) : (
                   <div className="space-y-4">
-                    {dailyStats.sort((a: { date: string }, b: { date: string }) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((day: { date: string; visits: number; uniqueIps: number; avgDuration: number }) => (
-                      <div key={day.date} className="flex items-center gap-4">
-                        <div className="w-16 text-sm font-medium text-slate-600">{formatDate(day.date)}</div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm text-slate-500">访问量</span>
-                            <span className="text-sm font-medium text-slate-900">{day.visits}</span>
-                          </div>
-                          <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${Math.min((day.visits / (dailyStats.reduce((m: number, d: { visits: number }) => Math.max(m, d.visits), 0) || 1)) * 100, 100)}%` }}></div>
-                          </div>
+                    <div className="flex h-3 rounded-full overflow-hidden" style={{ background: "var(--panel-border)" }}>
+                      {device.map((d) => (
+                        <div
+                          key={d.deviceType ?? "unknown"}
+                          style={{ width: `${d.percentage}%`, background: DEVICE_META[d.deviceType ?? ""]?.color ?? "var(--text-faint)" }}
+                          title={`${deviceLabel(d.deviceType)} ${d.percentage}%`}
+                        />
+                      ))}
+                    </div>
+                    <div className="space-y-2.5">
+                      {device.map((d) => (
+                        <div key={d.deviceType ?? "unknown"} className="flex items-center gap-2.5">
+                          <span className="inline-block w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: DEVICE_META[d.deviceType ?? ""]?.color ?? "var(--text-faint)" }} />
+                          <span className="text-muted-foreground flex items-center gap-1.5" style={{ fontSize: "0.72rem" }}>
+                            {deviceIcon(d.deviceType)}
+                            {deviceLabel(d.deviceType)}
+                          </span>
+                          <span className="num-display ml-auto" style={{ fontSize: "0.72rem" }}>{d.count.toLocaleString()}</span>
+                          <span className="num-display text-muted-foreground/60 w-10 text-right" style={{ fontSize: "0.66rem" }}>{d.percentage}%</span>
                         </div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm text-slate-500">独立IP</span>
-                            <span className="text-sm font-medium text-slate-900">{day.uniqueIps}</span>
-                          </div>
-                          <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${Math.min((day.uniqueIps / (dailyStats.reduce((m: number, d: { uniqueIps: number }) => Math.max(m, d.uniqueIps), 0) || 1)) * 100, 100)}%` }}></div>
-                          </div>
-                        </div>
-                        <div className="w-24 text-right">
-                          <div className="flex items-center gap-1 text-sm text-slate-500">
-                            <Clock className="w-3 h-3" />
-                            <span>{formatDuration(day.avgDuration ?? 0)}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+              </Panel>
+            </div>
 
-          <TabsContent value="device" className="mt-0">
-            <Card className="shadow-sm border-slate-200">
-              <CardHeader>
-                <CardTitle className="text-lg">设备类型分布</CardTitle>
-                <CardDescription>访问者使用的设备类型</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {deviceLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                ) : deviceStats.length === 0 ? (
-                  <div className="text-center py-12 text-slate-500">暂无数据</div>
+            {/* Geo + Environment */}
+            <div className="grid gap-5 lg:grid-cols-2">
+              <Panel title="地理分布" sub="按访问次数 · Top 8">
+                {geo.length === 0 ? (
+                  <EmptyState />
                 ) : (
-                  <div className="grid grid-cols-3 gap-4">
-                    {deviceStats.map((item: { deviceType: string | null; count: number; percentage: number }) => (
-                      <div key={item.deviceType ?? "unknown"} className={`p-4 rounded-xl ${item.deviceType === "desktop" ? "bg-purple-50" : item.deviceType === "mobile" ? "bg-orange-50" : item.deviceType === "tablet" ? "bg-cyan-50" : "bg-slate-50"}`}>
-                        <div className="flex items-center gap-2 mb-2">
-                          {item.deviceType === "desktop" && <Laptop className="w-5 h-5 text-purple-600" />}
-                          {item.deviceType === "mobile" && <Smartphone className="w-5 h-5 text-orange-600" />}
-                          {item.deviceType === "tablet" && <Smartphone className="w-5 h-5 text-cyan-600" />}
-                          {!item.deviceType && <Globe className="w-5 h-5 text-slate-600" />}
-                          <span className="font-medium text-slate-900">{item.deviceType === "desktop" ? "桌面端" : item.deviceType === "mobile" ? "移动端" : item.deviceType === "tablet" ? "平板" : "未知"}</span>
-                        </div>
-                        <div className="text-3xl font-bold text-slate-900">{item.count.toLocaleString()}</div>
-                        <div className="text-sm text-slate-500">{item.percentage}%</div>
-                      </div>
+                  <div className="space-y-2.5">
+                    {geo.slice(0, 8).map((g) => (
+                      <HBarRow
+                        key={`${g.region}-${g.city}`}
+                        label={g.region || g.city || "未知地区"}
+                        value={g.count.toLocaleString()}
+                        pct={`${g.percentage}%`}
+                        widthPct={(g.count / maxGeoCount) * 100}
+                        color={GREEN}
+                      />
                     ))}
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+              </Panel>
 
-          <TabsContent value="browser" className="mt-0">
-            <Card className="shadow-sm border-slate-200">
-              <CardHeader>
-                <CardTitle className="text-lg">浏览器分布</CardTitle>
-                <CardDescription>访问者使用的浏览器</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {browserLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                ) : browserStats.length === 0 ? (
-                  <div className="text-center py-12 text-slate-500">暂无数据</div>
+              <Panel title="访问环境" sub="浏览器 / 操作系统 · Top 5">
+                {browser.length === 0 && os.length === 0 ? (
+                  <EmptyState />
                 ) : (
-                  <div className="space-y-3">
-                    {browserStats.map((item: { browser: string | null; count: number; percentage: number }) => (
-                      <div key={item.browser ?? "unknown"} className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                          <Monitor className="w-4 h-4 text-slate-500" />
-                          <span className="w-24 text-sm font-medium text-slate-600 truncate">{item.browser ?? "未知"}</span>
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm text-slate-500">{item.count} 次访问</span>
-                            <span className="text-sm font-medium text-slate-900">{item.percentage}%</span>
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <div className="space-y-2.5">
+                      <div className="flex items-center gap-1.5 text-muted-foreground/70 tracking-widest uppercase" style={{ fontSize: "0.58rem" }}>
+                        <Monitor style={{ width: "11px", height: "11px" }} />
+                        浏览器
+                      </div>
+                      {browser.slice(0, 5).map((b) => (
+                        <HBarRow
+                          key={b.browser ?? "unknown"}
+                          label={b.browser ?? "未知"}
+                          value={b.count.toLocaleString()}
+                          pct={`${b.percentage}%`}
+                          widthPct={(b.count / maxBrowserCount) * 100}
+                          color={BLUE}
+                        />
+                      ))}
+                    </div>
+                    <div className="space-y-2.5">
+                      <div className="flex items-center gap-1.5 text-muted-foreground/70 tracking-widest uppercase" style={{ fontSize: "0.58rem" }}>
+                        <Laptop style={{ width: "11px", height: "11px" }} />
+                        操作系统
+                      </div>
+                      {os.slice(0, 5).map((o) => (
+                        <HBarRow
+                          key={o.os ?? "unknown"}
+                          label={o.os ?? "未知"}
+                          value={o.count.toLocaleString()}
+                          pct={`${o.percentage}%`}
+                          widthPct={(o.count / maxOsCount) * 100}
+                          color={GOLD}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </Panel>
+            </div>
+
+            {/* Real-time visitors */}
+            <Panel
+              title="实时访客"
+              sub={`最近 ${recent.length} 条 · 30 秒自动刷新`}
+            >
+              {recent.length === 0 ? (
+                <EmptyState />
+              ) : (
+                <div className="space-y-2">
+                  {recent.map((v, i) => {
+                    const isLive = Date.now() - new Date(v.createdAt).getTime() < 60_000;
+                    return (
+                      <div
+                        key={`${v.createdAt}-${i}`}
+                        className="flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors"
+                        style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}
+                      >
+                        <span className="relative flex shrink-0" style={{ width: 8, height: 8 }}>
+                          <span
+                            className={`absolute inline-flex h-full w-full rounded-full ${isLive ? "animate-ping opacity-60" : "opacity-0"}`}
+                            style={{ background: GREEN }}
+                          />
+                          <span className="relative inline-flex rounded-full" style={{ width: 8, height: 8, background: isLive ? GREEN : "var(--text-faint)" }} />
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="flex items-center gap-1" style={{ fontSize: "0.75rem" }}>
+                              <MapPin style={{ width: "11px", height: "11px" }} className="text-muted-foreground/60" />
+                              {v.region || v.city || "未知地区"}
+                              {v.city && v.region && <span className="text-muted-foreground/55" style={{ fontSize: "0.66rem" }}>({v.city})</span>}
+                            </span>
+                            <span className="flex items-center gap-1 text-muted-foreground/70" style={{ fontSize: "0.68rem" }}>
+                              {deviceIcon(v.deviceType)}
+                              {deviceLabel(v.deviceType)}
+                            </span>
                           </div>
-                          <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full transition-all ${item.browser === "Chrome" ? "bg-blue-500" : item.browser === "Safari" ? "bg-gray-500" : item.browser === "Firefox" ? "bg-orange-500" : item.browser === "Edge" ? "bg-teal-500" : item.browser === "Opera" ? "bg-red-500" : "bg-slate-400"}`} style={{ width: `${item.percentage}%` }}></div>
+                          <div className="text-muted-foreground/55 mt-0.5 truncate" style={{ fontSize: "0.66rem" }}>
+                            {v.page || "/"} · {v.os || "未知系统"} · {v.browser || "未知浏览器"}
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="flex items-center justify-end gap-1" style={{ fontSize: "0.7rem", color: isLive ? GREEN : NEUTRAL }}>
+                            {!isLive && <Clock style={{ width: "10px", height: "10px" }} className="text-muted-foreground/50" />}
+                            {relativeTime(v.createdAt)}
+                          </div>
+                          <div className="text-muted-foreground/50 num-display" style={{ fontSize: "0.62rem" }}>
+                            {absoluteTime(v.createdAt)}
                           </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+                    );
+                  })}
+                </div>
+              )}
+            </Panel>
 
-          <TabsContent value="hourly" className="mt-0">
-            <Card className="shadow-sm border-slate-200">
-              <CardHeader>
-                <CardTitle className="text-lg">访问时段分布</CardTitle>
-                <CardDescription>按小时统计访问量</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {hourlyLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                ) : hourlyStats.length === 0 ? (
-                  <div className="text-center py-12 text-slate-500">暂无数据</div>
-                ) : (
-                  <div className="flex flex-wrap justify-between items-end gap-1 h-48">
-                    {hourlyStats.map((item: { hour: number; visits: number; percentage: number }) => (
-                      <div key={item.hour} className="flex flex-col items-center flex-1 min-w-[40px]">
-                        <div className="text-xs text-slate-500 mb-1">{formatHour(item.hour)}</div>
-                        <div className="w-full max-w-[32px] bg-blue-100 rounded-t-sm overflow-hidden">
-                          <div className="w-full bg-blue-500 transition-all" style={{ height: `${Math.max(item.percentage * 3, 4)}px` }}></div>
-                        </div>
-                        <div className="text-xs font-medium text-slate-700 mt-1">{item.visits}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="geo" className="mt-0">
-            <Card className="shadow-sm border-slate-200">
-              <CardHeader>
-                <CardTitle className="text-lg">地理分布</CardTitle>
-                <CardDescription>访问者所在地区</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {geoLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                ) : geoStats.length === 0 ? (
-                  <div className="text-center py-12 text-slate-500">暂无数据</div>
-                ) : (
-                  <div className="space-y-3">
-                    {geoStats.map((item: { region: string | null; city: string | null; count: number; percentage: number }) => (
-                      <div key={`${item.region}-${item.city}`} className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-slate-500" />
-                          <span className="w-32 text-sm font-medium text-slate-600 truncate">{item.region || item.city || "未知地区"}</span>
-                        </div>
-                        {item.city && item.region && <span className="text-xs text-slate-400">({item.city})</span>}
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm text-slate-500">{item.count} 次访问</span>
-                            <span className="text-sm font-medium text-slate-900">{item.percentage}%</span>
-                          </div>
-                          <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${item.percentage}%` }}></div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="recent" className="mt-0">
-            <Card className="shadow-sm border-slate-200">
-              <CardHeader>
-                <CardTitle className="text-lg">实时访客</CardTitle>
-                <CardDescription>最近访问记录</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {recentLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                ) : recentVisitors.length === 0 ? (
-                  <div className="text-center py-12 text-slate-500">暂无数据</div>
-                ) : (
-                  <div className="space-y-2">
-                    {recentVisitors.map((item: { region: string | null; city: string | null; page: string | null; deviceType: string | null; os: string | null; browser: string | null; createdAt: string }) => (
-                      <div key={item.createdAt + (item.region || "")} className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
-                        <div className="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-600 rounded-full">
-                          <Eye className="w-4 h-4" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-slate-700">{item.region || item.city || "未知地区"}</span>
-                            {item.city && item.region && <span className="text-xs text-slate-400">({item.city})</span>}
-                            <Badge variant="outline" className="text-xs">{item.deviceType === "desktop" ? "桌面" : item.deviceType === "mobile" ? "手机" : item.deviceType === "tablet" ? "平板" : "未知"}</Badge>
-                          </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs text-slate-500">{item.page || "/"}</span>
-                            <span className="text-xs text-slate-400">|</span>
-                            <span className="text-xs text-slate-500">{item.os || "未知系统"}</span>
-                            <span className="text-xs text-slate-400">|</span>
-                            <span className="text-xs text-slate-500">{item.browser || "未知浏览器"}</span>
-                          </div>
-                        </div>
-                        <div className="text-xs text-slate-500">
-                          {new Date(item.createdAt).toLocaleString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="ips" className="mt-0">
-            <Card className="shadow-sm border-slate-200">
-              <CardHeader>
-                <CardTitle className="text-lg">访问地区列表</CardTitle>
-                <CardDescription>最近访问地区及访问次数</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {ipLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                ) : ipList.length === 0 ? (
-                  <div className="text-center py-12 text-slate-500">暂无数据</div>
-                ) : (
-                  <div className="space-y-2">
-                    {ipList.map((item: { region: string | null; city: string | null; visits: number; lastVisit: string }, index: number) => (
-                      <div key={(item.region || "") + (item.city || "")} className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
-                        <div className="w-6 h-6 flex items-center justify-center bg-blue-100 text-blue-600 rounded-full text-xs font-medium">{index + 1}</div>
-                        <div className="flex-1 text-sm text-slate-700">
-                          {item.region || item.city || "未知地区"}
-                          {item.city && item.region && <span className="text-xs text-slate-400">({item.city})</span>}
-                        </div>
-                        <div className="text-sm font-medium text-slate-900">{item.visits} 次</div>
-                        <div className="text-xs text-slate-500">
-                          {new Date(item.lastVisit).toLocaleString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-
-        <Card className="shadow-sm border-slate-200 mt-6">
-          <CardContent className="p-4 text-center text-sm text-slate-500">
-            平均停留时间: <span className="font-medium text-slate-900">{formatDuration(avgDuration)}</span>
-          </CardContent>
-        </Card>
+            {/* Footer status */}
+            <div className="flex items-center justify-center gap-2 text-muted-foreground/55 pb-4" style={{ fontSize: "0.66rem" }}>
+              <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: data ? GREEN : "oklch(62% 0.15 25)" }} />
+              {data ? `数据库正常 · 共 ${data.totalRecords.toLocaleString()} 条记录` : "数据库连接异常"}
+              <span>·</span>
+              <span>每 30 秒自动刷新</span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
