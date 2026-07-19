@@ -100,6 +100,9 @@ export const visitorLogs = pgTable("visitor_logs", {
   duration: integer("duration"),
   city: varchar("city", { length: 64 }),
   region: varchar("region", { length: 64 }),
+  // Heuristic VPN/proxy flag: browser timezone disagrees with the IP's
+  // country, or the egress IP is a known proxy/hosting address.
+  isProxy: boolean("isproxy"),
   createdAt: timestamp("createdat").defaultNow().notNull(),
 });
 

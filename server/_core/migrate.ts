@@ -139,6 +139,7 @@ export async function runMigrations(): Promise<void> {
 
     await db.execute(sql`ALTER TABLE visitor_logs ADD COLUMN IF NOT EXISTS city varchar(64)`).catch(() => {});
     await db.execute(sql`ALTER TABLE visitor_logs ADD COLUMN IF NOT EXISTS region varchar(64)`).catch(() => {});
+    await db.execute(sql`ALTER TABLE visitor_logs ADD COLUMN IF NOT EXISTS isProxy boolean`).catch(() => {});
 
     console.log("[Migration] All migrations completed");
   } catch (error) {

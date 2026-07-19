@@ -8,6 +8,7 @@ import axios from "axios";
 import {
   decodeGeoResponse,
   getIpGeo,
+  isTimezoneMismatch,
   parseAmapResponse,
   parseIpApiResponse,
   parsePconlineResponse,
@@ -36,10 +37,11 @@ describe("decodeGeoResponse", () => {
 });
 
 describe("response parsers", () => {
-  it("parses an amap success response", () => {
+  it("parses an amap success response as domestic (CN)", () => {
     expect(parseAmapResponse({ status: "1", province: "四川省", city: "成都市" })).toEqual({
       region: "四川省",
       city: "成都市",
+      countryCode: "CN",
     });
   });
 
@@ -49,10 +51,11 @@ describe("response parsers", () => {
     expect(parseAmapResponse(null)).toBeNull();
   });
 
-  it("parses a pconline success response", () => {
+  it("parses a pconline success response as domestic (CN)", () => {
     expect(parsePconlineResponse({ pro: "四川省", city: "成都市", err: "" })).toEqual({
       region: "四川省",
       city: "成都市",
+      countryCode: "CN",
     });
   });
 
@@ -62,11 +65,47 @@ describe("response parsers", () => {
     expect(parsePconlineResponse(null)).toBeNull();
   });
 
-  it("parses an ip-api response", () => {
-    expect(parseIpApiResponse({ regionName: "California", city: "San Jose" })).toEqual({
+  it("parses an ip-api response including proxy/hosting flags", () => {
+    expect(
+      parseIpApiResponse({ regionName: "California", city: "San Jose", countryCode: "US", proxy: true, hosting: false })
+    ).toEqual({
       region: "California",
       city: "San Jose",
+      countryCode: "US",
+      proxy: true,
+      hosting: undefined,
     });
+  });
+
+  it("omits proxy/hosting when ip-api reports them as false", () => {
+    const result = parseIpApiResponse({ regionName: "California", city: "", countryCode: "US", proxy: false, hosting: false });
+    expect(result?.proxy).toBeUndefined();
+    expect(result?.hosting).toBeUndefined();
+  });
+});
+
+describe("isTimezoneMismatch", () => {
+  it("flags a China timezone with an overseas IP (翻墙)", () => {
+    expect(isTimezoneMismatch("Asia/Shanghai", false)).toBe(true);
+  });
+
+  it("flags an overseas timezone with a China IP (回国代理)", () => {
+    expect(isTimezoneMismatch("America/New_York", true)).toBe(true);
+  });
+
+  it("accepts a China timezone with a China IP", () => {
+    expect(isTimezoneMismatch("Asia/Shanghai", true)).toBe(false);
+    expect(isTimezoneMismatch("Asia/Urumqi", true)).toBe(false);
+  });
+
+  it("accepts an overseas timezone with an overseas IP", () => {
+    expect(isTimezoneMismatch("America/New_York", false)).toBe(false);
+    expect(isTimezoneMismatch("Asia/Singapore", false)).toBe(false);
+  });
+
+  it("does not flag when the timezone or geo country is unknown", () => {
+    expect(isTimezoneMismatch(undefined, true)).toBe(false);
+    expect(isTimezoneMismatch("Asia/Shanghai", undefined)).toBe(false);
   });
 });
 
@@ -93,7 +132,7 @@ describe("getIpGeo", () => {
   it("resolves a domestic IP via pconline when amap is not configured", async () => {
     mockedGet.mockResolvedValueOnce({ data: PCONLINE_GBK });
 
-    expect(await getIpGeo("118.112.1.1")).toEqual({ region: "四川省", city: "成都市" });
+    expect(await getIpGeo("118.112.1.1")).toEqual({ region: "四川省", city: "成都市", countryCode: "CN" });
 
     expect(mockedGet).toHaveBeenCalledTimes(1);
     expect(mockedGet.mock.calls[0][0]).toContain("pconline");
@@ -101,9 +140,9 @@ describe("getIpGeo", () => {
 
   it("falls back to ip-api when pconline fails", async () => {
     mockedGet.mockRejectedValueOnce(new Error("timeout"));
-    mockedGet.mockResolvedValueOnce({ data: { regionName: "California", city: "San Jose" } });
+    mockedGet.mockResolvedValueOnce({ data: { regionName: "California", city: "San Jose", countryCode: "US", proxy: false, hosting: false } });
 
-    expect(await getIpGeo("8.8.8.8")).toEqual({ region: "California", city: "San Jose" });
+    expect(await getIpGeo("8.8.8.8")).toEqual({ region: "California", city: "San Jose", countryCode: "US" });
 
     expect(mockedGet).toHaveBeenCalledTimes(2);
     expect(mockedGet.mock.calls[1][0]).toContain("ip-api.com");

@@ -42,6 +42,9 @@ function AnalyticsTracker() {
         page: window.location.pathname,
         userAgent: navigator.userAgent,
         referrer: document.referrer,
+        // Silent read of the device timezone (no permission prompt) — the
+        // server cross-checks it against the IP's country to flag proxies.
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       })
       .then((res) => {
         visitId = res?.id ?? null;

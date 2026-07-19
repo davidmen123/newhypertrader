@@ -258,6 +258,7 @@ export async function logVisitor(data: InsertVisitorLog): Promise<number | null>
       duration: data.duration ?? null,
       city: data.city ?? null,
       region: data.region ?? null,
+      isProxy: data.isProxy ?? null,
     };
     const inserted = await db.insert(visitorLogs).values(insertData).returning({ id: visitorLogs.id });
     console.log("[Analytics] Visitor logged successfully:", data.page, data.deviceType);
@@ -450,7 +451,7 @@ export async function getVisitorGeoStats(params?: {
   }));
 }
 
-export async function getRecentVisitors(limit?: number): Promise<Array<{ region: string | null; city: string | null; page: string | null; deviceType: string | null; os: string | null; browser: string | null; createdAt: string }>> {
+export async function getRecentVisitors(limit?: number): Promise<Array<{ region: string | null; city: string | null; page: string | null; deviceType: string | null; os: string | null; browser: string | null; isProxy: boolean | null; createdAt: string }>> {
   const db = await getDb();
   if (!db) return [];
 
@@ -462,6 +463,7 @@ export async function getRecentVisitors(limit?: number): Promise<Array<{ region:
       deviceType: visitorLogs.deviceType,
       os: visitorLogs.os,
       browser: visitorLogs.browser,
+      isProxy: visitorLogs.isProxy,
       createdAt: sql<string>`${visitorLogs.createdAt} AT TIME ZONE 'UTC'`,
     })
     .from(visitorLogs)

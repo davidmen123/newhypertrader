@@ -470,6 +470,15 @@ function AnalyticsDashboard() {
                               {deviceIcon(v.deviceType)}
                               {deviceLabel(v.deviceType)}
                             </span>
+                            {v.isProxy ? (
+                              <span
+                                className="shrink-0"
+                                title="浏览器时区与 IP 归属地不符，或该 IP 是代理/机房地址——显示的位置可能不真实"
+                                style={{ fontSize: "0.62rem", lineHeight: 1.5, padding: "0 6px", borderRadius: 999, color: "oklch(52% 0.13 60)", background: "oklch(82% 0.11 85 / 0.2)", border: "1px solid oklch(72% 0.12 75 / 0.4)" }}
+                              >
+                                疑似代理
+                              </span>
+                            ) : null}
                           </div>
                           <div className="text-muted-foreground/55 mt-0.5 truncate" style={{ fontSize: "0.66rem" }}>
                             {v.page || "/"} · {v.os || "未知系统"} · {v.browser || "未知浏览器"}

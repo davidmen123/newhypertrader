@@ -7,7 +7,9 @@ import axios from "axios";
 //      for Chinese carrier IPs.
 //   2. whois.pconline — free, no key, domestic data; handles Chinese
 //      mobile-carrier NAT egress addresses correctly.
-//   3. ip-api.com     — legacy fallback, fine for overseas IPs.
+//   3. ip-api.com     — legacy fallback, fine for overseas IPs. Also the only
+//      provider that returns proxy/hosting flags, so those are available for
+//      overseas egress IPs.
 //
 // The previous ip-api-only setup mislocated Chinese mobile users — e.g. a
 // China Mobile user in Chengdu was resolved to Guangzhou, Guangdong, because
@@ -17,6 +19,11 @@ import axios from "axios";
 interface IpGeoResult {
   region: string;
   city: string;
+  // ISO 3166-1 alpha-2, when known. Domestic providers always mean "CN".
+  countryCode?: string;
+  // Only populated by ip-api.com (proxy = VPN/proxy/Tor, hosting = datacenter).
+  proxy?: boolean;
+  hosting?: boolean;
 }
 
 const cache = new Map<string, IpGeoResult>();
@@ -52,6 +59,21 @@ export function decodeGeoResponse(buf: ArrayBuffer | Uint8Array): string {
   }
 }
 
+// IANA zones used by devices physically in China. When the browser timezone
+// disagrees with the IP egress country — e.g. device on Asia/Shanghai but the
+// IP resolves overseas — the visitor is very likely tunneling through a
+// VPN/proxy (or reverse-proxying back into China). Pure heuristic: flag as
+// "suspected proxy", never as a certainty.
+const CHINA_TIMEZONES = new Set(["Asia/Shanghai", "Asia/Urumqi"]);
+
+export function isTimezoneMismatch(
+  timezone: string | undefined | null,
+  isChinaIp: boolean | undefined
+): boolean {
+  if (!timezone || isChinaIp === undefined) return false;
+  return CHINA_TIMEZONES.has(timezone) !== isChinaIp;
+}
+
 // --- 高德: https://restapi.amap.com/v3/ip?key=...&ip=... ----------------------
 
 interface AmapResponse {
@@ -66,7 +88,7 @@ export function parseAmapResponse(data: AmapResponse | null | undefined): IpGeoR
   const region = typeof data.province === "string" ? data.province : "";
   const city = typeof data.city === "string" ? data.city : "";
   if (!region) return null;
-  return { region, city };
+  return { region, city, countryCode: "CN" };
 }
 
 async function lookupAmap(ip: string): Promise<IpGeoResult | null> {
@@ -94,7 +116,7 @@ export function parsePconlineResponse(data: PconlineResponse | null | undefined)
   const city = typeof data.city === "string" ? data.city.trim() : "";
   // Overseas IPs come back with empty pro/city — let the next provider try.
   if (!region) return null;
-  return { region, city };
+  return { region, city, countryCode: "CN" };
 }
 
 async function lookupPconline(ip: string): Promise<IpGeoResult | null> {
@@ -106,11 +128,14 @@ async function lookupPconline(ip: string): Promise<IpGeoResult | null> {
   return parsePconlineResponse(JSON.parse(decodeGeoResponse(res.data)));
 }
 
-// --- ip-api.com（海外 IP 兜底） ------------------------------------------------
+// --- ip-api.com（海外 IP 兜底，附带 proxy/hosting 标记） -------------------------
 
 interface IpApiResponse {
   regionName?: unknown;
   city?: unknown;
+  countryCode?: unknown;
+  proxy?: unknown;
+  hosting?: unknown;
 }
 
 export function parseIpApiResponse(data: IpApiResponse | null | undefined): IpGeoResult | null {
@@ -118,13 +143,19 @@ export function parseIpApiResponse(data: IpApiResponse | null | undefined): IpGe
   const region = typeof data.regionName === "string" ? data.regionName : "";
   const city = typeof data.city === "string" ? data.city : "";
   if (!region) return null;
-  return { region, city };
+  return {
+    region,
+    city,
+    countryCode: typeof data.countryCode === "string" ? data.countryCode : undefined,
+    proxy: data.proxy === true ? true : undefined,
+    hosting: data.hosting === true ? true : undefined,
+  };
 }
 
 async function lookupIpApi(ip: string): Promise<IpGeoResult | null> {
   const res = await axios.get(`http://ip-api.com/json/${ip}`, {
     timeout: 2000,
-    params: { fields: "regionName,city" },
+    params: { fields: "regionName,city,countryCode,proxy,hosting" },
   });
   return parseIpApiResponse(res.data);
 }

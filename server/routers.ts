@@ -9,7 +9,7 @@ import { bitgetRouter } from "./routers/bitget.js";
 import { hyperliquidRouter } from "./routers/hyperliquid.js";
 import { feedbackRouter } from "./routers/feedback.js";
 import { incrementPageViews, getPageViews, logVisitor, updateVisitorDuration, getVisitorSummary, getVisitorLogCount, getDailyVisitorStats, getVisitorDeviceStats, getVisitorOsStats, getVisitorBrowserStats, getVisitorHourlyStats, getVisitorGeoStats, getRecentVisitors } from "./db.js";
-import { getIpGeo } from "./_core/ipGeo.js";
+import { getIpGeo, isTimezoneMismatch } from "./_core/ipGeo.js";
 import { parseUserAgent } from "./_core/userAgent.js";
 
 function getClientIp(req: { headers: Record<string, string | string[] | undefined> }): string {
@@ -90,6 +90,8 @@ export const appRouter = router({
           duration: z.number().optional(),
           userAgent: z.string().optional(),
           referrer: z.string().optional(),
+          // IANA timezone reported by the browser (e.g. "Asia/Shanghai").
+          timezone: z.string().optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -104,10 +106,15 @@ export const appRouter = router({
 
           let region: string | undefined;
           let city: string | undefined;
+          let isProxy = false;
           try {
             const geo = await getIpGeo(fullIp);
             region = geo.region || undefined;
             city = geo.city || undefined;
+            // Suspected proxy: ip-api flags the egress as proxy/hosting, or
+            // the browser timezone disagrees with the IP's country.
+            const isChinaIp = geo.countryCode ? geo.countryCode === "CN" : undefined;
+            isProxy = Boolean(geo.proxy) || Boolean(geo.hosting) || isTimezoneMismatch(input.timezone, isChinaIp);
           } catch (e) {
             console.warn("[Analytics] IP geo lookup failed, skipping:", e);
           }
@@ -123,6 +130,7 @@ export const appRouter = router({
             duration: input.duration ?? undefined,
             region,
             city,
+            isProxy,
           });
 
           return { success: true, id };
