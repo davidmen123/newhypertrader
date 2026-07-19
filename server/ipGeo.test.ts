@@ -6,15 +6,21 @@ vi.mock("axios", () => ({
 
 import axios from "axios";
 import {
+  __setIp2regionSearcherForTests,
   decodeGeoResponse,
   getIpGeo,
   isTimezoneMismatch,
   parseAmapResponse,
+  parseIp2region,
   parseIpApiResponse,
   parsePconlineResponse,
 } from "./_core/ipGeo";
 
 const mockedGet = axios.get as ReturnType<typeof vi.fn>;
+
+// NOTE: getIpGeo has a module-level result cache — every test below must use
+// a unique IP, and beforeEach must use resetAllMocks (not clearAllMocks) so
+// leftover mockResolvedValueOnce queues don't bleed across tests.
 
 // GBK-encoded bytes of: {"pro":"四川省","city":"成都市","err":""}
 const PCONLINE_GBK = Buffer.from([
@@ -36,6 +42,37 @@ describe("decodeGeoResponse", () => {
   });
 });
 
+describe("parseIp2region", () => {
+  it("parses a full domestic region string", () => {
+    expect(parseIp2region("中国|四川省|成都市|移动|CN")).toEqual({
+      region: "四川省",
+      city: "成都市",
+      countryCode: "CN",
+    });
+  });
+
+  it("parses a direct-administered city (province == city-level)", () => {
+    expect(parseIp2region("中国|上海|上海市|电信|CN")).toEqual({
+      region: "上海",
+      city: "上海市",
+      countryCode: "CN",
+    });
+  });
+
+  it("falls back to the country when the province is unknown", () => {
+    expect(parseIp2region("United States|0|0|0|US")).toEqual({
+      region: "United States",
+      city: "",
+      countryCode: "US",
+    });
+  });
+
+  it("returns null for an all-unknown or malformed string", () => {
+    expect(parseIp2region("0|0|0|0|0")).toBeNull();
+    expect(parseIp2region("garbage")).toBeNull();
+  });
+});
+
 describe("response parsers", () => {
   it("parses an amap success response as domestic (CN)", () => {
     expect(parseAmapResponse({ status: "1", province: "四川省", city: "成都市" })).toEqual({
@@ -45,7 +82,7 @@ describe("response parsers", () => {
     });
   });
 
-  it("rejects amap overseas responses (empty arrays)", () => {
+  it("rejects amap overseas/unknown responses (empty arrays)", () => {
     expect(parseAmapResponse({ status: "1", province: [], city: [] })).toBeNull();
     expect(parseAmapResponse({ status: "0" })).toBeNull();
     expect(parseAmapResponse(null)).toBeNull();
@@ -109,16 +146,40 @@ describe("isTimezoneMismatch", () => {
   });
 });
 
-describe("getIpGeo", () => {
+describe("getIpGeo with the offline database (real xdb file)", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    __setIp2regionSearcherForTests(undefined); // lazy-load the real file
+  });
+
+  it("locates a China Mobile NAT IP without any network call", async () => {
+    expect(await getIpGeo("223.104.221.122")).toEqual({
+      region: "四川省",
+      city: "成都市",
+      countryCode: "CN",
+    });
+    expect(mockedGet).not.toHaveBeenCalled();
+  });
+
+  it("locates an overseas IP without any network call", async () => {
+    const result = await getIpGeo("8.8.8.8");
+    expect(result.countryCode).toBe("US");
+    expect(mockedGet).not.toHaveBeenCalled();
+  });
+});
+
+describe("getIpGeo without the offline database (network chain)", () => {
   const savedKey = process.env.AMAP_IP_GEO_KEY;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     delete process.env.AMAP_IP_GEO_KEY;
+    __setIp2regionSearcherForTests(null); // disable the offline provider
   });
 
   afterEach(() => {
     if (savedKey !== undefined) process.env.AMAP_IP_GEO_KEY = savedKey;
+    __setIp2regionSearcherForTests(undefined);
   });
 
   it("short-circuits loopback and private IPs without any lookup", async () => {
@@ -143,7 +204,7 @@ describe("getIpGeo", () => {
     mockedGet.mockRejectedValueOnce(new Error("timeout"));
     mockedGet.mockResolvedValueOnce({ data: { regionName: "California", city: "San Jose", countryCode: "US", proxy: false, hosting: false } });
 
-    expect(await getIpGeo("8.8.8.8")).toEqual({ region: "California", city: "San Jose", countryCode: "US" });
+    expect(await getIpGeo("9.9.9.9")).toEqual({ region: "California", city: "San Jose", countryCode: "US" });
 
     expect(mockedGet).toHaveBeenCalledTimes(3);
     expect(mockedGet.mock.calls[2][0]).toContain("ip-api.com");

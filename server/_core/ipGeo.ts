@@ -1,30 +1,27 @@
 import axios from "axios";
+import fs from "node:fs";
 import https from "node:https";
+import path from "node:path";
+import { IPv4, newWithBuffer, type Searcher } from "ip2region.js";
 
 // IP geolocation for the analytics pipeline.
 //
 // Provider chain (first meaningful result wins):
-//   1. 高德 IP 定位   — only when AMAP_IP_GEO_KEY is configured; most accurate
-//      for Chinese carrier IPs.
-//   2. whois.pconline — free, no key, domestic data; handles Chinese
-//      mobile-carrier NAT egress addresses correctly.
-//   3. ip-api.com     — legacy fallback, fine for overseas IPs. Also the only
-//      provider that returns proxy/hosting flags, so those are available for
-//      overseas egress IPs.
+//   1. ip2region 离线库 — bundled xdb file, no network at all. The primary
+//      source: it is the only option that correctly locates Chinese carrier
+//      NAT egress IPs (e.g. a China Mobile user in Chengdu shows 四川省成都市,
+//      while ip-api.com says Guangzhou and even the Amap API returns empty).
+//      Also immune to the fact that domestic lookup endpoints are
+//      unreachable from Vercel's overseas nodes.
+//   2. 高德 IP 定位 — only when AMAP_IP_GEO_KEY is configured.
+//   3. whois.pconline — free domestic API; effectively unreachable from
+//      Vercel, kept as a last-ditch attempt.
+//   4. ip-api.com — overseas fallback with proxy/hosting flags.
 //
-// The previous ip-api-only setup mislocated Chinese mobile users — e.g. a
-// China Mobile user in Chengdu was resolved to Guangzhou, Guangdong, because
-// overseas GeoIP databases anchor carrier NAT egress IPs at the carrier's
-// registered province.
-//
-// Deployment note: the site runs on Vercel (outside China), and domestic
-// endpoints are intermittently slow/unreachable from overseas networks —
-// partly due to broken IPv6 routes. Domestic providers therefore go through
-// an IPv4-only agent with a relaxed timeout and one retry; without this, a
-// single timeout silently drops Chinese visitors to the ip-api fallback and
-// the Guangzhou mislocation comes back.
-
-const ipv4Agent = new https.Agent({ family: 4 });
+// Trade-off: when the offline DB answers an overseas IP we skip ip-api.com
+// and lose its proxy/hosting flags; VPN detection then relies on the
+// timezone cross-check (isTimezoneMismatch), which covers this site's main
+// case (China-based visitors tunneling out).
 
 interface IpGeoResult {
   region: string;
@@ -58,6 +55,66 @@ function isPrivateIp(ip: string): boolean {
   );
 }
 
+// --- ip2region 离线库（零网络） -------------------------------------------------
+// Data: server/_core/data/ip2region_v4.xdb (~11MB, Apache-2.0/MIT, from
+// github.com/lionsoul2014/ip2region). Re-download the file to refresh data.
+
+let ip2regionSearcher: Searcher | null | undefined; // undefined = not tried yet
+
+function getIp2regionSearcher(): Searcher | null {
+  if (ip2regionSearcher !== undefined) return ip2regionSearcher;
+  const candidates: Array<string | URL> = [
+    // Local dev / bundled server: project root is the cwd.
+    path.join(process.cwd(), "server", "_core", "data", "ip2region_v4.xdb"),
+    // Vercel nft asset tracing keys off this import.meta.url pattern.
+    new URL("./data/ip2region_v4.xdb", import.meta.url),
+  ];
+  for (const candidate of candidates) {
+    try {
+      const buffer = fs.readFileSync(candidate);
+      ip2regionSearcher = newWithBuffer(IPv4, buffer);
+      return ip2regionSearcher;
+    } catch {
+      // try the next candidate path
+    }
+  }
+  console.warn("[IP Geo] ip2region xdb not found; offline lookup disabled");
+  ip2regionSearcher = null;
+  return null;
+}
+
+// Test hook: force the offline searcher on (undefined = lazy-load) or off (null).
+export function __setIp2regionSearcherForTests(searcher: Searcher | null | undefined): void {
+  ip2regionSearcher = searcher;
+}
+
+// Region string from the v3 binding: "国家|省|市|ISP|国家代码", "0" = unknown.
+// Domestic: 中国|四川省|成都市|移动|CN → { 四川省, 成都市 }.
+export function parseIp2region(raw: string): IpGeoResult | null {
+  const parts = raw.split("|");
+  if (parts.length < 5) return null;
+  const [country, province, city, , countryCode] = parts;
+  if (province && province !== "0") {
+    return {
+      region: province,
+      city: city && city !== "0" ? city : "",
+      countryCode: countryCode && countryCode !== "0" ? countryCode : undefined,
+    };
+  }
+  if (country && country !== "0") {
+    return { region: country, city: "", countryCode: countryCode && countryCode !== "0" ? countryCode : undefined };
+  }
+  return null;
+}
+
+async function lookupIp2region(ip: string): Promise<IpGeoResult | null> {
+  const searcher = getIp2regionSearcher();
+  if (!searcher) return null;
+  // Throws on malformed / IPv6 input — the chain treats that as a miss.
+  const raw: string = await searcher.search(ip);
+  return parseIp2region(raw);
+}
+
 // pconline historically returns GBK-encoded JSON; decode as UTF-8 first and
 // only fall back to GBK when the bytes are not valid UTF-8.
 export function decodeGeoResponse(buf: ArrayBuffer | Uint8Array): string {
@@ -85,6 +142,10 @@ export function isTimezoneMismatch(
 }
 
 // --- 高德: https://restapi.amap.com/v3/ip?key=...&ip=... ----------------------
+// NOTE: Amap's database does not cover China carrier NAT egress IPs (returns
+// empty province/city for them), so this is only a backup for broadband IPs.
+
+const ipv4Agent = new https.Agent({ family: 4 });
 
 interface AmapResponse {
   status?: string;
@@ -94,7 +155,7 @@ interface AmapResponse {
 
 export function parseAmapResponse(data: AmapResponse | null | undefined): IpGeoResult | null {
   if (!data || data.status !== "1") return null;
-  // Overseas IPs come back as empty arrays instead of strings.
+  // Overseas/unknown IPs come back as empty arrays instead of strings.
   const region = typeof data.province === "string" ? data.province : "";
   const city = typeof data.city === "string" ? data.city : "";
   if (!region) return null;
@@ -112,7 +173,7 @@ async function lookupAmap(ip: string): Promise<IpGeoResult | null> {
   return parseAmapResponse(res.data);
 }
 
-// --- 太平洋免费接口（国内数据，无需 key） --------------------------------------
+// --- 太平洋免费接口（国内数据，无需 key；从 Vercel 基本不可达，仅作兜底） ----------
 // {"ip":"...","pro":"四川省","city":"成都市","addr":"四川省成都市 电信","err":""}
 
 interface PconlineResponse {
@@ -185,16 +246,16 @@ export async function getIpGeo(ip: string): Promise<IpGeoResult> {
   const cached = cache.get(ip);
   if (cached) return cached;
 
-  // Domestic providers get one retry — see the deployment note at the top.
-  // A provider returning null means "not handled" (e.g. overseas IP for the
-  // domestic providers) and is NOT retried; we just move down the chain.
-  for (const lookup of [lookupAmap, lookupPconline, lookupIpApi]) {
-    const attempts = lookup === lookupIpApi ? 1 : 2;
+  // The offline DB is local and instant — retrying it is pointless; the
+  // domestic network providers get one retry because their connectivity from
+  // Vercel's overseas regions is poor.
+  for (const lookup of [lookupIp2region, lookupAmap, lookupPconline, lookupIpApi]) {
+    const attempts = lookup === lookupAmap || lookup === lookupPconline ? 2 : 1;
     for (let attempt = 1; attempt <= attempts; attempt++) {
       try {
         const result = await lookup(ip);
         if (result) return cacheResult(ip, result);
-        break;
+        break; // meaningful "not handled" — move down the chain
       } catch (error) {
         console.warn(`[IP Geo] ${lookup.name} attempt ${attempt}/${attempts} failed for ip:`, ip, (error as Error)?.message ?? error);
       }
