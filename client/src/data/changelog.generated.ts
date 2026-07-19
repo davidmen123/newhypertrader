@@ -13,7 +13,7 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    "version": "1.45.0",
+    "version": "1.44.1",
     "date": "2026-07-18",
     "zh": "修复手机端注释不显示",
     "en": "Fixed tooltips not showing on mobile"

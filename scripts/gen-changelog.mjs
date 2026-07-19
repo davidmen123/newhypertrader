@@ -74,6 +74,13 @@ const OVERRIDES = new Map([
   ["6e88fd3", { zh: "常见问题优化", en: "FAQ refinements" }],
 ]);
 
+// Bump-kind corrections (keyed by SHA) for entries released before the
+// 更新/修复 trailer split existed — e.g. a fix that went out with a 更新
+// trailer and took a minor it shouldn't have. Keeps commit messages untouched.
+const KIND_OVERRIDES = new Map([
+  ["5d08245", "patch"], // 修复手机端注释不显示
+]);
+
 function matchTrailer(body, regex) {
   const match = body.match(regex);
   return match ? match[1].trim() : null;
@@ -110,7 +117,7 @@ function readTrailerCommits() {
     const fix = matchTrailer(bodyAfterSubject, /^修复[:：]\s*(.+)$/m);
     const zh = feature ?? fix;
     if (!zh) continue;
-    const kind = feature ? "minor" : "patch";
+    const kind = KIND_OVERRIDES.get(shortSha) ?? (feature ? "minor" : "patch");
     const en = matchTrailer(bodyAfterSubject, /^Changelog-EN[:：]\s*(.+)$/im) || zh;
     const override = OVERRIDES.get(shortSha);
     commits.push({
