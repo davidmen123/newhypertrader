@@ -1,4 +1,5 @@
 import axios from "axios";
+import https from "node:https";
 
 // IP geolocation for the analytics pipeline.
 //
@@ -15,6 +16,15 @@ import axios from "axios";
 // China Mobile user in Chengdu was resolved to Guangzhou, Guangdong, because
 // overseas GeoIP databases anchor carrier NAT egress IPs at the carrier's
 // registered province.
+//
+// Deployment note: the site runs on Vercel (outside China), and domestic
+// endpoints are intermittently slow/unreachable from overseas networks —
+// partly due to broken IPv6 routes. Domestic providers therefore go through
+// an IPv4-only agent with a relaxed timeout and one retry; without this, a
+// single timeout silently drops Chinese visitors to the ip-api fallback and
+// the Guangzhou mislocation comes back.
+
+const ipv4Agent = new https.Agent({ family: 4 });
 
 interface IpGeoResult {
   region: string;
@@ -95,8 +105,9 @@ async function lookupAmap(ip: string): Promise<IpGeoResult | null> {
   const key = process.env.AMAP_IP_GEO_KEY;
   if (!key) return null;
   const res = await axios.get("https://restapi.amap.com/v3/ip", {
-    timeout: 2000,
+    timeout: 3000,
     params: { key, ip },
+    httpsAgent: ipv4Agent,
   });
   return parseAmapResponse(res.data);
 }
@@ -121,9 +132,10 @@ export function parsePconlineResponse(data: PconlineResponse | null | undefined)
 
 async function lookupPconline(ip: string): Promise<IpGeoResult | null> {
   const res = await axios.get("https://whois.pconline.com.cn/ipJson.jsp", {
-    timeout: 2500,
+    timeout: 4500,
     params: { ip, json: "true" },
     responseType: "arraybuffer",
+    httpsAgent: ipv4Agent,
   });
   return parsePconlineResponse(JSON.parse(decodeGeoResponse(res.data)));
 }
@@ -173,12 +185,19 @@ export async function getIpGeo(ip: string): Promise<IpGeoResult> {
   const cached = cache.get(ip);
   if (cached) return cached;
 
+  // Domestic providers get one retry — see the deployment note at the top.
+  // A provider returning null means "not handled" (e.g. overseas IP for the
+  // domestic providers) and is NOT retried; we just move down the chain.
   for (const lookup of [lookupAmap, lookupPconline, lookupIpApi]) {
-    try {
-      const result = await lookup(ip);
-      if (result) return cacheResult(ip, result);
-    } catch (error) {
-      console.warn(`[IP Geo] ${lookup.name} failed for ip:`, ip, (error as Error)?.message ?? error);
+    const attempts = lookup === lookupIpApi ? 1 : 2;
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+      try {
+        const result = await lookup(ip);
+        if (result) return cacheResult(ip, result);
+        break;
+      } catch (error) {
+        console.warn(`[IP Geo] ${lookup.name} attempt ${attempt}/${attempts} failed for ip:`, ip, (error as Error)?.message ?? error);
+      }
     }
   }
 

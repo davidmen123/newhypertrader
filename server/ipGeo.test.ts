@@ -138,14 +138,26 @@ describe("getIpGeo", () => {
     expect(mockedGet.mock.calls[0][0]).toContain("pconline");
   });
 
-  it("falls back to ip-api when pconline fails", async () => {
+  it("retries pconline once before falling back to ip-api", async () => {
+    mockedGet.mockRejectedValueOnce(new Error("timeout"));
     mockedGet.mockRejectedValueOnce(new Error("timeout"));
     mockedGet.mockResolvedValueOnce({ data: { regionName: "California", city: "San Jose", countryCode: "US", proxy: false, hosting: false } });
 
     expect(await getIpGeo("8.8.8.8")).toEqual({ region: "California", city: "San Jose", countryCode: "US" });
 
+    expect(mockedGet).toHaveBeenCalledTimes(3);
+    expect(mockedGet.mock.calls[2][0]).toContain("ip-api.com");
+  });
+
+  it("recovers when pconline fails once but succeeds on retry", async () => {
+    mockedGet.mockRejectedValueOnce(new Error("timeout"));
+    mockedGet.mockResolvedValueOnce({ data: PCONLINE_GBK });
+
+    expect(await getIpGeo("118.112.9.9")).toEqual({ region: "四川省", city: "成都市", countryCode: "CN" });
+
     expect(mockedGet).toHaveBeenCalledTimes(2);
-    expect(mockedGet.mock.calls[1][0]).toContain("ip-api.com");
+    expect(mockedGet.mock.calls[0][0]).toContain("pconline");
+    expect(mockedGet.mock.calls[1][0]).toContain("pconline");
   });
 
   it("returns 未知地区 when every provider fails", async () => {
