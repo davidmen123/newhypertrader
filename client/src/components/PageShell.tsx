@@ -103,6 +103,12 @@ export default function PageShell({ title, subtitle, children }: { title: string
             <span>公众号：温格笔记</span>
             <span>X：@mindwingsD</span>
           </div>
+          <div
+            className="text-center pb-1"
+            style={{ fontFamily: "Inter, sans-serif", fontSize: "0.66rem", letterSpacing: "0.12em", color: subtleTextColor, opacity: 0.55 }}
+          >
+            © {new Date().getFullYear()} All rights reserved.
+          </div>
         </div>
       </footer>
     </div>

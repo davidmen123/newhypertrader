@@ -396,6 +396,12 @@ export default function Home() {
             </div>
             <Changelog />
           </div>
+          <div
+            className="text-center pb-1"
+            style={{ fontFamily: "Inter, sans-serif", fontSize: "0.66rem", letterSpacing: "0.12em", color: subtleTextColor, opacity: 0.55 }}
+          >
+            © {new Date().getFullYear()} All rights reserved.
+          </div>
         </div>
       </footer>
     </div>
