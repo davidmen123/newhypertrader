@@ -193,7 +193,6 @@ function AnalyticsDashboard() {
   const mobilePct = deviceTotal > 0 ? Math.round((mobileCount / deviceTotal) * 100) : 0;
 
   const maxDailyVisits = paddedDaily.reduce((m, d) => Math.max(m, d.visits), 0) || 1;
-  const maxHourlyVisits = hourly.reduce((m, h) => Math.max(m, h.visits), 0) || 1;
   const peakHour = hourly.reduce((best, h) => (h.visits > (best?.visits ?? -1) ? h : best), hourly[0]);
   const maxGeoCount = geo.reduce((m, g) => Math.max(m, g.count), 0) || 1;
   const maxBrowserCount = browser.reduce((m, b) => Math.max(m, b.count), 0) || 1;
@@ -331,27 +330,62 @@ function AnalyticsDashboard() {
                   <EmptyState />
                 ) : (
                   <div>
-                    <div className="flex items-end gap-[2px]" style={{ height: "8rem" }}>
-                      {hourly.map((h) => (
-                        <div key={h.hour} className="flex-1 flex items-end min-w-0" title={`${String(h.hour).padStart(2, "0")}:00 · ${h.visits} 次`}>
-                          <div
-                            className="w-full rounded-t-sm transition-all duration-500"
-                            style={{
-                              height: `${(h.visits / maxHourlyVisits) * 100}%`,
-                              background: h.hour === peakHour?.hour && h.visits > 0 ? GOLD : GREEN,
-                              minHeight: h.visits > 0 ? "3px" : "0",
-                            }}
-                          />
+                    {(() => {
+                      // Dot-matrix: one column per hour, one lit dot per visit.
+                      const DOT_CAP = 8;
+                      const maxVisits = hourly.reduce((m, h) => Math.max(m, h.visits), 0);
+                      const rows = Math.min(Math.max(maxVisits, 1), DOT_CAP);
+                      return (
+                        <div>
+                          <div className="flex gap-[3px]">
+                            {hourly.map((h) => {
+                              const filled = Math.min(h.visits, rows);
+                              const overflow = h.visits - filled;
+                              const isPeak = h.hour === peakHour?.hour && h.visits > 0;
+                              return (
+                                <div
+                                  key={h.hour}
+                                  className="flex-1 flex flex-col items-center justify-end gap-1 min-w-0"
+                                  style={{ minHeight: "7.5rem" }}
+                                  title={`${String(h.hour).padStart(2, "0")}:00 · ${h.visits} 次访问`}
+                                >
+                                  {overflow > 0 && (
+                                    <span className="num-display" style={{ fontSize: "0.55rem", lineHeight: 1, color: isPeak ? GOLD : GREEN }}>
+                                      +{overflow}
+                                    </span>
+                                  )}
+                                  <div className="flex flex-col-reverse items-center gap-[4px]">
+                                    {Array.from({ length: rows }, (_, i) => (
+                                      <span
+                                        key={i}
+                                        className="rounded-full transition-all duration-500"
+                                        style={{
+                                          width: 7,
+                                          height: 7,
+                                          background: i < filled ? (isPeak ? GOLD : GREEN) : "transparent",
+                                          boxShadow: i < filled ? "none" : "inset 0 0 0 1px var(--panel-border)",
+                                        }}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div className="flex gap-[3px] mt-2">
+                            {hourly.map((h) => (
+                              <div key={h.hour} className="flex-1 text-center text-muted-foreground/55" style={{ fontSize: "0.58rem" }}>
+                                {h.hour % 3 === 0 ? String(h.hour).padStart(2, "0") : ""}
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-3 text-muted-foreground/55" style={{ fontSize: "0.62rem" }}>
+                            <span className="inline-block rounded-full" style={{ width: 6, height: 6, background: GREEN }} />
+                            一个圆点 = 1 次访问，单小时超过 {DOT_CAP} 次以 +N 折叠
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                    <div className="flex gap-[2px] mt-2">
-                      {hourly.map((h) => (
-                        <div key={h.hour} className="flex-1 text-center text-muted-foreground/55" style={{ fontSize: "0.58rem" }}>
-                          {h.hour % 3 === 0 ? String(h.hour).padStart(2, "0") : ""}
-                        </div>
-                      ))}
-                    </div>
+                      );
+                    })()}
                   </div>
                 )}
               </Panel>

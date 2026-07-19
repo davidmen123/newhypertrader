@@ -417,8 +417,11 @@ export async function getVisitorHourlyStats(params?: {
     .groupBy(sql`EXTRACT(HOUR FROM ${createdAtUtc8})`)
     .orderBy(sql`EXTRACT(HOUR FROM ${createdAtUtc8})`);
 
-  const total = rows.reduce((sum: number, row: { visits: number }) => sum + row.visits, 0);
-  const byHour = new Map<number, number>(rows.map((row: { hour: number; visits: number }) => [row.hour, row.visits]));
+  // postgres.js returns EXTRACT (numeric) and COUNT (bigint) as strings, so
+  // coerce explicitly — raw string keys made every byHour.get(number) miss
+  // and the hourly chart stayed all-zero.
+  const total = rows.reduce((sum: number, row: { visits: number }) => sum + Number(row.visits), 0);
+  const byHour = new Map<number, number>(rows.map((row: { hour: number; visits: number }) => [Number(row.hour), Number(row.visits)]));
 
   const fullDay: Array<{ hour: number; visits: number; percentage: number }> = [];
   for (let h = 0; h < 24; h++) {
