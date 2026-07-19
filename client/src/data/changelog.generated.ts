@@ -2,6 +2,7 @@
 // Add a trailer to a commit, then run `npm run changelog` to refresh this file:
 //   更新: <中文一句话>  → minor bump（新功能）
 //   修复: <中文一句话>  → patch bump（问题修复）
+//   重大: <中文一句话>  → major bump（不兼容变更）
 //   Changelog-EN: <English>  (optional; falls back to the zh line)
 
 export interface ChangelogEntry {
