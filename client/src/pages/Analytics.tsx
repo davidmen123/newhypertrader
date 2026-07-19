@@ -172,17 +172,33 @@ function AnalyticsDashboard() {
   const geo = data?.geo ?? [];
   const recent = data?.recent ?? [];
 
+  // Pad days without data inside the selected range so the trend chart always
+  // shows the full period — a single day of data otherwise renders as one
+  // lonely bar that looks like an empty/broken chart.
+  const paddedDaily = (() => {
+    if (daily.length === 0) return daily;
+    const byDate = new Map(daily.map((d) => [d.date, d]));
+    const out: Array<(typeof daily)[number]> = [];
+    const start = new Date(`${dateRange.startDate}T00:00:00.000+08:00`).getTime();
+    const end = new Date(`${dateRange.endDate}T00:00:00.000+08:00`).getTime();
+    for (let t = start; t <= end; t += DAY_MS) {
+      const key = utc8DateStr(t);
+      out.push(byDate.get(key) ?? { date: key, visits: 0, uniqueIps: 0, avgDuration: 0 });
+    }
+    return out;
+  })();
+
   const deviceTotal = device.reduce((sum, d) => sum + d.count, 0);
   const mobileCount = device.filter((d) => d.deviceType === "mobile" || d.deviceType === "tablet").reduce((sum, d) => sum + d.count, 0);
   const mobilePct = deviceTotal > 0 ? Math.round((mobileCount / deviceTotal) * 100) : 0;
 
-  const maxDailyVisits = daily.reduce((m, d) => Math.max(m, d.visits), 0) || 1;
+  const maxDailyVisits = paddedDaily.reduce((m, d) => Math.max(m, d.visits), 0) || 1;
   const maxHourlyVisits = hourly.reduce((m, h) => Math.max(m, h.visits), 0) || 1;
   const peakHour = hourly.reduce((best, h) => (h.visits > (best?.visits ?? -1) ? h : best), hourly[0]);
   const maxGeoCount = geo.reduce((m, g) => Math.max(m, g.count), 0) || 1;
   const maxBrowserCount = browser.reduce((m, b) => Math.max(m, b.count), 0) || 1;
   const maxOsCount = os.reduce((m, o) => Math.max(m, o.count), 0) || 1;
-  const labelEvery = Math.max(1, Math.ceil(daily.length / 15));
+  const labelEvery = Math.max(1, Math.ceil(paddedDaily.length / 15));
 
   return (
     <div className="min-h-screen px-4 sm:px-8 py-6 sm:py-8" style={{ background: "var(--background)", color: "var(--foreground)" }}>
@@ -274,7 +290,7 @@ function AnalyticsDashboard() {
               ) : (
                 <div>
                   <div className="flex items-end gap-[3px]" style={{ height: "10rem" }}>
-                    {daily.map((d) => (
+                    {paddedDaily.map((d) => (
                       <div key={d.date} className="flex-1 flex items-end justify-center gap-[2px] min-w-0" title={`${d.date} · 访问 ${d.visits} · 访客 ${d.uniqueIps}`}>
                         <div
                           className="flex-1 rounded-t-sm transition-all duration-500"
@@ -288,9 +304,9 @@ function AnalyticsDashboard() {
                     ))}
                   </div>
                   <div className="flex gap-[3px] mt-2">
-                    {daily.map((d, i) => (
+                    {paddedDaily.map((d, i) => (
                       <div key={d.date} className="flex-1 text-center text-muted-foreground/55 truncate" style={{ fontSize: "0.58rem" }}>
-                        {i % labelEvery === 0 || i === daily.length - 1 ? formatDayLabel(d.date) : ""}
+                        {i % labelEvery === 0 || i === paddedDaily.length - 1 ? formatDayLabel(d.date) : ""}
                       </div>
                     ))}
                   </div>
