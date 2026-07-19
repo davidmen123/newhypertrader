@@ -10,52 +10,16 @@ import { hyperliquidRouter } from "./routers/hyperliquid.js";
 import { feedbackRouter } from "./routers/feedback.js";
 import { incrementPageViews, getPageViews, logVisitor, updateVisitorDuration, getVisitorSummary, getVisitorLogCount, getDailyVisitorStats, getVisitorDeviceStats, getVisitorOsStats, getVisitorBrowserStats, getVisitorHourlyStats, getVisitorGeoStats, getRecentVisitors } from "./db.js";
 import { getIpGeo } from "./_core/ipGeo.js";
-
-function parseUserAgent(userAgent?: string) {
-  if (!userAgent) return { deviceType: undefined as "desktop" | "mobile" | "tablet" | undefined, os: undefined as string | undefined, browser: undefined as string | undefined };
-
-  const ua = userAgent.toLowerCase();
-
-  let deviceType: "desktop" | "mobile" | "tablet" | undefined;
-  if (ua.includes("mobile") || ua.includes("android") && !ua.includes("tablet")) {
-    deviceType = "mobile";
-  } else if (ua.includes("tablet") || (ua.includes("ipad") && !ua.includes("mobile"))) {
-    deviceType = "tablet";
-  } else {
-    deviceType = "desktop";
-  }
-
-  let os: string | undefined;
-  if (ua.includes("windows")) {
-    os = "Windows";
-  } else if (ua.includes("mac os") || ua.includes("macos")) {
-    os = "MacOS";
-  } else if (ua.includes("iphone") || ua.includes("ipad") || ua.includes("ios")) {
-    os = "iOS";
-  } else if (ua.includes("android")) {
-    os = "Android";
-  } else if (ua.includes("linux")) {
-    os = "Linux";
-  }
-
-  let browser: string | undefined;
-  if (ua.includes("chrome") && !ua.includes("edg")) {
-    browser = "Chrome";
-  } else if (ua.includes("safari") && !ua.includes("chrome")) {
-    browser = "Safari";
-  } else if (ua.includes("firefox")) {
-    browser = "Firefox";
-  } else if (ua.includes("edg")) {
-    browser = "Edge";
-  } else if (ua.includes("opera") || ua.includes("opr")) {
-    browser = "Opera";
-  }
-
-  return { deviceType, os, browser };
-}
+import { parseUserAgent } from "./_core/userAgent.js";
 
 function getClientIp(req: { headers: Record<string, string | string[] | undefined> }): string {
-  const ip = req.headers["x-forwarded-for"] || req.headers["x-real-ip"] || req.headers["remote-addr"];
+  // On Vercel, x-vercel-forwarded-for is set by the edge and contains only the
+  // real client IP, so prefer it over the client-spoofable x-forwarded-for.
+  const ip =
+    req.headers["x-vercel-forwarded-for"] ||
+    req.headers["x-forwarded-for"] ||
+    req.headers["x-real-ip"] ||
+    req.headers["remote-addr"];
   if (Array.isArray(ip)) return ip[0] || "unknown";
   if (typeof ip === "string") {
     const parts = ip.split(",");

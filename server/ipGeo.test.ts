@@ -1,0 +1,117 @@
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+
+vi.mock("axios", () => ({
+  default: { get: vi.fn() },
+}));
+
+import axios from "axios";
+import {
+  decodeGeoResponse,
+  getIpGeo,
+  parseAmapResponse,
+  parseIpApiResponse,
+  parsePconlineResponse,
+} from "./_core/ipGeo";
+
+const mockedGet = axios.get as ReturnType<typeof vi.fn>;
+
+// GBK-encoded bytes of: {"pro":"四川省","city":"成都市","err":""}
+const PCONLINE_GBK = Buffer.from([
+  0x7b, 0x22, 0x70, 0x72, 0x6f, 0x22, 0x3a, 0x22, // {"pro":"
+  0xcb, 0xc4, 0xb4, 0xa8, 0xca, 0xa1, // 四川省
+  0x22, 0x2c, 0x22, 0x63, 0x69, 0x74, 0x79, 0x22, 0x3a, 0x22, // ","city":"
+  0xb3, 0xc9, 0xb6, 0xbc, 0xca, 0xd0, // 成都市
+  0x22, 0x2c, 0x22, 0x65, 0x72, 0x72, 0x22, 0x3a, 0x22, 0x22, 0x7d, // ","err":""}
+]);
+
+describe("decodeGeoResponse", () => {
+  it("decodes GBK payloads (pconline)", () => {
+    expect(decodeGeoResponse(PCONLINE_GBK)).toBe('{"pro":"四川省","city":"成都市","err":""}');
+  });
+
+  it("decodes plain UTF-8 payloads", () => {
+    const buf = Buffer.from('{"pro":"四川省","city":"成都市"}', "utf-8");
+    expect(decodeGeoResponse(buf)).toBe('{"pro":"四川省","city":"成都市"}');
+  });
+});
+
+describe("response parsers", () => {
+  it("parses an amap success response", () => {
+    expect(parseAmapResponse({ status: "1", province: "四川省", city: "成都市" })).toEqual({
+      region: "四川省",
+      city: "成都市",
+    });
+  });
+
+  it("rejects amap overseas responses (empty arrays)", () => {
+    expect(parseAmapResponse({ status: "1", province: [], city: [] })).toBeNull();
+    expect(parseAmapResponse({ status: "0" })).toBeNull();
+    expect(parseAmapResponse(null)).toBeNull();
+  });
+
+  it("parses a pconline success response", () => {
+    expect(parsePconlineResponse({ pro: "四川省", city: "成都市", err: "" })).toEqual({
+      region: "四川省",
+      city: "成都市",
+    });
+  });
+
+  it("rejects pconline overseas/error responses", () => {
+    expect(parsePconlineResponse({ pro: "", city: "", err: "" })).toBeNull();
+    expect(parsePconlineResponse({ pro: "", city: "", err: "noparse" })).toBeNull();
+    expect(parsePconlineResponse(null)).toBeNull();
+  });
+
+  it("parses an ip-api response", () => {
+    expect(parseIpApiResponse({ regionName: "California", city: "San Jose" })).toEqual({
+      region: "California",
+      city: "San Jose",
+    });
+  });
+});
+
+describe("getIpGeo", () => {
+  const savedKey = process.env.AMAP_IP_GEO_KEY;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    delete process.env.AMAP_IP_GEO_KEY;
+  });
+
+  afterEach(() => {
+    if (savedKey !== undefined) process.env.AMAP_IP_GEO_KEY = savedKey;
+  });
+
+  it("short-circuits loopback and private IPs without any lookup", async () => {
+    expect(await getIpGeo("127.0.0.1")).toEqual({ region: "本地", city: "" });
+    expect(await getIpGeo("192.168.1.8")).toEqual({ region: "内网", city: "" });
+    expect(await getIpGeo("10.0.0.3")).toEqual({ region: "内网", city: "" });
+    expect(await getIpGeo("unknown")).toEqual({ region: "本地", city: "" });
+    expect(mockedGet).not.toHaveBeenCalled();
+  });
+
+  it("resolves a domestic IP via pconline when amap is not configured", async () => {
+    mockedGet.mockResolvedValueOnce({ data: PCONLINE_GBK });
+
+    expect(await getIpGeo("118.112.1.1")).toEqual({ region: "四川省", city: "成都市" });
+
+    expect(mockedGet).toHaveBeenCalledTimes(1);
+    expect(mockedGet.mock.calls[0][0]).toContain("pconline");
+  });
+
+  it("falls back to ip-api when pconline fails", async () => {
+    mockedGet.mockRejectedValueOnce(new Error("timeout"));
+    mockedGet.mockResolvedValueOnce({ data: { regionName: "California", city: "San Jose" } });
+
+    expect(await getIpGeo("8.8.8.8")).toEqual({ region: "California", city: "San Jose" });
+
+    expect(mockedGet).toHaveBeenCalledTimes(2);
+    expect(mockedGet.mock.calls[1][0]).toContain("ip-api.com");
+  });
+
+  it("returns 未知地区 when every provider fails", async () => {
+    mockedGet.mockRejectedValue(new Error("network down"));
+
+    expect(await getIpGeo("203.0.113.9")).toEqual({ region: "未知地区", city: "" });
+  });
+});
