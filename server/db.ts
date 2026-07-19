@@ -431,6 +431,33 @@ export async function getVisitorHourlyStats(params?: {
   return fullDay;
 }
 
+// Day × hour breakdown for the GitHub-style visit heatmap.
+export async function getVisitorDailyHourlyStats(params?: {
+  startDate?: string;
+  endDate?: string;
+}): Promise<Array<{ date: string; hour: number; visits: number }>> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const rows = await db
+    .select({
+      date: sql<string>`DATE(${createdAtUtc8})`,
+      hour: sql<number>`EXTRACT(HOUR FROM ${createdAtUtc8})`,
+      visits: sql<number>`COUNT(*)`,
+    })
+    .from(visitorLogs)
+    .where(visitorAnalyticsWhere(params))
+    .groupBy(sql`DATE(${createdAtUtc8})`, sql`EXTRACT(HOUR FROM ${createdAtUtc8})`)
+    .orderBy(sql`DATE(${createdAtUtc8})`, sql`EXTRACT(HOUR FROM ${createdAtUtc8})`);
+
+  // postgres.js returns EXTRACT (numeric) and COUNT (bigint) as strings.
+  return rows.map((row: { date: string; hour: number; visits: number }) => ({
+    date: row.date,
+    hour: Number(row.hour),
+    visits: Number(row.visits),
+  }));
+}
+
 export async function getVisitorGeoStats(params?: {
   startDate?: string;
   endDate?: string;

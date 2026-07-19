@@ -165,6 +165,7 @@ function AnalyticsDashboard() {
 
   const summary = data?.summary ?? { visits: 0, uniqueIps: 0, avgDuration: 0 };
   const daily = data?.daily ?? [];
+  const dailyHourly = data?.dailyHourly ?? [];
   const device = data?.device ?? [];
   const os = data?.os ?? [];
   const browser = data?.browser ?? [];
@@ -331,57 +332,56 @@ function AnalyticsDashboard() {
                 ) : (
                   <div>
                     {(() => {
-                      // Dot-matrix: one column per hour, one lit dot per visit.
-                      const DOT_CAP = 8;
-                      const maxVisits = hourly.reduce((m, h) => Math.max(m, h.visits), 0);
-                      const rows = Math.min(Math.max(maxVisits, 1), DOT_CAP);
+                      // GitHub-contributions-style heatmap:
+                      // rows = days in range, columns = hours (UTC+8),
+                      // cell color intensity = visit count.
+                      const visitsByDayHour = new Map<string, number>();
+                      let maxCell = 0;
+                      for (const c of dailyHourly) {
+                        visitsByDayHour.set(`${c.date}|${c.hour}`, c.visits);
+                        if (c.visits > maxCell) maxCell = c.visits;
+                      }
+                      const days = paddedDaily.map((d) => d.date);
+                      const hours = Array.from({ length: 24 }, (_, h) => h);
+                      const alphaFor = (v: number) => 0.25 + 0.75 * (v / (maxCell || 1));
                       return (
                         <div>
-                          <div className="flex gap-[3px]">
-                            {hourly.map((h) => {
-                              const filled = Math.min(h.visits, rows);
-                              const overflow = h.visits - filled;
-                              const isPeak = h.hour === peakHour?.hour && h.visits > 0;
-                              return (
-                                <div
-                                  key={h.hour}
-                                  className="flex-1 flex flex-col items-center justify-end gap-1 min-w-0"
-                                  style={{ minHeight: "7.5rem" }}
-                                  title={`${String(h.hour).padStart(2, "0")}:00 · ${h.visits} 次访问`}
-                                >
-                                  {overflow > 0 && (
-                                    <span className="num-display" style={{ fontSize: "0.55rem", lineHeight: 1, color: isPeak ? GOLD : GREEN }}>
-                                      +{overflow}
-                                    </span>
-                                  )}
-                                  <div className="flex flex-col-reverse items-center gap-[4px]">
-                                    {Array.from({ length: rows }, (_, i) => (
-                                      <span
-                                        key={i}
-                                        className="rounded-full transition-all duration-500"
-                                        style={{
-                                          width: 7,
-                                          height: 7,
-                                          background: i < filled ? (isPeak ? GOLD : GREEN) : "transparent",
-                                          boxShadow: i < filled ? "none" : "inset 0 0 0 1px var(--panel-border)",
-                                        }}
-                                      />
-                                    ))}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                          <div className="flex gap-[3px] mt-2">
-                            {hourly.map((h) => (
-                              <div key={h.hour} className="flex-1 text-center text-muted-foreground/55" style={{ fontSize: "0.58rem" }}>
-                                {h.hour % 3 === 0 ? String(h.hour).padStart(2, "0") : ""}
+                          <div className="flex gap-[3px] mb-[3px]" style={{ paddingLeft: 40 }}>
+                            {hours.map((h) => (
+                              <div key={h} className="flex-1 text-center text-muted-foreground/55" style={{ fontSize: "0.52rem" }}>
+                                {h % 3 === 0 ? String(h).padStart(2, "0") : ""}
                               </div>
                             ))}
                           </div>
-                          <div className="flex items-center gap-1.5 mt-3 text-muted-foreground/55" style={{ fontSize: "0.62rem" }}>
-                            <span className="inline-block rounded-full" style={{ width: 6, height: 6, background: GREEN }} />
-                            一个圆点 = 1 次访问，单小时超过 {DOT_CAP} 次以 +N 折叠
+                          {days.map((day) => (
+                            <div key={day} className="flex gap-[3px] mb-[3px] items-center">
+                              <div className="shrink-0 text-right text-muted-foreground/55" style={{ width: 36, fontSize: "0.52rem" }}>
+                                {formatDayLabel(day)}
+                              </div>
+                              {hours.map((h) => {
+                                const v = visitsByDayHour.get(`${day}|${h}`) ?? 0;
+                                return (
+                                  <span
+                                    key={h}
+                                    className="flex-1 rounded-[2px] transition-all duration-300"
+                                    style={{
+                                      aspectRatio: "1",
+                                      background: v === 0 ? "var(--surface-subtle)" : GREEN,
+                                      opacity: v === 0 ? 1 : alphaFor(v),
+                                      boxShadow: v === 0 ? "inset 0 0 0 1px var(--panel-border)" : "none",
+                                    }}
+                                    title={`${day} ${String(h).padStart(2, "0")}:00 · ${v} 次访问`}
+                                  />
+                                );
+                              })}
+                            </div>
+                          ))}
+                          <div className="flex items-center justify-end gap-1 mt-2 text-muted-foreground/55" style={{ fontSize: "0.6rem" }}>
+                            少
+                            {[0.25, 0.5, 0.75, 1].map((a) => (
+                              <span key={a} className="rounded-[2px]" style={{ width: 10, height: 10, background: GREEN, opacity: a }} />
+                            ))}
+                            多
                           </div>
                         </div>
                       );

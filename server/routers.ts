@@ -8,7 +8,7 @@ import { calendarRouter } from "./routers/calendar.js";
 import { bitgetRouter } from "./routers/bitget.js";
 import { hyperliquidRouter } from "./routers/hyperliquid.js";
 import { feedbackRouter } from "./routers/feedback.js";
-import { incrementPageViews, getPageViews, logVisitor, updateVisitorDuration, getVisitorSummary, getVisitorLogCount, getDailyVisitorStats, getVisitorDeviceStats, getVisitorOsStats, getVisitorBrowserStats, getVisitorHourlyStats, getVisitorGeoStats, getRecentVisitors } from "./db.js";
+import { incrementPageViews, getPageViews, logVisitor, updateVisitorDuration, getVisitorSummary, getVisitorLogCount, getDailyVisitorStats, getVisitorDeviceStats, getVisitorOsStats, getVisitorBrowserStats, getVisitorHourlyStats, getVisitorDailyHourlyStats, getVisitorGeoStats, getRecentVisitors } from "./db.js";
 import { getIpGeo, isTimezoneMismatch } from "./_core/ipGeo.js";
 import { parseUserAgent } from "./_core/userAgent.js";
 
@@ -161,18 +161,19 @@ export const appRouter = router({
       )
       .query(async ({ input }) => {
         const range = { startDate: input?.startDate, endDate: input?.endDate };
-        const [summary, daily, device, os, browser, hourly, geo, recent, totalRecords] = await Promise.all([
+        const [summary, daily, device, os, browser, hourly, dailyHourly, geo, recent, totalRecords] = await Promise.all([
           getVisitorSummary(range),
           getDailyVisitorStats(range),
           getVisitorDeviceStats(range),
           getVisitorOsStats(range),
           getVisitorBrowserStats(range),
           getVisitorHourlyStats(range),
+          getVisitorDailyHourlyStats(range),
           getVisitorGeoStats(range),
           getRecentVisitors(15),
           getVisitorLogCount(),
         ]);
-        return { summary, daily, device, os, browser, hourly, geo, recent, totalRecords };
+        return { summary, daily, device, os, browser, hourly, dailyHourly, geo, recent, totalRecords };
       }),
   }),
 });
