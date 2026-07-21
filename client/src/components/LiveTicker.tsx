@@ -5,6 +5,8 @@
 import { useState } from "react";
 import { useLang } from "@/contexts/LangContext";
 import { trpc } from "@/lib/trpc";
+import { Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmt(n: number | null | undefined, decimals = 2): string {
@@ -199,6 +201,34 @@ export default function LiveTicker() {
     <div>
       {/* Timeframe toggle for the EMA/RSI readings */}
       <div className="flex items-center justify-end gap-1 mb-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Info
+              className="text-muted-foreground/60 cursor-help mr-1"
+              style={{ width: "12px", height: "12px" }}
+            />
+          </TooltipTrigger>
+          <TooltipContent className="max-w-[280px] text-xs" style={{ fontSize: "0.7rem" }}>
+            <div className="space-y-1">
+              <div>{lang === "zh" ? `当前选择：${timeframe}` : `Selected: ${timeframe}`}</div>
+              <div>
+                {lang === "zh"
+                  ? "▲ 现价高于 EMA20；▼ 现价低于 EMA20"
+                  : "▲ Price above EMA20; ▼ price below EMA20"}
+              </div>
+              <div>
+                {lang === "zh"
+                  ? "RSI14：≥70 偏热，≤30 偏弱"
+                  : "RSI14: ≥70 overbought, ≤30 oversold"}
+              </div>
+              <div>
+                {lang === "zh"
+                  ? "4H 数据不可用时自动显示 1D"
+                  : "Falls back to 1D when 4H data is unavailable"}
+              </div>
+            </div>
+          </TooltipContent>
+        </Tooltip>
         {(["4H", "1D"] as const).map((tf) => (
           <button
             key={tf}
@@ -210,22 +240,6 @@ export default function LiveTicker() {
           </button>
         ))}
       </div>
-
-      <p
-        role="note"
-        className="mb-2"
-        style={{
-          color: "var(--text-faint)",
-          fontFamily: "DM Mono, monospace",
-          fontSize: "0.58rem",
-          lineHeight: 1.55,
-          letterSpacing: "0.02em",
-        }}
-      >
-        {lang === "zh"
-          ? `说明（当前选择 ${timeframe}）：▲ 现价高于 EMA20，▼ 现价低于 EMA20；RSI 为 14 周期，≥70 偏热，≤30 偏弱。卡片左侧周期标签为实际数据周期；若 4H 数据不可用，会自动显示 1D。`
-          : `Note (selected ${timeframe}): ▲ price is above EMA20; ▼ price is below EMA20. RSI uses 14 periods: ≥70 is overbought and ≤30 is oversold. The timeframe tag on each card shows the actual data used; 4H falls back to 1D when unavailable.`}
-      </p>
 
       {/* BTC · ETH · VIX · DXY · GOLD · NAS100 · SSE · HSI · N225 · KOSPI */}
       <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-2">
