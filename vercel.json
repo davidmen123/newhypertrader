@@ -2,6 +2,13 @@
   "installCommand": "corepack pnpm install --no-frozen-lockfile",
   "buildCommand": "corepack pnpm exec vite build",
   "outputDirectory": "dist/public",
+  "redirects": [
+    {
+      "source": "/option",
+      "destination": "https://100xplan.manus.space/",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/:path*",

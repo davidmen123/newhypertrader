@@ -14,6 +14,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.50.0",
+    "date": "2026-07-22",
+    "zh": "新增期权计划入口",
+    "en": "Added options plan entry"
+  },
+  {
     "version": "1.49.0",
     "date": "2026-07-21",
     "zh": "新增独立提问窗口",
