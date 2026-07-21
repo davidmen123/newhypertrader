@@ -55,6 +55,7 @@ const EXCLUDED_SHAS = new Set([
 // read too much like an internal commit note. Rewritten here (keyed by SHA) so
 // the original commit messages stay untouched. Keep new zh text <= 15 chars.
 const OVERRIDES = new Map([
+  ["68dab2d", { zh: "新增访问页", en: "Added access page" }],
   ["c361f1a", { zh: "行情新增日经与韩国指数", en: "Added Nikkei and KOSPI tickers" }],
   ["2a3b5cf", { zh: "行情卡新增EMA20与RSI", en: "Added EMA20 and RSI to ticker cards" }],
   ["2432f1f", { zh: "实时更新指示移至标题栏", en: "Moved the live indicator to the header" }],
