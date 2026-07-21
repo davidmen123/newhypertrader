@@ -10,6 +10,7 @@ import AccountOverview from "@/components/AccountOverview";
 import EconomicCalendar from "@/components/EconomicCalendar";
 import TradeHistory from "@/components/TradeHistory";
 import EarningsCalendar from "@/components/EarningsCalendar";
+import PositionCalculator from "@/components/PositionCalculator";
 import Changelog from "@/components/Changelog";
 import { useLang } from "@/contexts/LangContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -343,17 +344,22 @@ export default function Home() {
             <OrderHistoryTable />
           </CollapsibleSection>
 
-          {/* 7. Economic Calendar — default collapsed */}
+          {/* 7. Interactive tools — keep the single entry card visible */}
+          <CollapsibleSection label={lang === "zh" ? "互动中心" : "Interactive Tools"} defaultOpen={true}>
+            <PositionCalculator />
+          </CollapsibleSection>
+
+          {/* 8. Economic Calendar — default collapsed */}
           <CollapsibleSection label={tr.economicCalendar} defaultOpen={false}>
             <EconomicCalendar />
           </CollapsibleSection>
 
-          {/* 8. Earnings Calendar — default collapsed */}
+          {/* 9. Earnings Calendar — default collapsed */}
           <CollapsibleSection label={tr.earningsCalendar} defaultOpen={false}>
             <EarningsCalendar />
           </CollapsibleSection>
 
-          {/* 9. FAQ — default collapsed, expands on demand to show all entries */}
+          {/* 10. FAQ — default collapsed, expands on demand to show all entries */}
           <CollapsibleSection label={lang === "zh" ? "常见问题" : "FAQ"} defaultOpen={false}>
             <FaqSection />
           </CollapsibleSection>
