@@ -6,6 +6,7 @@ describe("calculatePosition", () => {
     expect(calculatePosition(10_000, 1, 100_000, 98_000)).toEqual({
       direction: "long",
       riskAmount: 100,
+      stopDistance: 2_000,
       stopDistancePercent: 2,
       notionalValue: 5_000,
       quantity: 0.05,
@@ -17,6 +18,7 @@ describe("calculatePosition", () => {
 
     expect(result?.direction).toBe("short");
     expect(result?.riskAmount).toBe(100);
+    expect(result?.stopDistance).toBe(50);
     expect(result?.quantity).toBe(2);
     expect(result?.notionalValue).toBe(4_000);
   });

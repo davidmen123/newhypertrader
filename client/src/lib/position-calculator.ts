@@ -1,6 +1,7 @@
 export interface PositionCalculation {
   direction: "long" | "short";
   riskAmount: number;
+  stopDistance: number;
   stopDistancePercent: number;
   notionalValue: number;
   quantity: number;
@@ -32,13 +33,14 @@ export function calculatePosition(
   const quantity = riskAmount / priceDistance;
   const notionalValue = quantity * entryPrice;
 
-  if (![stopDistancePercent, riskAmount, quantity, notionalValue].every(Number.isFinite)) {
+  if (![priceDistance, stopDistancePercent, riskAmount, quantity, notionalValue].every(Number.isFinite)) {
     return null;
   }
 
   return {
     direction: stopPrice < entryPrice ? "long" : "short",
     riskAmount,
+    stopDistance: priceDistance,
     stopDistancePercent,
     notionalValue,
     quantity,

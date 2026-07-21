@@ -14,6 +14,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.47.1",
+    "date": "2026-07-21",
+    "zh": "优化仓位计算器布局",
+    "en": "Refined position calculator layout"
+  },
+  {
     "version": "1.47.0",
     "date": "2026-07-21",
     "zh": "新增仓位计算器",

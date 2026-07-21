@@ -110,7 +110,7 @@ export default function PositionCalculator() {
         </DialogHeader>
 
         <div className="space-y-5">
-          <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+          <div className="grid gap-4 sm:grid-cols-2 sm:items-start">
             <div className="space-y-2">
               <Label htmlFor="position-account-capital">
                 {zh ? "账户资金" : "Account capital"}
@@ -135,7 +135,7 @@ export default function PositionCalculator() {
 
             <div className="space-y-2">
               <Label>{zh ? "单笔风险" : "Risk per trade"}</Label>
-              <div className="flex rounded-md border border-input p-0.5" role="group" aria-label={zh ? "选择单笔风险比例" : "Choose risk percentage"}>
+              <div className="flex w-full rounded-md border border-input p-0.5" role="group" aria-label={zh ? "选择单笔风险比例" : "Choose risk percentage"}>
                 {RISK_OPTIONS.map((option) => {
                   const selected = riskPercent === option;
                   return (
@@ -144,7 +144,7 @@ export default function PositionCalculator() {
                       type="button"
                       onClick={() => setRiskPercent(option)}
                       aria-pressed={selected}
-                      className={`h-8 rounded px-3 text-xs transition-colors ${
+                      className={`h-8 flex-1 rounded px-3 text-xs transition-colors ${
                         selected
                           ? "bg-primary text-primary-foreground"
                           : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -239,7 +239,9 @@ export default function PositionCalculator() {
 
                 <div className="mt-4 border-t border-border/70 pt-3 text-xs text-muted-foreground">
                   <span>
-                    {zh ? "止损距离" : "Stop distance"} {formatNumber(result.stopDistancePercent)}%
+                    {zh ? "止损距离 = |入场价 − 止损价|：" : "Stop distance = |entry − stop|: "}
+                    {formatNumber(result.stopDistance, 8)}
+                    {zh ? "（" : " ("}{formatNumber(result.stopDistancePercent)}%{zh ? "）" : ")"}
                   </span>
                 </div>
               </>
