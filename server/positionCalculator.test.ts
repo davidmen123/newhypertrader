@@ -23,6 +23,13 @@ describe("calculatePosition", () => {
     expect(result?.notionalValue).toBe(4_000);
   });
 
+  it("supports a custom risk percentage", () => {
+    const result = calculatePosition(5_000, 1.25, 100, 95);
+
+    expect(result?.riskAmount).toBe(62.5);
+    expect(result?.notionalValue).toBe(1_250);
+  });
+
   it("rejects invalid or equal prices", () => {
     expect(calculatePosition(10_000, 1, 0, 98_000)).toBeNull();
     expect(calculatePosition(10_000, 1, 100_000, 100_000)).toBeNull();

@@ -344,8 +344,8 @@ export default function Home() {
             <OrderHistoryTable />
           </CollapsibleSection>
 
-          {/* 7. Interactive tools — keep the single entry card visible */}
-          <CollapsibleSection label={lang === "zh" ? "互动中心" : "Interactive Tools"} defaultOpen={true}>
+          {/* 7. Trading tools — keep the single entry card visible */}
+          <CollapsibleSection label={lang === "zh" ? "辅助工具" : "Trading Tools"} defaultOpen={true}>
             <PositionCalculator />
           </CollapsibleSection>
 

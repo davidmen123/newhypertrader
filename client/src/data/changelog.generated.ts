@@ -14,6 +14,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.48.0",
+    "date": "2026-07-21",
+    "zh": "仓位计算支持自定义风险",
+    "en": "Added custom risk to position calculator"
+  },
+  {
     "version": "1.47.1",
     "date": "2026-07-21",
     "zh": "优化仓位计算器布局",

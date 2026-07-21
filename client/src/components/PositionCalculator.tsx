@@ -13,15 +13,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-const ACCOUNT_CAPITAL_KEY = "pnlnote-position-calculator-capital";
+const ACCOUNT_CAPITAL_KEY = "pnlnote-position-calculator-capital-v2";
 const RISK_OPTIONS = [0.5, 1, 2] as const;
+type RiskSelection = (typeof RISK_OPTIONS)[number] | "custom";
 
 function initialAccountCapital(): string {
-  if (typeof window === "undefined") return "10000";
+  if (typeof window === "undefined") return "5000";
   try {
-    return window.localStorage.getItem(ACCOUNT_CAPITAL_KEY) ?? "10000";
+    return window.localStorage.getItem(ACCOUNT_CAPITAL_KEY) ?? "5000";
   } catch {
-    return "10000";
+    return "5000";
   }
 }
 
@@ -41,9 +42,14 @@ export default function PositionCalculator() {
   const { lang } = useLang();
   const zh = lang === "zh";
   const [accountCapital, setAccountCapital] = useState(initialAccountCapital);
-  const [riskPercent, setRiskPercent] = useState<(typeof RISK_OPTIONS)[number]>(1);
+  const [riskSelection, setRiskSelection] = useState<RiskSelection>(1);
+  const [customRiskPercent, setCustomRiskPercent] = useState("");
   const [entryPrice, setEntryPrice] = useState("");
   const [stopPrice, setStopPrice] = useState("");
+  const parsedCustomRisk = parsePositiveNumber(customRiskPercent);
+  const riskPercent = riskSelection === "custom"
+    ? parsedCustomRisk <= 100 ? parsedCustomRisk : 0
+    : riskSelection;
 
   useEffect(() => {
     const capital = parsePositiveNumber(accountCapital);
@@ -110,7 +116,7 @@ export default function PositionCalculator() {
         </DialogHeader>
 
         <div className="space-y-5">
-          <div className="grid gap-4 sm:grid-cols-2 sm:items-start">
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="position-account-capital">
                 {zh ? "账户资金" : "Account capital"}
@@ -137,12 +143,12 @@ export default function PositionCalculator() {
               <Label>{zh ? "单笔风险" : "Risk per trade"}</Label>
               <div className="flex w-full rounded-md border border-input p-0.5" role="group" aria-label={zh ? "选择单笔风险比例" : "Choose risk percentage"}>
                 {RISK_OPTIONS.map((option) => {
-                  const selected = riskPercent === option;
+                  const selected = riskSelection === option;
                   return (
                     <button
                       key={option}
                       type="button"
-                      onClick={() => setRiskPercent(option)}
+                      onClick={() => setRiskSelection(option)}
                       aria-pressed={selected}
                       className={`h-8 flex-1 rounded px-3 text-xs transition-colors ${
                         selected
@@ -154,7 +160,46 @@ export default function PositionCalculator() {
                     </button>
                   );
                 })}
+                <button
+                  type="button"
+                  onClick={() => setRiskSelection("custom")}
+                  aria-pressed={riskSelection === "custom"}
+                  className={`h-8 flex-1 rounded px-3 text-xs transition-colors ${
+                    riskSelection === "custom"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  {zh ? "自定义" : "Custom"}
+                </button>
               </div>
+              {riskSelection === "custom" && (
+                <div>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      max="100"
+                      step="any"
+                      value={customRiskPercent}
+                      onChange={(event) => setCustomRiskPercent(event.target.value)}
+                      placeholder={zh ? "输入风险比例" : "Enter risk percentage"}
+                      className="pr-10 num-display"
+                      aria-label={zh ? "自定义单笔风险比例" : "Custom risk percentage"}
+                      aria-invalid={customRiskPercent !== "" && riskPercent === 0}
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground">
+                      %
+                    </span>
+                  </div>
+                  {customRiskPercent !== "" && riskPercent === 0 && (
+                    <p className="mt-1 text-xs text-destructive">
+                      {zh ? "请输入大于 0 且不超过 100 的比例。" : "Enter a percentage greater than 0 and no more than 100."}
+                    </p>
+                  )}
+                </div>
+              )}
               <div className="text-xs text-muted-foreground" aria-live="polite">
                 {zh ? "计划风险" : "Planned risk"}{" "}
                 <span className="num-display text-foreground">
@@ -167,7 +212,7 @@ export default function PositionCalculator() {
 
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
-              <Label htmlFor="position-entry-price">{zh ? "计划入场价" : "Entry price"}</Label>
+              <Label htmlFor="position-entry-price">{zh ? "入场价" : "Entry price"}</Label>
               <Input
                 id="position-entry-price"
                 type="number"
@@ -247,7 +292,7 @@ export default function PositionCalculator() {
               </>
             ) : (
               <div className="py-5 text-center text-sm text-muted-foreground">
-                {zh ? "填入计划入场价与止损价后显示结果" : "Enter an entry and stop price to see the result"}
+                {zh ? "填入入场价与止损价后显示结果" : "Enter an entry and stop price to see the result"}
               </div>
             )}
           </div>
