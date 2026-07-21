@@ -14,6 +14,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.46.0",
+    "date": "2026-07-21",
+    "zh": "行情指标新增悬浮说明",
+    "en": "Added tooltip help for market indicators"
+  },
+  {
     "version": "1.45.0",
     "date": "2026-07-19",
     "zh": "页脚新增版权声明",
