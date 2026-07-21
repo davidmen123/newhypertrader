@@ -9,6 +9,7 @@ import AskWengerDialog from "./components/AskWengerDialog";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { LangProvider } from "./contexts/LangContext";
 import Home from "./pages/Home";
+import Deribit from "./pages/Deribit";
 import Analytics from "./pages/Analytics";
 import Faq from "./pages/Faq";
 import About from "./pages/About";
@@ -18,6 +19,7 @@ function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Home} />
+      <Route path={"/deribit"} component={Deribit} />
       <Route path={"/faq"} component={Faq} />
       {/* Unlisted: reachable only via direct URL, no homepage/nav link. */}
       <Route path={"/about"} component={About} />
