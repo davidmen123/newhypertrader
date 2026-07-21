@@ -211,6 +211,22 @@ export default function LiveTicker() {
         ))}
       </div>
 
+      <p
+        role="note"
+        className="mb-2"
+        style={{
+          color: "var(--text-faint)",
+          fontFamily: "DM Mono, monospace",
+          fontSize: "0.58rem",
+          lineHeight: 1.55,
+          letterSpacing: "0.02em",
+        }}
+      >
+        {lang === "zh"
+          ? `说明（当前选择 ${timeframe}）：▲ 现价高于 EMA20，▼ 现价低于 EMA20；RSI 为 14 周期，≥70 偏热，≤30 偏弱。卡片左侧周期标签为实际数据周期；若 4H 数据不可用，会自动显示 1D。`
+          : `Note (selected ${timeframe}): ▲ price is above EMA20; ▼ price is below EMA20. RSI uses 14 periods: ≥70 is overbought and ≤30 is oversold. The timeframe tag on each card shows the actual data used; 4H falls back to 1D when unavailable.`}
+      </p>
+
       {/* BTC · ETH · VIX · DXY · GOLD · NAS100 · SSE · HSI · N225 · KOSPI */}
       <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-2">
         {cards.map((v) => (
