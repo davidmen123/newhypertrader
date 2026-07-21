@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Loader2, MessageSquareText, Send } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
-import { OPEN_FEEDBACK_EVENT } from "@/lib/feedback";
 import { useLang } from "@/contexts/LangContext";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,12 +25,6 @@ export default function FeedbackWidget() {
   const [contact, setContact] = useState("");
   const [website, setWebsite] = useState(""); // honeypot, must stay empty
 
-  useEffect(() => {
-    const openDialog = () => setOpen(true);
-    window.addEventListener(OPEN_FEEDBACK_EVENT, openDialog);
-    return () => window.removeEventListener(OPEN_FEEDBACK_EVENT, openDialog);
-  }, []);
-
   const submit = trpc.feedback.submit.useMutation({
     onSuccess: () => {
       toast.success(tr.feedbackThanks);
@@ -54,6 +47,7 @@ export default function FeedbackWidget() {
     const trimmed = content.trim();
     if (!trimmed || submit.isPending) return;
     submit.mutate({
+      kind: "feedback",
       content: trimmed,
       contact: contact.trim() || undefined,
       page: window.location.pathname,

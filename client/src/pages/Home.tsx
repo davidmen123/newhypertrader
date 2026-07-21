@@ -334,19 +334,19 @@ export default function Home() {
             <PnlChart />
           </CollapsibleSection>
 
-          {/* 5. Trade History — default collapsed */}
+          {/* 5. Trading tools — keep the single entry card visible */}
+          <CollapsibleSection label={lang === "zh" ? "辅助工具" : "Trading Tools"} defaultOpen={true}>
+            <PositionCalculator />
+          </CollapsibleSection>
+
+          {/* 6. Trade History — default collapsed */}
           <CollapsibleSection label={lang === "zh" ? "历史成交" : "Trade History"} defaultOpen={false}>
             <TradeHistory />
           </CollapsibleSection>
 
-          {/* 6. Order History — default collapsed */}
+          {/* 7. Order History — default collapsed */}
           <CollapsibleSection label={lang === "zh" ? "委托历史" : "Order History"} defaultOpen={false}>
             <OrderHistoryTable />
-          </CollapsibleSection>
-
-          {/* 7. Trading tools — keep the single entry card visible */}
-          <CollapsibleSection label={lang === "zh" ? "辅助工具" : "Trading Tools"} defaultOpen={true}>
-            <PositionCalculator />
           </CollapsibleSection>
 
           {/* 8. Economic Calendar — default collapsed */}

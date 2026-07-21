@@ -14,6 +14,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.49.0",
+    "date": "2026-07-21",
+    "zh": "新增独立提问窗口",
+    "en": "Added a dedicated question dialog"
+  },
+  {
     "version": "1.48.0",
     "date": "2026-07-21",
     "zh": "仓位计算支持自定义风险",

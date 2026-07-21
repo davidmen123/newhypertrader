@@ -5,6 +5,7 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import FeedbackWidget from "./components/FeedbackWidget";
+import AskWengerDialog from "./components/AskWengerDialog";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { LangProvider } from "./contexts/LangContext";
 import Home from "./pages/Home";
@@ -88,6 +89,7 @@ function App() {
             <Toaster />
             <AnalyticsTracker />
             <Router />
+            <AskWengerDialog />
             <FeedbackWidget />
           </TooltipProvider>
         </LangProvider>

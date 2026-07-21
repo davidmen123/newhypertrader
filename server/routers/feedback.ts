@@ -1,6 +1,6 @@
 /**
  * Feedback Router
- * - submit: anonymous site feedback from the floating "意见反馈" widget.
+ * - submit: anonymous site feedback and questions from public dialogs.
  *   No login required. Every submission is stored in the `feedback` table
  *   (backup copy) and emailed to the site owner (FEEDBACK_TO).
  *   Abuse control: honeypot field + per-IP rate limit (5 per hour).
@@ -40,6 +40,7 @@ function getClientIp(req: { headers: Record<string, string | string[] | undefine
 
 // ─── Email delivery (Resend HTTPS API — port 443, works where SMTP is blocked) ──
 async function sendFeedbackEmail(fields: {
+  kind: "feedback" | "question";
   content: string;
   contact?: string;
   page?: string;
@@ -59,13 +60,13 @@ async function sendFeedbackEmail(fields: {
       body: JSON.stringify({
         from: "网站反馈 <onboarding@resend.dev>",
         to: [ENV.feedbackTo],
-        subject: `【网站反馈】${fields.content.slice(0, 40)}${fields.content.length > 40 ? "…" : ""}`,
+        subject: `${fields.kind === "question" ? "【网站提问】" : "【网站反馈】"}${fields.content.slice(0, 40)}${fields.content.length > 40 ? "…" : ""}`,
         text: [
           `时间：${time}`,
           `页面：${fields.page || "未知"}`,
           `联系方式：${fields.contact || "（未填写）"}`,
           "",
-          "反馈内容：",
+          fields.kind === "question" ? "提问内容：" : "反馈内容：",
           fields.content,
         ].join("\n"),
       }),
@@ -82,17 +83,26 @@ async function sendFeedbackEmail(fields: {
   }
 }
 
+export const feedbackInputSchema = z.object({
+  kind: z.enum(["feedback", "question"]).default("feedback"),
+  content: z.string().trim().min(1).max(1000),
+  contact: z.string().trim().max(200).optional(),
+  page: z.string().max(256).optional(),
+  // Honeypot: real users never see or fill this field; bots do.
+  website: z.string().max(0).optional(),
+}).superRefine((input, ctx) => {
+  if (input.kind === "question" && !input.contact?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["contact"],
+      message: "Contact is required for questions.",
+    });
+  }
+});
+
 export const feedbackRouter = router({
   submit: publicProcedure
-    .input(
-      z.object({
-        content: z.string().trim().min(1).max(1000),
-        contact: z.string().trim().max(200).optional(),
-        page: z.string().max(256).optional(),
-        // Honeypot: real users never see or fill this field; bots do.
-        website: z.string().max(0).optional(),
-      })
-    )
+    .input(feedbackInputSchema)
     .mutation(async ({ ctx, input }) => {
       // Silently accept bot submissions without storing or emailing anything.
       if (input.website) return { success: true };
@@ -110,7 +120,7 @@ export const feedbackRouter = router({
         const db = await getDb();
         if (db) {
           await db.insert(feedback).values({
-            content: input.content,
+            content: input.kind === "question" ? `【向温格提问】\n${input.content}` : input.content,
             contact: input.contact || null,
             page: input.page || null,
           });
