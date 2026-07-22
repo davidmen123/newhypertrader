@@ -350,12 +350,12 @@ export default function Home() {
           </CollapsibleSection>
 
           {/* 8. Economic Calendar — default collapsed */}
-          <CollapsibleSection label={tr.economicCalendar} defaultOpen={false}>
+          <CollapsibleSection label={lang === "zh" ? "经济日历" : "Economic Calendar"} defaultOpen={false}>
             <EconomicCalendar />
           </CollapsibleSection>
 
           {/* 9. Earnings Calendar — default collapsed */}
-          <CollapsibleSection label={tr.earningsCalendar} defaultOpen={false}>
+          <CollapsibleSection label={lang === "zh" ? "财报日历" : "Earnings Calendar"} defaultOpen={false}>
             <EarningsCalendar />
           </CollapsibleSection>
 
