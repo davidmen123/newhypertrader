@@ -54,7 +54,7 @@ export default function EconomicCalendar() {
   const [minImportance, setMinImportance] = useState(2);
 
   const { data, isLoading, error, refetch, isFetching } =
-    trpc.calendar.economicCalendar.useQuery(undefined, {
+    trpc.calendar.economicCalendar.useQuery({ range: "week" }, {
       refetchInterval: 10 * 60 * 1000, // refresh every 10 min
     });
 

@@ -14,6 +14,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.50.2",
+    "date": "2026-07-22",
+    "zh": "补全经济日历数据",
+    "en": "Completed economic calendar data"
+  },
+  {
     "version": "1.50.1",
     "date": "2026-07-22",
     "zh": "精简日历区块名称",

@@ -70,8 +70,9 @@ export default function EconomicCalendar() {
     if (e.importance < minImportance) return false;
     const eventTime = new Date(e.dateRaw).getTime();
     const now = Date.now();
-    if (status === "released") return eventTime < now;
-    if (status === "pending") return eventTime >= now;
+    const isReleased = e.valueExpected ? e.actual !== null : eventTime < now;
+    if (status === "released") return isReleased;
+    if (status === "pending") return !isReleased;
     return true;
   });
 
@@ -197,8 +198,8 @@ export default function EconomicCalendar() {
             style={{ fontSize: "0.72rem" }}
           >
             {lang === "zh"
-              ? "本周暂无符合条件的经济数据"
-              : "No matching events this week"}
+              ? `${range === "week" ? "本周" : "本月"}暂无符合条件的经济数据`
+              : `No matching events this ${range}`}
           </div>
         </div>
       )}
@@ -273,7 +274,10 @@ export default function EconomicCalendar() {
                   <td
                     style={{
                       padding: "8px 10px",
-                      color: event.importance === 3 ? "var(--metric-neutral)" : "var(--text-soft)",
+                      color:
+                        event.importance === 3
+                          ? "var(--metric-neutral)"
+                          : "var(--text-soft)",
                       fontWeight: event.importance === 3 ? 500 : 400,
                       maxWidth: 300,
                     }}
@@ -311,13 +315,29 @@ export default function EconomicCalendar() {
                         : "var(--text-faint)",
                     }}
                   >
-                    {event.actual ?? "—"}
+                    {event.actual ??
+                      (event.valueExpected &&
+                      new Date(event.dateRaw).getTime() < Date.now()
+                        ? lang === "zh"
+                          ? "待更新"
+                          : "Updating"
+                        : "—")}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+      {!isLoading && !error && (
+        <p
+          className="text-muted-foreground mt-3"
+          style={{ fontSize: "0.6rem", letterSpacing: "0.04em" }}
+        >
+          {lang === "zh"
+            ? "第三方公开日历数据，实际值以官方发布为准。"
+            : "Third-party public calendar data; official releases prevail."}
+        </p>
       )}
     </div>
   );

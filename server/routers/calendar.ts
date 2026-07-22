@@ -1,8 +1,9 @@
 /**
  * Calendar Router
- * - economicCalendar: US important economic events for the current week
- *   Source: ForexFactory free JSON API (nfs.faireconomy.media)
- *   Uses in-memory cache (30 min TTL) to avoid rate limiting (429)
+ * - economicCalendar: US economic events for the current week or month
+ *   Primary source: TradingView economic calendar (includes actual values)
+ *   Weekly fallback: ForexFactory free JSON API (nfs.faireconomy.media)
+ *   Uses in-memory cache to avoid excessive upstream requests
  * - earningsCalendar: Top 50 US stocks earnings for the next 7 days
  *   Source: Alpha Vantage free API (no key required for demo)
  */
@@ -68,15 +69,24 @@ const IMPACT_MAP: Record<string, number> = {
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-async function fetchText(url: string, referer = "https://www.alphavantage.co/") {
+async function fetchText(
+  url: string,
+  referer = "https://www.alphavantage.co/"
+) {
   const isNasdaq = referer.includes("nasdaq.com");
+  const isTradingView = referer.includes("tradingview.com");
   const requestHeaders: Record<string, string> = {
     "User-Agent": HEADERS["User-Agent"],
-    Accept: isNasdaq ? "application/json, text/plain, */*" : "application/json, text/csv, text/plain, */*",
+    Accept:
+      isNasdaq || isTradingView
+        ? "application/json, text/plain, */*"
+        : "application/json, text/csv, text/plain, */*",
     Referer: referer,
   };
-  if (isNasdaq) {
-    requestHeaders.Origin = "https://www.nasdaq.com";
+  if (isNasdaq || isTradingView) {
+    requestHeaders.Origin = isNasdaq
+      ? "https://www.nasdaq.com"
+      : "https://www.tradingview.com";
     requestHeaders["Accept-Language"] = "en-US,en;q=0.9";
     requestHeaders["Cache-Control"] = "no-cache";
   }
@@ -88,20 +98,35 @@ async function fetchText(url: string, referer = "https://www.alphavantage.co/") 
     });
     if (!response.ok) throw new Error(`Request returned ${response.status}`);
     return response.text();
-  } catch (error) {
+  } catch {
     const { execFile } = await import("child_process");
     const { promisify } = await import("util");
     const execFileAsync = promisify(execFile);
-    const { stdout } = await execFileAsync("curl", [
-      "-sS",
-      "-L",
-      "--max-time", "15",
-      "-A", HEADERS["User-Agent"],
-      "-H", `Accept: ${requestHeaders.Accept}`,
-      "-H", `Referer: ${referer}`,
-      ...(isNasdaq ? ["-H", "Origin: https://www.nasdaq.com", "-H", "Accept-Language: en-US,en;q=0.9"] : []),
-      url,
-    ], { timeout: 18000 });
+    const { stdout } = await execFileAsync(
+      "curl",
+      [
+        "-sS",
+        "-L",
+        "--max-time",
+        "15",
+        "-A",
+        HEADERS["User-Agent"],
+        "-H",
+        `Accept: ${requestHeaders.Accept}`,
+        "-H",
+        `Referer: ${referer}`,
+        ...(requestHeaders.Origin
+          ? [
+              "-H",
+              `Origin: ${requestHeaders.Origin}`,
+              "-H",
+              "Accept-Language: en-US,en;q=0.9",
+            ]
+          : []),
+        url,
+      ],
+      { timeout: 18000 }
+    );
     return stdout;
   }
 }
@@ -114,12 +139,12 @@ function parseCsvLine(line: string) {
   for (let i = 0; i < line.length; i++) {
     const char = line[i];
     const next = line[i + 1];
-    if (char === "\"" && next === "\"") {
-      current += "\"";
+    if (char === '"' && next === '"') {
+      current += '"';
       i++;
       continue;
     }
-    if (char === "\"") {
+    if (char === '"') {
       inQuotes = !inQuotes;
       continue;
     }
@@ -132,11 +157,15 @@ function parseCsvLine(line: string) {
   }
 
   cols.push(current);
-  return cols.map((col) => col.trim());
+  return cols.map(col => col.trim());
 }
 
 function normalizeEarningsSymbol(symbol: string) {
-  return symbol.trim().toUpperCase().replace("/", ".").replace("BRK-B", "BRK.B");
+  return symbol
+    .trim()
+    .toUpperCase()
+    .replace("/", ".")
+    .replace("BRK-B", "BRK.B");
 }
 
 function toUtc8Display(isoWithOffset: string): string {
@@ -166,6 +195,23 @@ interface RawForexEvent {
   actual?: string;
 }
 
+export interface RawTradingViewEvent {
+  id?: string | number;
+  title?: string;
+  country?: string;
+  date?: string;
+  importance?: number;
+  actual?: string | number | null;
+  previous?: string | number | null;
+  forecast?: string | number | null;
+  unit?: string | null;
+  scale?: string | null;
+}
+
+interface TradingViewCalendarResponse {
+  result?: RawTradingViewEvent[];
+}
+
 interface EconEvent {
   id: string;
   dateRaw: string;
@@ -177,6 +223,135 @@ interface EconEvent {
   forecast: string | null;
   previous: string | null;
   actual: string | null;
+  valueExpected: boolean;
+}
+
+export interface EconomicCalendarWindow {
+  start: Date;
+  endExclusive: Date;
+}
+
+function utc8DateParts(now: Date) {
+  const shifted = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+  return {
+    year: shifted.getUTCFullYear(),
+    month: shifted.getUTCMonth(),
+    day: shifted.getUTCDate(),
+    weekday: shifted.getUTCDay(),
+  };
+}
+
+function utc8Midnight(year: number, month: number, day: number) {
+  return new Date(Date.UTC(year, month, day) - 8 * 60 * 60 * 1000);
+}
+
+export function getEconomicCalendarWindow(
+  range: "week" | "month",
+  now = new Date()
+): EconomicCalendarWindow {
+  const { year, month, day, weekday } = utc8DateParts(now);
+
+  if (range === "month") {
+    return {
+      start: utc8Midnight(year, month, 1),
+      endExclusive: utc8Midnight(year, month + 1, 1),
+    };
+  }
+
+  const mondayOffset = weekday === 0 ? -6 : 1 - weekday;
+  return {
+    start: utc8Midnight(year, month, day + mondayOffset),
+    endExclusive: utc8Midnight(year, month, day + mondayOffset + 7),
+  };
+}
+
+function compactNumber(value: number) {
+  return Number.isInteger(value)
+    ? String(value)
+    : String(Number(value.toFixed(4)));
+}
+
+export function formatEconomicValue(
+  value: string | number | null | undefined,
+  unit?: string | null,
+  scale?: string | null
+) {
+  if (value === null || value === undefined) return null;
+  const base = typeof value === "number" ? compactNumber(value) : value.trim();
+  if (!base || base === "-") return null;
+
+  let formatted = base;
+  if (scale && !formatted.toUpperCase().endsWith(scale.toUpperCase())) {
+    formatted += scale;
+  }
+  if (unit && !formatted.toLowerCase().endsWith(unit.toLowerCase())) {
+    formatted += unit;
+  }
+  return formatted;
+}
+
+function normalizeTradingViewImportance(value: number | undefined) {
+  if (value === 1) return 3;
+  if (value === 0) return 2;
+  return 1;
+}
+
+function impactLabel(importance: number) {
+  if (importance === 3) return "High";
+  if (importance === 2) return "Medium";
+  return "Low";
+}
+
+export function normalizeTradingViewEvents(
+  rawEvents: RawTradingViewEvent[],
+  window: EconomicCalendarWindow
+): EconEvent[] {
+  return rawEvents
+    .filter(event => {
+      if (event.country?.toUpperCase() !== "US" || !event.date || !event.title)
+        return false;
+      const timestamp = new Date(event.date).getTime();
+      return (
+        Number.isFinite(timestamp) &&
+        timestamp >= window.start.getTime() &&
+        timestamp < window.endExclusive.getTime()
+      );
+    })
+    .map(event => {
+      const date = new Date(event.date!);
+      const importance = normalizeTradingViewImportance(event.importance);
+      const actual = formatEconomicValue(event.actual, event.unit, event.scale);
+      const forecast = formatEconomicValue(
+        event.forecast,
+        event.unit,
+        event.scale
+      );
+      const previous = formatEconomicValue(
+        event.previous,
+        event.unit,
+        event.scale
+      );
+      return {
+        id: String(event.id ?? `${event.date}-${event.title}`),
+        dateRaw: event.date!,
+        dateUtc8: toUtc8Display(event.date!),
+        dateIso: date.toISOString(),
+        event: event.title!,
+        impact: impactLabel(importance),
+        importance,
+        forecast,
+        previous,
+        actual,
+        valueExpected: [
+          actual,
+          forecast,
+          previous,
+          event.unit,
+          event.scale,
+        ].some(value => value !== null && value !== undefined && value !== ""),
+      };
+    })
+    .sort((a, b) => a.dateIso.localeCompare(b.dateIso));
 }
 
 interface EarningsEvent {
@@ -194,7 +369,9 @@ function getUtc8DateWindow(days: number) {
   const startMs = Date.now() + 8 * 60 * 60 * 1000;
   const dates: string[] = [];
   for (let i = 0; i <= days; i++) {
-    dates.push(new Date(startMs + i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10));
+    dates.push(
+      new Date(startMs + i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+    );
   }
   return {
     start: dates[0],
@@ -206,7 +383,8 @@ function getUtc8DateWindow(days: number) {
 function normalizeTimeOfDay(value: string | null | undefined) {
   if (!value) return null;
   const lower = value.trim().toLowerCase();
-  if (!lower || lower === "time-not-supplied" || lower === "not supplied") return null;
+  if (!lower || lower === "time-not-supplied" || lower === "not supplied")
+    return null;
   if (lower.includes("pre") || lower.includes("before")) return "pre-market";
   if (lower.includes("post") || lower.includes("after")) return "post-market";
   return value.trim();
@@ -244,14 +422,19 @@ function sortAndLimitEarnings(results: EarningsEvent[]) {
     });
 }
 
-async function fetchNasdaqEarningsFallback(dates: string[]): Promise<EarningsEvent[]> {
+async function fetchNasdaqEarningsFallback(
+  dates: string[]
+): Promise<EarningsEvent[]> {
   const results: EarningsEvent[] = [];
 
   for (const date of dates) {
     const url = `https://api.nasdaq.com/api/calendar/earnings?date=${encodeURIComponent(date)}`;
     let parsed: any;
     try {
-      const text = await fetchText(url, "https://www.nasdaq.com/market-activity/earnings");
+      const text = await fetchText(
+        url,
+        "https://www.nasdaq.com/market-activity/earnings"
+      );
       parsed = JSON.parse(text);
     } catch {
       continue;
@@ -269,7 +452,10 @@ async function fetchNasdaqEarningsFallback(dates: string[]): Promise<EarningsEve
         symbol,
         name: String(row?.name ?? symbol).trim() || symbol,
         reportDate: date,
-        estimate: String(row?.epsForecast ?? row?.epsForecastDollar ?? "").replace(/^\$/, "").trim() || null,
+        estimate:
+          String(row?.epsForecast ?? row?.epsForecastDollar ?? "")
+            .replace(/^\$/, "")
+            .trim() || null,
         currency: "USD",
         timeOfDay,
         timeOfDayUtc8: describeUtc8Time(timeOfDay),
@@ -278,11 +464,15 @@ async function fetchNasdaqEarningsFallback(dates: string[]): Promise<EarningsEve
     }
   }
 
-  console.log(`[EarningsCalendar] Nasdaq fallback rows=${results.length} dates=${dates[0]}..${dates[dates.length - 1]}`);
+  console.log(
+    `[EarningsCalendar] Nasdaq fallback rows=${results.length} dates=${dates[0]}..${dates[dates.length - 1]}`
+  );
   return results;
 }
 
-async function fetchForexFactoryWeek(week: "thisweek" | "nextweek"): Promise<RawForexEvent[]> {
+async function fetchForexFactoryWeek(
+  week: "thisweek" | "nextweek"
+): Promise<RawForexEvent[]> {
   const url = `https://nfs.faireconomy.media/ff_calendar_${week}.json`;
 
   const res = await fetch(url, {
@@ -300,26 +490,76 @@ async function fetchForexFactoryWeek(week: "thisweek" | "nextweek"): Promise<Raw
   return res.json() as Promise<RawForexEvent[]>;
 }
 
-async function fetchForexFactoryRaw(range: "week" | "month"): Promise<RawForexEvent[]> {
-  const thisWeekEvents = await fetchForexFactoryWeek("thisweek");
-  
-  if (range === "month") {
-    try {
-      const nextWeekEvents = await fetchForexFactoryWeek("nextweek");
-      return [...thisWeekEvents, ...nextWeekEvents];
-    } catch {
-      return thisWeekEvents;
-    }
+async function fetchTradingViewCalendar(window: EconomicCalendarWindow) {
+  const params = new URLSearchParams({
+    from: window.start.toISOString(),
+    to: window.endExclusive.toISOString(),
+    countries: "US",
+  });
+  const url = `https://economic-calendar.tradingview.com/events?${params.toString()}`;
+  const text = await fetchText(
+    url,
+    "https://www.tradingview.com/economic-calendar/"
+  );
+  const response = JSON.parse(text) as TradingViewCalendarResponse;
+  if (!Array.isArray(response.result)) {
+    throw new Error(
+      "TradingView economic calendar returned an invalid payload"
+    );
   }
-  
-  return thisWeekEvents;
+  return response.result;
+}
+
+function normalizeForexFactoryEvents(
+  rawEvents: RawForexEvent[],
+  window: EconomicCalendarWindow
+): EconEvent[] {
+  const textOrNull = (value?: string) => {
+    const normalized = value?.trim();
+    if (!normalized) return null;
+    return normalized;
+  };
+
+  return rawEvents
+    .filter(event => {
+      if (event.country?.toUpperCase() !== "USD") return false;
+      const level = IMPACT_MAP[event.impact] ?? 0;
+      if (level < 1) return false;
+
+      const timestamp = new Date(event.date).getTime();
+      return (
+        Number.isFinite(timestamp) &&
+        timestamp >= window.start.getTime() &&
+        timestamp < window.endExclusive.getTime()
+      );
+    })
+    .map(event => {
+      const date = new Date(event.date);
+      const forecast = textOrNull(event.forecast);
+      const previous = textOrNull(event.previous);
+      const actual = textOrNull(event.actual);
+      return {
+        id: `${event.date}-${event.title}`,
+        dateRaw: event.date,
+        dateUtc8: toUtc8Display(event.date),
+        dateIso: date.toISOString(),
+        event: event.title,
+        impact: event.impact,
+        importance: IMPACT_MAP[event.impact] ?? 1,
+        forecast,
+        previous,
+        actual,
+        valueExpected: [actual, forecast, previous].some(value => value !== null),
+      };
+    })
+    .sort((a, b) => a.dateIso.localeCompare(b.dateIso));
 }
 
 // ─── Router ──────────────────────────────────────────────────────────────────
 export const calendarRouter = router({
   /**
-   * US important economic events for the current week
-   * Cached for 30 minutes to avoid rate limiting
+   * US economic events for the current week or full month.
+   * Cached for 10 minutes so released values do not remain stale for long.
    */
   economicCalendar: publicProcedure
     .input(
@@ -330,62 +570,39 @@ export const calendarRouter = router({
     .query(async ({ input }) => {
       const { range } = input;
       const CACHE_KEY = `economic_calendar_${range}`;
-      const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+      const CACHE_TTL = 10 * 60 * 1000;
 
       const cached = getCached<EconEvent[]>(CACHE_KEY);
       if (cached) {
         return cached;
       }
 
-      const rawEvents = await fetchForexFactoryRaw(range);
+      const window = getEconomicCalendarWindow(range);
+      let events: EconEvent[];
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      let startDate: Date;
-      let endDate: Date;
-
-      if (range === "month") {
-        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-        endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-      } else {
-        const dayOfWeek = today.getDay();
-        const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-        startDate = new Date(today.getTime() + mondayOffset * 24 * 60 * 60 * 1000);
-        endDate = new Date(startDate.getTime() + 6 * 24 * 60 * 60 * 1000);
+      try {
+        const rawEvents = await fetchTradingViewCalendar(window);
+        events = normalizeTradingViewEvents(rawEvents, window);
+      } catch (error) {
+        if (range === "month") {
+          console.error(
+            "[EconomicCalendar] Full-month source unavailable",
+            error
+          );
+          throw new Error("完整月份经济日历暂时不可用，请稍后重试", {
+            cause: error,
+          });
+        }
+        console.warn(
+          "[EconomicCalendar] TradingView unavailable; using weekly fallback",
+          error
+        );
+        const rawEvents = await fetchForexFactoryWeek("thisweek");
+        events = normalizeForexFactoryEvents(rawEvents, window);
       }
 
-      const filtered: EconEvent[] = rawEvents
-        .filter((e) => {
-          if (!e.country || e.country.toUpperCase() !== "USD") return false;
-          const level = IMPACT_MAP[e.impact] ?? 0;
-          if (level < 1) return false;
-
-          const d = new Date(e.date);
-          if (isNaN(d.getTime())) return false;
-          if (d < startDate || d > endDate) return false;
-
-          return true;
-        })
-        .map((e) => {
-          const d = new Date(e.date);
-          return {
-            id: `${e.date}-${e.title}`,
-            dateRaw: e.date,
-            dateUtc8: toUtc8Display(e.date),
-            dateIso: d.toISOString(),
-            event: e.title,
-            impact: e.impact,
-            importance: IMPACT_MAP[e.impact] ?? 1,
-            forecast: e.forecast || null,
-            previous: e.previous || null,
-            actual: e.actual || null,
-          };
-        })
-        .sort((a, b) => a.dateIso.localeCompare(b.dateIso));
-
-      setCached(CACHE_KEY, filtered, CACHE_TTL);
-      return filtered;
+      setCached(CACHE_KEY, events, CACHE_TTL);
+      return events;
     }),
 
   /**
@@ -446,7 +663,9 @@ export const calendarRouter = router({
       results = [];
     }
 
-    console.log(`[EarningsCalendar] AlphaVantage rows in 7d window=${results.length} window=${utc8Today}..${utc8End}`);
+    console.log(
+      `[EarningsCalendar] AlphaVantage rows in 7d window=${results.length} window=${utc8Today}..${utc8End}`
+    );
     const topResults = sortAndLimitEarnings(
       results.length > 0 ? results : await fetchNasdaqEarningsFallback(dates)
     );
