@@ -56,9 +56,9 @@ function ImportanceBadge({ level, lang }: { level: number; lang: string }) {
 
 export default function EconomicCalendar() {
   const { lang } = useLang();
-  const [minImportance, setMinImportance] = useState(2);
+  const [minImportance, setMinImportance] = useState(3);
   const [range, setRange] = useState<"week" | "month">("week");
-  const [status, setStatus] = useState<"all" | "released" | "pending">("all");
+  const [status, setStatus] = useState<"all" | "released" | "pending">("pending");
 
   const { data, isLoading, error, refetch, isFetching } =
     trpc.calendar.economicCalendar.useQuery({ range }, {
