@@ -386,7 +386,11 @@ export default function AccountOverview() {
                 </span>
                 {data.runningDays != null && (
                   <span className="text-muted-foreground/55" style={{ fontSize: "0.66rem" }}>
-                    {t(`运行 ${data.runningDays} 天`, `Running ${data.runningDays} days`)}
+                    {t("运行", "Running")}{" "}
+                    <span className="num-display" style={{ fontSize: "0.78rem", fontWeight: 600, color: "oklch(68% 0.15 145)" }}>
+                      {data.runningDays}
+                    </span>{" "}
+                    {t("天", "days")}
                   </span>
                 )}
               </div>
