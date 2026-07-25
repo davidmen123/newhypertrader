@@ -7,14 +7,20 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 function MetricTile({
   label,
   value,
+  unit,
   sub,
   tone = "neutral",
+  // CJK glyphs fill the em box and read ~28% taller than DM Mono digits at the
+  // same size, so text values step down to keep optical weight in line.
+  valueFont = "mono",
   tooltip,
 }: {
   label: string;
   value: string;
+  unit?: string;
   sub?: string;
   tone?: "neutral" | "profit" | "loss" | "warning";
+  valueFont?: "mono" | "text";
   tooltip?: string;
 }) {
   const color =
@@ -47,8 +53,16 @@ function MetricTile({
           </Tooltip>
         )}
       </div>
-      <div className="num-display mt-2" style={{ color, fontSize: "1.02rem", lineHeight: 1.05 }}>
+      <div
+        className={valueFont === "text" ? "mt-2" : "num-display mt-2"}
+        style={{ color, fontSize: valueFont === "text" ? "0.9rem" : "1.02rem", lineHeight: 1.05 }}
+      >
         {value}
+        {unit && (
+          <span className="ml-1 text-muted-foreground/55" style={{ fontSize: "0.72rem" }}>
+            {unit}
+          </span>
+        )}
       </div>
       {sub && (
         <div className="text-muted-foreground/55 mt-1" style={{ fontSize: "0.66rem" }}>
@@ -436,7 +450,8 @@ export default function AccountOverview() {
             />
             <MetricTile
               label={t("最大连续亏损", "Max Consec. Losses")}
-              value={maxConsecutiveLosses != null ? t(`${maxConsecutiveLosses} 笔`, `${maxConsecutiveLosses}`) : "--"}
+              value={maxConsecutiveLosses != null ? `${maxConsecutiveLosses}` : "--"}
+              unit={maxConsecutiveLosses != null ? t("笔", "trades") : undefined}
               sub={
                 maxConsecutiveLosses != null && maxConsecutiveLosses > 0 && maxConsecutiveLossUsdc != null
                   ? t(`累计 ${fmtSign(maxConsecutiveLossUsdc, 2)} USDC`, `Cumulative ${fmtSign(maxConsecutiveLossUsdc, 2)} USDC`)
@@ -530,6 +545,7 @@ export default function AccountOverview() {
             <MetricTile
               label={t("交易风格", "Trading Style")}
               value={tradingStyle}
+              valueFont="text"
               sub={
                 avgHoldingHours == null
                   ? t("暂无完整交易", "No round trips yet")
