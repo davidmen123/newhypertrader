@@ -987,11 +987,10 @@ export async function getHyperliquidPositions() {
 }
 
 export async function getHyperliquidAccountOverview() {
-  const [perpStates, spotState, btcPrice, fills, allTimeFills, portfolio, initialCapitalUsdc] = await Promise.all([
+  const [perpStates, spotState, btcPrice, allTimeFills, portfolio, initialCapitalUsdc] = await Promise.all([
     getHyperliquidPerpStates(),
     getHyperliquidSpotState().catch(() => ({ balances: [] })),
     getHyperliquidBtcPrice().catch(() => 0),
-    getHyperliquidFills(Date.now() - 30 * 24 * 60 * 60 * 1000).catch(() => []),
     getHyperliquidFills(0).catch(() => []),
     getHyperliquidPortfolio().catch(() => null),
     getHyperliquidInitialCapitalUsdc().catch(() => null),
@@ -1030,7 +1029,10 @@ export async function getHyperliquidAccountOverview() {
     ? (totalPnlUsdc / initialEquityUsdc) * 100
     : null;
   const totalEquityBtc = btcPrice > 0 ? totalEquityUsdc / btcPrice : 0;
-  const tradeMetrics = calculateRoundTripTradeMetrics(fills);
+  // Trade metrics run on the full fill history so their scope matches running
+  // days and the metric tooltips; a trailing window would silently drop trades
+  // and clip the holding time of any position opened before the window edge.
+  const tradeMetrics = calculateRoundTripTradeMetrics(allTimeFills);
   const tradeRunningDays = calculateRunningDaysFromFirstFill(allTimeFills);
   const runningDays = tradeRunningDays ?? performance.runningDays;
   const accountAnnualizedReturnPct = calculateAnnualizedReturnPct(
