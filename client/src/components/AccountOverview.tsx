@@ -229,7 +229,6 @@ export default function AccountOverview() {
   const maxConsecutiveLosses = metricsData?.maxConsecutiveLosses ?? null;
   const maxConsecutiveLossUsdc = metricsData?.maxConsecutiveLossUsdc ?? null;
   const totalTrades = metricsData?.totalTrades ?? null;
-  const tradeSampleWeak = totalTrades != null && totalTrades > 0 && totalTrades < 20;
   const leverage = Number.isFinite(data.marginUsageRatio) ? data.marginUsageRatio : 0;
   const hasExposure = data.totalNtlPos > 0 || leverage > 0;
   const strategyStatus = hasExposure
@@ -437,15 +436,7 @@ export default function AccountOverview() {
                   ? t(`累计 ${fmtSign(maxConsecutiveLossUsdc, 2)} USDC`, `Cumulative ${fmtSign(maxConsecutiveLossUsdc, 2)} USDC`)
                   : undefined
               }
-              tone={
-                maxConsecutiveLosses == null
-                  ? "neutral"
-                  : maxConsecutiveLosses >= 5
-                  ? "loss"
-                  : maxConsecutiveLosses >= 3
-                  ? "warning"
-                  : "neutral"
-              }
+              tone="neutral"
               tooltip={t(
                 "历史上连续亏损的最长笔数及该段累计亏损。按已平仓交易统计，与最大回撤（净值曲线口径、含浮亏）互为对照。",
                 "Longest run of losing round trips and its cumulative loss. Closed trades only — the trade-based counterpart to max drawdown (equity-curve based, includes unrealized)."
@@ -502,7 +493,7 @@ export default function AccountOverview() {
               value={winRate != null ? `${winRate.toFixed(2)}%` : "--"}
               sub={
                 metricsData && totalTrades != null && totalTrades > 0
-                  ? `${t(`基于 ${totalTrades} 笔完整交易`, `${totalTrades} round trips`)} · ${t("盈", "W")} ${metricsData.winningTrades} ${t("亏", "L")} ${metricsData.losingTrades}${metricsData.breakevenTrades > 0 ? ` ${t("平", "BE")} ${metricsData.breakevenTrades}` : ""}${tradeSampleWeak ? ` · ${t("样本不足", "small sample")}` : ""}`
+                  ? `${t(`基于 ${totalTrades} 笔完整交易`, `${totalTrades} round trips`)} · ${t("盈", "W")} ${metricsData.winningTrades} ${t("亏", "L")} ${metricsData.losingTrades}${metricsData.breakevenTrades > 0 ? ` ${t("平", "BE")} ${metricsData.breakevenTrades}` : ""}`
                   : t("暂无交易", "No trades")
               }
               tone={winRate != null && winRate >= 50 ? "profit" : "neutral"}
