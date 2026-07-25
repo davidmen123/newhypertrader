@@ -14,6 +14,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.51.0",
+    "date": "2026-07-25",
+    "zh": "新增盈利因子等三项指标",
+    "en": "Added profit factor, losing streak and trading style"
+  },
+  {
     "version": "1.50.3",
     "date": "2026-07-25",
     "zh": "调整经济日历默认筛选",
