@@ -447,6 +447,10 @@ export default function AccountOverview() {
               label={t("最大回撤", "Max Drawdown")}
               value={data.maxDrawdownPct != null ? `${data.maxDrawdownPct.toFixed(2)}%` : "--"}
               tone={data.maxDrawdownUsdc != null && data.maxDrawdownUsdc < 0 ? "loss" : "neutral"}
+              tooltip={t(
+                "账户净值从历史最高点回落到最低点的最大跌幅，按全周期净值曲线计算、含未平仓浮亏。注意出金也会计入净值下降。与最大连亏（按已平仓交易统计）互为对照。",
+                "Largest peak-to-trough decline of account equity over the full history, including unrealized PnL. Note that withdrawals also register as equity decline. The equity-curve counterpart to max consecutive losses (closed trades only)."
+              )}
             />
             <MetricTile
               label={t("最大连续亏损", "Max Consec. Losses")}
