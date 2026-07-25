@@ -14,6 +14,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.51.2",
+    "date": "2026-07-25",
+    "zh": "修正交易指标的成交排序",
+    "en": "Fixed trade metrics for newest-first fill batches"
+  },
+  {
     "version": "1.51.1",
     "date": "2026-07-25",
     "zh": "交易指标改按全周期统计",

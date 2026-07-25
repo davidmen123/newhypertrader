@@ -82,3 +82,26 @@ describe("calculateRoundTripTradeMetrics – max consecutive losses", () => {
     expect(result.maxConsecutiveLossUsdc).toBeNull();
   });
 });
+
+describe("calculateRoundTripTradeMetrics – fill ordering", () => {
+  // One round trip closed by two partial fills sharing a timestamp. `userFills`
+  // hands these back newest-first, and a stable sort would keep that inverted
+  // order, breaking the startPosition chain.
+  const ascending: HyperliquidFill[] = [
+    { coin: "BTC", px: "100", sz: "2", side: "B", time: 1_700_000_000_000, startPosition: "0", closedPnl: "0" },
+    { coin: "BTC", px: "150", sz: "1", side: "A", time: 1_700_003_600_000, startPosition: "2", closedPnl: "50" },
+    { coin: "BTC", px: "150", sz: "1", side: "A", time: 1_700_003_600_000, startPosition: "1", closedPnl: "50" },
+  ];
+
+  it("groups partial closes into a single round trip", () => {
+    const result = calculateRoundTripTradeMetrics(ascending);
+    expect(result.totalTrades).toBe(1);
+    expect(result.expectancyUsdc).toBe(100);
+  });
+
+  it("yields identical metrics for a newest-first batch", () => {
+    const forward = calculateRoundTripTradeMetrics(ascending);
+    const reversed = calculateRoundTripTradeMetrics(ascending.slice().reverse());
+    expect(reversed).toEqual(forward);
+  });
+});

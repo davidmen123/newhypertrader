@@ -719,9 +719,15 @@ function signedFillSize(fill: HyperliquidFill) {
 
 export function calculateRoundTripTradeMetrics(fills: HyperliquidFill[]) {
   const tolerance = 0.00000001;
-  const sortedFills = fills
-    .slice()
-    .sort((a, b) => a.time - b.time);
+  // `userFills` returns newest-first while `userFillsByTime` returns oldest-first.
+  // Array#sort is stable, so partial fills sharing a timestamp keep their input
+  // order — a newest-first batch must be reversed before sorting, otherwise the
+  // startPosition chain reads backwards and round trips split apart.
+  const chronological =
+    fills.length > 1 && fills[0].time > fills[fills.length - 1].time
+      ? fills.slice().reverse()
+      : fills.slice();
+  const sortedFills = chronological.sort((a, b) => a.time - b.time);
   const openTrades = new Map<string, { pnl: number; openedAt: number }>();
   const completedPnls: number[] = [];
   const completedHoldingHours: number[] = [];
