@@ -518,12 +518,20 @@ export default function AccountOverview() {
                   : t("暂无交易", "No trades")
               }
               tone={winRate != null && winRate >= 50 ? "profit" : "neutral"}
+              tooltip={t(
+                "盈利交易笔数 ÷ 完整交易笔数。单看胜率无法判断盈亏——低胜率配大盈亏比同样能稳定盈利，需与盈亏比、期望值合看。",
+                "Winning round trips ÷ total round trips. Win rate alone says nothing about profitability — a low win rate with a large P/L ratio still compounds. Read it with P/L ratio and expectancy."
+              )}
             />
             <MetricTile
               label={t("盈亏比", "P/L Ratio")}
               value={plRatio != null && isFinite(plRatio) ? fmt(plRatio, 2) : "--"}
               sub={t("平均盈利 / 平均亏损", "Avg Win / Avg Loss")}
               tone={plRatio != null && plRatio > 1 ? "profit" : "neutral"}
+              tooltip={t(
+                "平均每笔盈利 ÷ 平均每笔亏损，>1 表示赚的单子平均比亏的单子大。用的是平均值，单笔大盈利会把它拉高，可与盈利因子（按总额计算）对照看。",
+                "Average win ÷ average loss; >1 means winners are larger than losers on average. Built on averages, so one outsized win inflates it — cross-check against profit factor, which uses totals."
+              )}
             />
             <MetricTile
               label={t("盈利因子", "Profit Factor")}
