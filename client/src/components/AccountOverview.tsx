@@ -556,8 +556,8 @@ export default function AccountOverview() {
               sub={t("每笔完整交易", "Per round trip")}
               tone={expectancyUsdc != null && expectancyUsdc > 0 ? "profit" : expectancyUsdc != null && expectancyUsdc < 0 ? "loss" : "neutral"}
               tooltip={t(
-                "每笔完整交易的平均已实现盈亏：总已实现盈亏 ÷ 完整交易笔数，等价于 胜率×平均盈利 − 败率×平均亏损。它把胜率与盈亏比压缩成一个数，为正即长期正期望。注意以 USDC 计价，仓位放大后数值自然变大，不宜跨时期直接比较；且取交易所的已实现盈亏，未单独扣减手续费。",
-                "Average realized PnL per completed round trip: total realized PnL ÷ number of round trips — equivalently win rate × avg win − loss rate × avg loss. It collapses win rate and P/L ratio into a single number; positive means a positive edge. Note it is denominated in USDC, so it scales with position size and is not comparable across periods, and it uses the exchange's realized PnL without separately deducting fees."
+                "每笔完整交易的平均已实现盈亏：总已实现盈亏 ÷ 完整交易笔数，等价于 胜率×平均盈利 − 败率×平均亏损。它把胜率与盈亏比压缩成一个数，为正即长期正期望。盈亏直接取自 Hyperliquid 的已实现盈亏，与历史成交一致；注意以 USDC 计价，仓位放大后数值自然变大，不宜跨时期直接比较。",
+                "Average realized PnL per completed round trip: total realized PnL ÷ number of round trips — equivalently win rate × avg win − loss rate × avg loss. It collapses win rate and P/L ratio into a single number; positive means a positive edge. PnL comes straight from Hyperliquid's realized PnL, matching the trade history; note it is denominated in USDC, so it scales with position size and is not comparable across periods."
               )}
             />
             <MetricTile
