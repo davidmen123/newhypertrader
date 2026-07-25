@@ -225,6 +225,11 @@ export default function AccountOverview() {
   const winRate = metricsData?.winRate ?? null;
   const plRatio = metricsData?.plRatio ?? null;
   const expectancyUsdc = metricsData?.expectancyUsdc ?? null;
+  const profitFactor = metricsData?.profitFactor ?? null;
+  const maxConsecutiveLosses = metricsData?.maxConsecutiveLosses ?? null;
+  const maxConsecutiveLossUsdc = metricsData?.maxConsecutiveLossUsdc ?? null;
+  const totalTrades = metricsData?.totalTrades ?? null;
+  const tradeSampleWeak = totalTrades != null && totalTrades > 0 && totalTrades < 20;
   const leverage = Number.isFinite(data.marginUsageRatio) ? data.marginUsageRatio : 0;
   const hasExposure = data.totalNtlPos > 0 || leverage > 0;
   const strategyStatus = hasExposure
@@ -247,6 +252,19 @@ export default function AccountOverview() {
     : leverage >= 5
     ? "oklch(72% 0.14 55)"
     : "oklch(68% 0.15 145)";
+  // Trading style: single-dimension bucketing on average holding time.
+  // Withheld below 10 round trips — too few samples to label a style.
+  const avgHoldingHours = metricsData?.averageHoldingHours ?? null;
+  const styleWithheld = totalTrades == null || totalTrades < 10 || avgHoldingHours == null;
+  const tradingStyle = styleWithheld
+    ? t("样本积累中", "Building Sample")
+    : avgHoldingHours < 24
+    ? t("日内交易", "Intraday")
+    : avgHoldingHours < 24 * 7
+    ? t("波段交易", "Swing")
+    : avgHoldingHours < 24 * 30
+    ? t("持仓交易", "Position")
+    : t("趋势跟踪", "Trend Following");
   const openOrders = openOrdersData ?? [];
   const hasStopLossOrder = openOrders.some((order) => {
     const type = String(order.orderType ?? "").toLowerCase();
@@ -367,6 +385,11 @@ export default function AccountOverview() {
                 <span className="text-muted-foreground/55" style={{ fontSize: "0.66rem" }}>
                   {t("初始资金", "Initial")} {data.initialEquityUsdc != null ? `${fmt(data.initialEquityUsdc, 2)} USDC` : "--"}
                 </span>
+                {data.runningDays != null && (
+                  <span className="text-muted-foreground/55" style={{ fontSize: "0.66rem" }}>
+                    {t(`运行 ${data.runningDays} 天`, `Running ${data.runningDays} days`)}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -405,6 +428,28 @@ export default function AccountOverview() {
               label={t("最大回撤", "Max Drawdown")}
               value={data.maxDrawdownPct != null ? `${data.maxDrawdownPct.toFixed(2)}%` : "--"}
               tone={data.maxDrawdownUsdc != null && data.maxDrawdownUsdc < 0 ? "loss" : "neutral"}
+            />
+            <MetricTile
+              label={t("最大连续亏损", "Max Consec. Losses")}
+              value={maxConsecutiveLosses != null ? t(`${maxConsecutiveLosses} 笔`, `${maxConsecutiveLosses}`) : "--"}
+              sub={
+                maxConsecutiveLosses != null && maxConsecutiveLosses > 0 && maxConsecutiveLossUsdc != null
+                  ? t(`累计 ${fmtSign(maxConsecutiveLossUsdc, 2)} USDC`, `Cumulative ${fmtSign(maxConsecutiveLossUsdc, 2)} USDC`)
+                  : undefined
+              }
+              tone={
+                maxConsecutiveLosses == null
+                  ? "neutral"
+                  : maxConsecutiveLosses >= 5
+                  ? "loss"
+                  : maxConsecutiveLosses >= 3
+                  ? "warning"
+                  : "neutral"
+              }
+              tooltip={t(
+                "历史上连续亏损的最长笔数及该段累计亏损。按已平仓交易统计，与最大回撤（净值曲线口径、含浮亏）互为对照。",
+                "Longest run of losing round trips and its cumulative loss. Closed trades only — the trade-based counterpart to max drawdown (equity-curve based, includes unrealized)."
+              )}
             />
             <MetricTile
               label={t("夏普比率", "Sharpe Ratio")}
@@ -446,17 +491,26 @@ export default function AccountOverview() {
                 "Annualized return / max drawdown ratio, >2 is excellent. Built on the annualized figure, so short track records (< 30 days) distort it too — indicative only."
               )}
             />
-            <MetricTile
-              label={t("运行天数", "Running Days")}
-              value={data.runningDays != null ? `${data.runningDays}` : "--"}
-              sub={t("天", "days")}
-              tone="neutral"
-            />
           </div>
         </div>
 
         <div className="space-y-2">
-          <SectionTitle>{t("交易表现", "Trade Performance")}</SectionTitle>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <SectionTitle>{t("交易表现", "Trade Performance")}</SectionTitle>
+            {metricsData && (
+              <span
+                className="tracking-wide"
+                style={{
+                  fontSize: "0.58rem",
+                  color: tradeSampleWeak ? "oklch(72% 0.14 55)" : "var(--metric-neutral)",
+                }}
+              >
+                {totalTrades != null && totalTrades > 0
+                  ? `${t(`基于 ${totalTrades} 笔完整交易`, `Based on ${totalTrades} round trips`)} · ${t("盈", "W")} ${metricsData.winningTrades} ${t("亏", "L")} ${metricsData.losingTrades}${metricsData.breakevenTrades > 0 ? ` ${t("平", "BE")} ${metricsData.breakevenTrades}` : ""}${tradeSampleWeak ? ` · ${t("样本不足，仅供参考", "small sample, indicative only")}` : ""}`
+                  : t("暂无完整交易", "No round trips yet")}
+              </span>
+            )}
+          </div>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
             <MetricTile
               label={t("胜率", "Win Rate")}
@@ -471,6 +525,16 @@ export default function AccountOverview() {
               tone={plRatio != null && plRatio > 1 ? "profit" : "neutral"}
             />
             <MetricTile
+              label={t("盈利因子", "Profit Factor")}
+              value={profitFactor != null ? (isFinite(profitFactor) ? fmt(profitFactor, 2) : "∞") : "--"}
+              sub={t("总盈利 / 总亏损", "Gross Win / Gross Loss")}
+              tone={profitFactor == null ? "neutral" : profitFactor > 1 ? "profit" : profitFactor < 1 ? "loss" : "neutral"}
+              tooltip={t(
+                "总盈利与总亏损之比。>1 表示整体盈利，1.5 以上较为稳健。与盈亏比不同：盈亏比用平均值，会被单笔大盈利拉高；盈利因子用总额。",
+                "Gross profit over gross loss. >1 means net profitable; above 1.5 is robust. Unlike P/L ratio (averages, skewed by outliers), this uses totals."
+              )}
+            />
+            <MetricTile
               label={t("期望值", "Expectancy")}
               value={expectancyUsdc != null && isFinite(expectancyUsdc) ? `${fmtSign(expectancyUsdc, 2)} USDC` : "--"}
               sub={t("每笔完整交易", "Per round trip")}
@@ -478,16 +542,18 @@ export default function AccountOverview() {
               tooltip={t("衡量每笔交易的平均预期收益", "Measures average expected return per trade")}
             />
             <MetricTile
-              label={t("完整交易数", "Round Trips")}
-              value={metricsData?.totalTrades != null ? `${metricsData.totalTrades}` : "--"}
-              sub={metricsData ? `${t("盈利", "Wins")} ${metricsData.winningTrades} · ${t("亏损", "Losses")} ${metricsData.losingTrades}` : undefined}
+              label={t("交易风格", "Trading Style")}
+              value={tradingStyle}
+              sub={
+                !styleWithheld
+                  ? t(`均持 ${fmtHoldingHours(avgHoldingHours)}`, `Avg hold ${fmtHoldingHours(avgHoldingHours)}`)
+                  : t("满 10 笔后定型", "Labeled after 10 trades")
+              }
               tone="neutral"
-            />
-            <MetricTile
-              label={t("平均持仓时长", "Avg Holding Time")}
-              value={fmtHoldingHours(metricsData?.averageHoldingHours)}
-              sub={t("按完整交易统计", "Closed trades only")}
-              tone="neutral"
+              tooltip={t(
+                "按平均持仓时长分档：<1天 日内 / 1–7天 波段 / 7–30天 持仓 / >30天 趋势跟踪。不足 10 笔完整交易时不定型。",
+                "Bucketed by average holding time: <1d intraday / 1–7d swing / 7–30d position / >30d trend following. Withheld below 10 round trips."
+              )}
             />
           </div>
         </div>

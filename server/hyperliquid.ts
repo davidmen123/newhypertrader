@@ -717,7 +717,7 @@ function signedFillSize(fill: HyperliquidFill) {
   return fill.side === "A" ? -size : size;
 }
 
-function calculateRoundTripTradeMetrics(fills: HyperliquidFill[]) {
+export function calculateRoundTripTradeMetrics(fills: HyperliquidFill[]) {
   const tolerance = 0.00000001;
   const sortedFills = fills
     .slice()
@@ -778,6 +778,29 @@ function calculateRoundTripTradeMetrics(fills: HyperliquidFill[]) {
     ? completedHoldingHours.reduce((sum, hours) => sum + hours, 0) / completedHoldingHours.length
     : null;
 
+  // Longest losing streak over completed round trips (already in close-time order).
+  // Ties on streak length resolve to the streak with the larger cumulative loss.
+  let maxConsecutiveLosses = 0;
+  let maxConsecutiveLossUsdc = 0;
+  let streakCount = 0;
+  let streakLossUsdc = 0;
+  for (const pnl of completedPnls) {
+    if (pnl < 0) {
+      streakCount += 1;
+      streakLossUsdc += pnl;
+      if (
+        streakCount > maxConsecutiveLosses ||
+        (streakCount === maxConsecutiveLosses && streakLossUsdc < maxConsecutiveLossUsdc)
+      ) {
+        maxConsecutiveLosses = streakCount;
+        maxConsecutiveLossUsdc = streakLossUsdc;
+      }
+    } else {
+      streakCount = 0;
+      streakLossUsdc = 0;
+    }
+  }
+
   return {
     totalTrades: completedPnls.length,
     winningTrades,
@@ -785,6 +808,9 @@ function calculateRoundTripTradeMetrics(fills: HyperliquidFill[]) {
     breakevenTrades,
     winRate: completedPnls.length > 0 ? (winningTrades / completedPnls.length) * 100 : null,
     plRatio: avgLoss > 0 ? avgWin / avgLoss : null,
+    profitFactor: grossLoss > 0 ? grossWin / grossLoss : grossWin > 0 ? Infinity : null,
+    maxConsecutiveLosses: completedPnls.length > 0 ? maxConsecutiveLosses : null,
+    maxConsecutiveLossUsdc: completedPnls.length > 0 ? maxConsecutiveLossUsdc : null,
     expectancyUsdc,
     averageHoldingHours,
   };
