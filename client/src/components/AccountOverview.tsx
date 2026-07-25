@@ -252,18 +252,20 @@ export default function AccountOverview() {
     ? "oklch(72% 0.14 55)"
     : "oklch(68% 0.15 145)";
   // Trading style: single-dimension bucketing on average holding time.
-  // Withheld below 10 round trips — too few samples to label a style.
+  // Always labeled once there is any closed trade; below 10 round trips the
+  // label is flagged as provisional in the sub-line rather than withheld.
   const avgHoldingHours = metricsData?.averageHoldingHours ?? null;
-  const styleWithheld = totalTrades == null || totalTrades < 10 || avgHoldingHours == null;
-  const tradingStyle = styleWithheld
-    ? t("样本积累中", "Building Sample")
-    : avgHoldingHours < 24
-    ? t("日内交易", "Intraday")
-    : avgHoldingHours < 24 * 7
-    ? t("波段交易", "Swing")
-    : avgHoldingHours < 24 * 30
-    ? t("持仓交易", "Position")
-    : t("趋势跟踪", "Trend Following");
+  const styleProvisional = totalTrades == null || totalTrades < 10;
+  const tradingStyle =
+    avgHoldingHours == null
+      ? "--"
+      : avgHoldingHours < 24
+      ? t("日内交易", "Intraday")
+      : avgHoldingHours < 24 * 7
+      ? t("波段交易", "Swing")
+      : avgHoldingHours < 24 * 30
+      ? t("持仓交易", "Position")
+      : t("趋势跟踪", "Trend Following");
   const openOrders = openOrdersData ?? [];
   const hasStopLossOrder = openOrders.some((order) => {
     const type = String(order.orderType ?? "").toLowerCase();
@@ -529,9 +531,11 @@ export default function AccountOverview() {
               label={t("交易风格", "Trading Style")}
               value={tradingStyle}
               sub={
-                !styleWithheld
-                  ? t(`均持 ${fmtHoldingHours(avgHoldingHours)}`, `Avg hold ${fmtHoldingHours(avgHoldingHours)}`)
-                  : t("满 10 笔后定型", "Labeled after 10 trades")
+                avgHoldingHours == null
+                  ? t("暂无完整交易", "No round trips yet")
+                  : `${t(`均持 ${fmtHoldingHours(avgHoldingHours)}`, `Avg hold ${fmtHoldingHours(avgHoldingHours)}`)}${
+                      styleProvisional ? t(" · 样本不足，满 10 笔后定型", " · small sample, settles at 10") : ""
+                    }`
               }
               tone="neutral"
               tooltip={t(
