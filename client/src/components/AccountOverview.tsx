@@ -9,12 +9,14 @@ function MetricTile({
   value,
   sub,
   tone = "neutral",
+  subTone = "neutral",
   tooltip,
 }: {
   label: string;
   value: string;
   sub?: string;
   tone?: "neutral" | "profit" | "loss" | "warning";
+  subTone?: "neutral" | "warning";
   tooltip?: string;
 }) {
   const color =
@@ -51,7 +53,10 @@ function MetricTile({
         {value}
       </div>
       {sub && (
-        <div className="text-muted-foreground/55 mt-1" style={{ fontSize: "0.66rem" }}>
+        <div
+          className={subTone === "warning" ? "mt-1" : "text-muted-foreground/55 mt-1"}
+          style={{ fontSize: "0.66rem", ...(subTone === "warning" ? { color: "oklch(72% 0.14 55)" } : {}) }}
+        >
           {sub}
         </div>
       )}
@@ -495,27 +500,17 @@ export default function AccountOverview() {
         </div>
 
         <div className="space-y-2">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <SectionTitle>{t("交易表现", "Trade Performance")}</SectionTitle>
-            {metricsData && (
-              <span
-                className="tracking-wide"
-                style={{
-                  fontSize: "0.58rem",
-                  color: tradeSampleWeak ? "oklch(72% 0.14 55)" : "var(--metric-neutral)",
-                }}
-              >
-                {totalTrades != null && totalTrades > 0
-                  ? `${t(`基于 ${totalTrades} 笔完整交易`, `Based on ${totalTrades} round trips`)} · ${t("盈", "W")} ${metricsData.winningTrades} ${t("亏", "L")} ${metricsData.losingTrades}${metricsData.breakevenTrades > 0 ? ` ${t("平", "BE")} ${metricsData.breakevenTrades}` : ""}${tradeSampleWeak ? ` · ${t("样本不足，仅供参考", "small sample, indicative only")}` : ""}`
-                  : t("暂无完整交易", "No round trips yet")}
-              </span>
-            )}
-          </div>
+          <SectionTitle>{t("交易表现", "Trade Performance")}</SectionTitle>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
             <MetricTile
               label={t("胜率", "Win Rate")}
               value={winRate != null ? `${winRate.toFixed(2)}%` : "--"}
-              sub={metricsData?.totalTrades != null ? `${metricsData.winningTrades}/${metricsData.totalTrades}` : t("暂无交易", "No trades")}
+              sub={
+                metricsData && totalTrades != null && totalTrades > 0
+                  ? `${t(`基于 ${totalTrades} 笔完整交易`, `${totalTrades} round trips`)} · ${t("盈", "W")} ${metricsData.winningTrades} ${t("亏", "L")} ${metricsData.losingTrades}${metricsData.breakevenTrades > 0 ? ` ${t("平", "BE")} ${metricsData.breakevenTrades}` : ""}${tradeSampleWeak ? ` · ${t("样本不足", "small sample")}` : ""}`
+                  : t("暂无交易", "No trades")
+              }
+              subTone={tradeSampleWeak ? "warning" : "neutral"}
               tone={winRate != null && winRate >= 50 ? "profit" : "neutral"}
             />
             <MetricTile
