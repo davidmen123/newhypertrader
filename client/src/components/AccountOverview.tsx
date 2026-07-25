@@ -471,7 +471,10 @@ export default function AccountOverview() {
               label={t("夏普比率", "Sharpe Ratio")}
               value={data.sharpeRatio != null && isFinite(data.sharpeRatio) ? fmt(data.sharpeRatio, 2) : "--"}
               tone={data.sharpeRatio != null && data.sharpeRatio >= 1 ? "profit" : "neutral"}
-              tooltip={t("衡量风险调整后的收益，>1为优秀", "Measures risk-adjusted return, >1 is excellent")}
+              tooltip={t(
+                "每承担一单位波动换来多少收益。按 UTC+8 日收益率计算：日均收益 ÷ 日收益标准差 × √365 年化。>1 良好，>2 优秀。本站未扣减无风险利率，数值略偏乐观；且它把上涨波动同样计为风险，运行天数少时会大幅跳动。",
+                "How much return each unit of volatility buys. Computed from UTC+8 daily returns: mean ÷ standard deviation × √365. >1 is good, >2 excellent. No risk-free rate is subtracted here, so the figure runs slightly optimistic; it also penalizes upside volatility and swings wildly over short track records."
+              )}
             />
             <MetricTile
               label={t("年化收益率", "Annualized Return")}
