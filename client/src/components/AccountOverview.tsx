@@ -9,14 +9,12 @@ function MetricTile({
   value,
   sub,
   tone = "neutral",
-  subTone = "neutral",
   tooltip,
 }: {
   label: string;
   value: string;
   sub?: string;
   tone?: "neutral" | "profit" | "loss" | "warning";
-  subTone?: "neutral" | "warning";
   tooltip?: string;
 }) {
   const color =
@@ -53,10 +51,7 @@ function MetricTile({
         {value}
       </div>
       {sub && (
-        <div
-          className={subTone === "warning" ? "mt-1" : "text-muted-foreground/55 mt-1"}
-          style={{ fontSize: "0.66rem", ...(subTone === "warning" ? { color: "oklch(72% 0.14 55)" } : {}) }}
-        >
+        <div className="text-muted-foreground/55 mt-1" style={{ fontSize: "0.66rem" }}>
           {sub}
         </div>
       )}
@@ -510,7 +505,6 @@ export default function AccountOverview() {
                   ? `${t(`基于 ${totalTrades} 笔完整交易`, `${totalTrades} round trips`)} · ${t("盈", "W")} ${metricsData.winningTrades} ${t("亏", "L")} ${metricsData.losingTrades}${metricsData.breakevenTrades > 0 ? ` ${t("平", "BE")} ${metricsData.breakevenTrades}` : ""}${tradeSampleWeak ? ` · ${t("样本不足", "small sample")}` : ""}`
                   : t("暂无交易", "No trades")
               }
-              subTone={tradeSampleWeak ? "warning" : "neutral"}
               tone={winRate != null && winRate >= 50 ? "profit" : "neutral"}
             />
             <MetricTile
