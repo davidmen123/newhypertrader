@@ -823,6 +823,7 @@ export default function PnlChart() {
                     const marker = props.payload?.[tradeKey] as TradeMarker | undefined;
                     if (!marker || props.cx == null || props.cy == null) return <circle cx={0} cy={0} r={0} />;
                     const isHovered = hoveredTradeId === marker.trade.execId;
+                    const markerLabel = marker.action === "买入" ? "B" : "S";
                     return (
                       <g
                         style={{ cursor: "pointer" }}
@@ -837,7 +838,7 @@ export default function PnlChart() {
                         <circle
                           cx={props.cx}
                           cy={props.cy}
-                          r={isHovered ? 7 : 5}
+                          r={isHovered ? 8 : 6}
                           fill={color}
                           stroke="var(--background)"
                           strokeWidth={2}
@@ -846,6 +847,19 @@ export default function PnlChart() {
                             transition: "r 120ms ease, filter 120ms ease",
                           }}
                         />
+                        <text
+                          x={props.cx}
+                          y={props.cy}
+                          textAnchor="middle"
+                          dominantBaseline="central"
+                          fill="#071311"
+                          fontSize="7"
+                          fontWeight="700"
+                          fontFamily="DM Mono, monospace"
+                          pointerEvents="none"
+                        >
+                          {markerLabel}
+                        </text>
                         {marker.trades.length > 1 && (
                           <text x={(props.cx ?? 0) + 8} y={(props.cy ?? 0) - 8} fill="var(--foreground)" fontSize="10" fontFamily="DM Mono, monospace">
                             {marker.trades.length}
@@ -865,8 +879,8 @@ export default function PnlChart() {
 
       {reviewMode && (
         <div className="flex items-center justify-center gap-5 text-muted-foreground mb-3" style={{ fontSize: "0.7rem" }}>
-          <span className="flex items-center gap-1.5"><i className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "oklch(68% 0.15 145)" }} />买入</span>
-          <span className="flex items-center gap-1.5"><i className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "oklch(62% 0.15 25)" }} />卖出</span>
+          <span className="flex items-center gap-1.5"><i className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full" style={{ background: "oklch(68% 0.15 145)", color: "#071311", fontSize: "0.55rem", fontStyle: "normal", fontWeight: 700 }}>B</i>买入</span>
+          <span className="flex items-center gap-1.5"><i className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full" style={{ background: "oklch(62% 0.15 25)", color: "#071311", fontSize: "0.55rem", fontStyle: "normal", fontWeight: 700 }}>S</i>卖出</span>
         </div>
       )}
 
@@ -936,7 +950,13 @@ export default function PnlChart() {
           )}
           <div className="rounded-lg p-3 mb-5" style={{ background: "var(--background)", border: "1px solid var(--panel-border)" }}>
             <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-              <div className="text-muted-foreground" style={{ fontSize: "0.68rem", letterSpacing: "0.08em" }}>历史成交 K线 · EMA20</div>
+              <div className="grid gap-1 text-muted-foreground" style={{ fontSize: "0.68rem", letterSpacing: "0.08em" }}>
+                <span>历史成交 K线</span>
+                <span className="flex items-center gap-1.5" style={{ fontSize: "0.62rem", letterSpacing: "0.04em" }}>
+                  <i className="inline-block" style={{ width: 14, height: 1, background: "#111" }} />
+                  EMA20
+                </span>
+              </div>
               <div className="flex items-center gap-1">
                 {(["1h", "4h", "1d", "1w"] as const).map((interval) => (
                   <button
