@@ -244,6 +244,7 @@ function MiniCandleChart({ candles, trade, interval }: { candles: Candle[]; trad
   }, 0);
   const selected = visible[selectedIndex];
   const markerColor = trade.side === "buy" || trade.side === "B" ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)";
+  const markerLabel = trade.side === "buy" || trade.side === "B" ? "B" : "S";
   const labelStep = Math.max(1, Math.ceil(visible.length / 8));
   const formatAxisDate = (time: number) => new Date(time).toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" });
   const emaPoints = visibleEma
@@ -267,7 +268,18 @@ function MiniCandleChart({ candles, trade, interval }: { candles: Candle[]; trad
         );
       })}
       {emaPoints && <polyline points={emaPoints} fill="none" stroke="#111" strokeWidth="1" strokeLinejoin="round" strokeLinecap="round" />}
-      <circle cx={selectedIndex * step + step / 2} cy={trade.side === "buy" || trade.side === "B" ? Math.min(y(selected.low) + 12, chartBottom - 2) : Math.max(y(selected.high) - 12, chartTop + 2)} r="5" fill={markerColor} stroke="var(--background)" strokeWidth="2" />
+      <text
+        x={selectedIndex * step + step / 2}
+        y={trade.side === "buy" || trade.side === "B" ? Math.min(y(selected.low) + 14, chartBottom - 2) : Math.max(y(selected.high) - 14, chartTop + 8)}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fill={markerColor}
+        fontSize="12"
+        fontWeight="700"
+        fontFamily="DM Mono, monospace"
+      >
+        {markerLabel}
+      </text>
       {visible.map((candle, index) => index % labelStep === 0 && (
         <text key={`date-${candle.time}`} x={index * step + step / 2} y="202" textAnchor="middle" fill="rgb(160 190 182 / 62%)" fontSize="10" fontFamily="DM Mono, monospace">
           {formatAxisDate(candle.time)}
@@ -823,7 +835,6 @@ export default function PnlChart() {
                     const marker = props.payload?.[tradeKey] as TradeMarker | undefined;
                     if (!marker || props.cx == null || props.cy == null) return <circle cx={0} cy={0} r={0} />;
                     const isHovered = hoveredTradeId === marker.trade.execId;
-                    const markerLabel = marker.action === "买入" ? "B" : "S";
                     return (
                       <g
                         style={{ cursor: "pointer" }}
@@ -838,7 +849,7 @@ export default function PnlChart() {
                         <circle
                           cx={props.cx}
                           cy={props.cy}
-                          r={isHovered ? 8 : 6}
+                          r={isHovered ? 7 : 5}
                           fill={color}
                           stroke="var(--background)"
                           strokeWidth={2}
@@ -847,19 +858,6 @@ export default function PnlChart() {
                             transition: "r 120ms ease, filter 120ms ease",
                           }}
                         />
-                        <text
-                          x={props.cx}
-                          y={props.cy}
-                          textAnchor="middle"
-                          dominantBaseline="central"
-                          fill="#071311"
-                          fontSize="7"
-                          fontWeight="700"
-                          fontFamily="DM Mono, monospace"
-                          pointerEvents="none"
-                        >
-                          {markerLabel}
-                        </text>
                         {marker.trades.length > 1 && (
                           <text x={(props.cx ?? 0) + 8} y={(props.cy ?? 0) - 8} fill="var(--foreground)" fontSize="10" fontFamily="DM Mono, monospace">
                             {marker.trades.length}
@@ -879,8 +877,8 @@ export default function PnlChart() {
 
       {reviewMode && (
         <div className="flex items-center justify-center gap-5 text-muted-foreground mb-3" style={{ fontSize: "0.7rem" }}>
-          <span className="flex items-center gap-1.5"><i className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full" style={{ background: "oklch(68% 0.15 145)", color: "#071311", fontSize: "0.55rem", fontStyle: "normal", fontWeight: 700 }}>B</i>买入</span>
-          <span className="flex items-center gap-1.5"><i className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full" style={{ background: "oklch(62% 0.15 25)", color: "#071311", fontSize: "0.55rem", fontStyle: "normal", fontWeight: 700 }}>S</i>卖出</span>
+          <span className="flex items-center gap-1.5"><i className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "oklch(68% 0.15 145)" }} />买入</span>
+          <span className="flex items-center gap-1.5"><i className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "oklch(62% 0.15 25)" }} />卖出</span>
         </div>
       )}
 
