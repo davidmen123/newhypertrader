@@ -641,6 +641,12 @@ export default function PnlChart() {
         >
           {reviewMode ? (lang === "zh" ? "退出复盘模式" : "Exit Review Mode") : (lang === "zh" ? "复盘模式" : "Review Mode")}
         </button>
+
+        {reviewMode && (
+          <span className="text-muted-foreground" style={{ fontSize: "0.66rem" }}>
+            {lang === "zh" ? "最近 100 条交易" : "Latest 100 trades"}
+          </span>
+        )}
       </div>
 
       {isLoading && <div className="text-muted-foreground text-sm animate-pulse py-8 text-center">{lang === "zh" ? "加载中..." : "Loading..."}</div>}
