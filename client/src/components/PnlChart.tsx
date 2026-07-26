@@ -70,6 +70,7 @@ type TradeMarker = ChartPoint & {
 
 type Candle = { time: number; open: number; high: number; low: number; close: number };
 type PnlSnapshot = { date: string; equity: string; totalPnl?: string | null; btcPrice?: string | number | null };
+type CandleInterval = "1h" | "4h" | "1d" | "1w";
 
 function formatSigned(value: number, decimals = 2) {
   if (!Number.isFinite(value)) return "—";
@@ -198,16 +199,31 @@ function CustomTooltip({ active, payload, label, labels, visible }: TooltipProps
   );
 }
 
-function MiniCandleChart({ candles, trade }: { candles: Candle[]; trade: TradeFill }) {
-  const visible = candles.slice(-48);
+function MiniCandleChart({ candles, trade, interval }: { candles: Candle[]; trade: TradeFill; interval: CandleInterval }) {
+  const visibleStart = Math.max(candles.length - 48, 0);
+  const visible = candles.slice(visibleStart);
   if (visible.length === 0) return <div className="py-10 text-center text-muted-foreground text-sm">暂无K线数据</div>;
   const values = visible.flatMap((candle) => [candle.high, candle.low]);
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = Math.max(max - min, 1);
-  const y = (value: number) => 182 - ((value - min) / range) * 154;
+  const chartTop = 12;
+  const chartBottom = 178;
+  const y = (value: number) => chartBottom - ((value - min) / range) * (chartBottom - chartTop);
   const width = 620;
   const step = width / visible.length;
+  const emaPeriod = 20;
+  const emaValues: Array<number | null> = [];
+  const multiplier = 2 / (emaPeriod + 1);
+  candles.forEach((candle, index) => {
+    if (index === 0) {
+      emaValues.push(candle.close);
+      return;
+    }
+    const previous = emaValues[index - 1] ?? candle.close;
+    emaValues.push((candle.close - previous) * multiplier + previous);
+  });
+  const visibleEma = emaValues.slice(visibleStart);
   const tradeTime = Number(trade.createdTime);
   const selectedIndex = visible.reduce((best, candle, index) => {
     const distance = Math.abs(candle.time - tradeTime);
@@ -216,9 +232,15 @@ function MiniCandleChart({ candles, trade }: { candles: Candle[]; trade: TradeFi
   }, 0);
   const selected = visible[selectedIndex];
   const markerColor = trade.side === "buy" || trade.side === "B" ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)";
+  const labelStep = Math.max(1, Math.ceil(visible.length / 8));
+  const formatAxisDate = (time: number) => new Date(time).toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" });
+  const emaPoints = visibleEma
+    .map((value, index) => value == null ? null : `${index * step + step / 2},${y(value)}`)
+    .filter((point): point is string => point != null)
+    .join(" ");
   return (
-    <svg viewBox={`0 0 ${width} 220`} className="w-full h-52" role="img" aria-label="历史成交K线">
-      <line x1="0" y1="182" x2={width} y2="182" stroke="var(--panel-border)" />
+    <svg viewBox={`0 0 ${width} 220`} className="w-full h-56" role="img" aria-label={`历史成交K线，${interval}周期，含EMA20均线`}>
+      <line x1="0" y1={chartBottom} x2={width} y2={chartBottom} stroke="var(--panel-border)" />
       {visible.map((candle, index) => {
         const x = index * step + step / 2;
         const top = y(Math.max(candle.open, candle.close));
@@ -232,7 +254,13 @@ function MiniCandleChart({ candles, trade }: { candles: Candle[]; trade: TradeFi
           </g>
         );
       })}
-      <circle cx={selectedIndex * step + step / 2} cy={trade.side === "buy" || trade.side === "B" ? y(selected.low) + 12 : y(selected.high) - 12} r="5" fill={markerColor} stroke="var(--background)" strokeWidth="2" />
+      {emaPoints && <polyline points={emaPoints} fill="none" stroke="#111" strokeWidth="1" strokeLinejoin="round" strokeLinecap="round" />}
+      <circle cx={selectedIndex * step + step / 2} cy={trade.side === "buy" || trade.side === "B" ? Math.min(y(selected.low) + 12, chartBottom - 2) : Math.max(y(selected.high) - 12, chartTop + 2)} r="5" fill={markerColor} stroke="var(--background)" strokeWidth="2" />
+      {visible.map((candle, index) => index % labelStep === 0 && (
+        <text key={`date-${candle.time}`} x={index * step + step / 2} y="202" textAnchor="middle" fill="rgb(160 190 182 / 62%)" fontSize="10" fontFamily="DM Mono, monospace">
+          {formatAxisDate(candle.time)}
+        </text>
+      ))}
     </svg>
   );
 }
@@ -291,6 +319,7 @@ export default function PnlChart() {
   const [selectedTrade, setSelectedTrade] = useState<TradeMarker | null>(null);
   const [hoveredTradeId, setHoveredTradeId] = useState<string | null>(null);
   const [showReviewDetail, setShowReviewDetail] = useState(false);
+  const [candleInterval, setCandleInterval] = useState<CandleInterval>("4h");
 
   // Compute startDate from timeRange
   // 7D  = past 7 calendar days
@@ -320,12 +349,19 @@ export default function PnlChart() {
   );
   const selectedCoin = selectedTrade?.trade.symbol?.replace(/-PERP$/i, "") || "BTC";
   const selectedTime = Number(selectedTrade?.trade.createdTime);
+  const candleWindowMs: Record<CandleInterval, number> = {
+    "1h": 4 * 24 * 60 * 60 * 1000,
+    "4h": 14 * 24 * 60 * 60 * 1000,
+    "1d": 60 * 24 * 60 * 60 * 1000,
+    "1w": 180 * 24 * 60 * 60 * 1000,
+  };
+  const candleWindow = candleWindowMs[candleInterval];
   const { data: candles } = trpc.hyperliquid.candles.useQuery(
     {
       coin: selectedCoin,
-      interval: "4h",
-      startTime: Number.isFinite(selectedTime) ? selectedTime - 14 * 24 * 60 * 60 * 1000 : undefined,
-      endTime: Number.isFinite(selectedTime) ? selectedTime + 14 * 24 * 60 * 60 * 1000 : undefined,
+      interval: candleInterval,
+      startTime: Number.isFinite(selectedTime) ? selectedTime - candleWindow : undefined,
+      endTime: Number.isFinite(selectedTime) ? selectedTime + candleWindow : undefined,
     },
     { enabled: showReviewDetail && selectedTrade != null }
   );
@@ -820,8 +856,27 @@ export default function PnlChart() {
             <button onClick={() => setShowReviewDetail(false)} className="text-muted-foreground hover:text-foreground p-1" aria-label="关闭交易详情"><X size={15} /></button>
           </div>
           <div className="rounded-lg p-3 mb-5" style={{ background: "var(--background)", border: "1px solid var(--panel-border)" }}>
-            <div className="text-muted-foreground mb-2" style={{ fontSize: "0.68rem", letterSpacing: "0.08em" }}>历史成交 K线</div>
-            <MiniCandleChart candles={(candles ?? []) as Candle[]} trade={selectedTrade.trade} />
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <div className="text-muted-foreground" style={{ fontSize: "0.68rem", letterSpacing: "0.08em" }}>历史成交 K线 · EMA20</div>
+              <div className="flex items-center gap-1">
+                {(["1h", "4h", "1d", "1w"] as const).map((interval) => (
+                  <button
+                    key={interval}
+                    onClick={() => setCandleInterval(interval)}
+                    className="rounded-full px-2.5 py-1 transition-colors"
+                    style={{
+                      fontSize: "0.64rem",
+                      border: `1px solid ${candleInterval === interval ? "rgb(92 211 184 / 52%)" : "var(--panel-border)"}`,
+                      color: candleInterval === interval ? "rgb(92 211 184 / 92%)" : "var(--text-soft)",
+                      background: candleInterval === interval ? "rgb(92 211 184 / 10%)" : "transparent",
+                    }}
+                  >
+                    {interval}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <MiniCandleChart candles={(candles ?? []) as Candle[]} trade={selectedTrade.trade} interval={candleInterval} />
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             {([
