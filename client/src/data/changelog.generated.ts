@@ -16,8 +16,8 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     "version": "1.51.3",
     "date": "2026-07-26",
-    "zh": "修正统一账户可用余额",
-    "en": "Fixed available balance for unified accounts"
+    "zh": "修正统一账户可用余额计算逻辑",
+    "en": "Fixed unified account available balance calculation logic"
   },
   {
     "version": "1.51.2",
