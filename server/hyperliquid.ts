@@ -230,6 +230,13 @@ export interface HyperliquidSpotClearinghouseState {
   balances?: HyperliquidSpotBalance[];
 }
 
+export type HyperliquidAccountAbstraction =
+  | "unifiedAccount"
+  | "portfolioMargin"
+  | "disabled"
+  | "default"
+  | "dexAbstraction";
+
 export interface HyperliquidFill {
   coin: string;
   px: string;
@@ -350,6 +357,11 @@ export async function getHyperliquidSpotState() {
   return callInfo<HyperliquidSpotClearinghouseState>({ type: "spotClearinghouseState", user });
 }
 
+export async function getHyperliquidAccountAbstraction() {
+  const user = assertAddress();
+  return callInfo<HyperliquidAccountAbstraction>({ type: "userAbstraction", user });
+}
+
 export function getHyperliquidSpotEquityUsdc(spotState: HyperliquidSpotClearinghouseState) {
   const balances = spotState.balances ?? [];
   return balances.reduce((sum, balance) => {
@@ -368,6 +380,16 @@ export function getHyperliquidSpotUsdcBalance(spotState: HyperliquidSpotClearing
     if (coin !== "USDC" && coin !== "USDC.E") return sum;
     return sum + toNumber(balance.total);
   }, 0);
+}
+
+export function getHyperliquidSpotAvailableUsdc(spotState: HyperliquidSpotClearinghouseState) {
+  const available = (spotState.balances ?? []).reduce((sum, balance) => {
+    const coin = balance.coin.toUpperCase();
+    if (coin !== "USDC" && coin !== "USDC.E") return sum;
+    return sum + toNumber(balance.total) - toNumber(balance.hold);
+  }, 0);
+
+  return Math.max(available, 0);
 }
 
 export async function getHyperliquidFills(startTime?: number, endTime?: number) {
@@ -993,9 +1015,18 @@ export async function getHyperliquidPositions() {
 }
 
 export async function getHyperliquidAccountOverview() {
-  const [perpStates, spotState, btcPrice, allTimeFills, portfolio, initialCapitalUsdc] = await Promise.all([
+  const [
+    perpStates,
+    spotState,
+    accountAbstraction,
+    btcPrice,
+    allTimeFills,
+    portfolio,
+    initialCapitalUsdc,
+  ] = await Promise.all([
     getHyperliquidPerpStates(),
     getHyperliquidSpotState().catch(() => ({ balances: [] })),
+    getHyperliquidAccountAbstraction().catch(() => null),
     getHyperliquidBtcPrice().catch(() => 0),
     getHyperliquidFills(0).catch(() => []),
     getHyperliquidPortfolio().catch(() => null),
@@ -1015,13 +1046,26 @@ export async function getHyperliquidAccountOverview() {
   const perpEquityUsdc = summaries.reduce((sum, summary) => sum + toNumber(summary.accountValue), 0);
   const spotEquityUsdc = getHyperliquidSpotEquityUsdc(spotState);
   const spotUsdcBalance = getHyperliquidSpotUsdcBalance(spotState);
+  const spotAvailableUsdc = getHyperliquidSpotAvailableUsdc(spotState);
   const fallbackEquityUsdc = portfolioEquity.latest && portfolioEquity.latest > 0
     ? portfolioEquity.latest
     : perpEquityUsdc;
   const totalEquityUsdc = spotEquityUsdc > 0 ? spotEquityUsdc : fallbackEquityUsdc;
   const totalMarginUsed = summaries.reduce((sum, summary) => sum + toNumber(summary.totalMarginUsed), 0);
   const totalNtlPos = summaries.reduce((sum, summary) => sum + toNumber(summary.totalNtlPos), 0);
-  const withdrawable = activePerpStates.reduce((sum, { state }) => sum + toNumber(state.withdrawable), 0);
+  const perpWithdrawableUsdc = activePerpStates.reduce(
+    (sum, { state }) => sum + toNumber(state.withdrawable),
+    0
+  );
+  const usesUnifiedBalance =
+    accountAbstraction === "unifiedAccount" || accountAbstraction === "portfolioMargin";
+  const availableUsdc = usesUnifiedBalance
+    ? spotAvailableUsdc
+    : accountAbstraction
+      ? perpWithdrawableUsdc + spotAvailableUsdc
+      : perpWithdrawableUsdc > 0
+        ? perpWithdrawableUsdc
+        : spotAvailableUsdc;
   const positions = activePerpStates.flatMap(({ state }) => state.assetPositions ?? []);
   const sessionUplUsdc = positions.reduce(
     (sum, item) => sum + toNumber(item.position.unrealizedPnl),
@@ -1069,7 +1113,7 @@ export async function getHyperliquidAccountOverview() {
     totalPnlPct,
     imUsdc: totalMarginUsed,
     mmUsdc: 0,
-    availableUsdc: withdrawable > 0 ? withdrawable : spotUsdcBalance,
+    availableUsdc,
     marginUsageRatio: totalEquityUsdc > 0 ? totalNtlPos / totalEquityUsdc : 0,
     maxDrawdownUsdc: drawdown.maxDrawdownUsdc,
     maxDrawdownPct: drawdown.maxDrawdownPct,

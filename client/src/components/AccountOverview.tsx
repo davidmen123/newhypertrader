@@ -422,8 +422,11 @@ export default function AccountOverview() {
               <MetricTile
                 label={t("可用余额", "Available Balance")}
                 value={fmtUsdcDenom(data.availableUsdc)}
-                sub={t("可开仓 · 可提现", "Free to trade / withdraw")}
-                tooltip={t("当前未占用、可自由支配的资金", "Unallocated funds, free to trade or withdraw")}
+                sub={t("当前未占用余额", "Currently unallocated")}
+                tooltip={t(
+                  "统一账户的 USDC 总余额减去持仓与委托占用金额",
+                  "Unified-account USDC balance minus funds held by positions and orders"
+                )}
               />
             </div>
 

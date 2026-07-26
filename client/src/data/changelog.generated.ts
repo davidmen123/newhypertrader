@@ -14,6 +14,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.51.3",
+    "date": "2026-07-26",
+    "zh": "修正统一账户可用余额",
+    "en": "Fixed available balance for unified accounts"
+  },
+  {
     "version": "1.51.2",
     "date": "2026-07-25",
     "zh": "修正交易指标的成交排序",
