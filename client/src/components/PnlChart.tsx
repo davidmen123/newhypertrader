@@ -274,7 +274,14 @@ function MiniCandleChart({ candles, trade, interval, emaColor }: { candles: Cand
         const color = bullish ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)";
         return (
           <g key={candle.time}>
-            <line x1={x} x2={x} y1={y(candle.high)} y2={y(candle.low)} stroke={color} strokeWidth="1.2" />
+            {bullish ? (
+              <>
+                <line x1={x} x2={x} y1={y(candle.high)} y2={y(Math.max(candle.open, candle.close))} stroke={color} strokeWidth="1.2" />
+                <line x1={x} x2={x} y1={y(Math.min(candle.open, candle.close))} y2={y(candle.low)} stroke={color} strokeWidth="1.2" />
+              </>
+            ) : (
+              <line x1={x} x2={x} y1={y(candle.high)} y2={y(candle.low)} stroke={color} strokeWidth="1.2" />
+            )}
             <rect x={x - Math.max(step * 0.28, 2)} y={top} width={Math.max(step * 0.56, 3)} height={Math.max(bottom - top, 2)} fill={bullish ? "transparent" : color} stroke={color} strokeWidth="1.2" />
           </g>
         );
