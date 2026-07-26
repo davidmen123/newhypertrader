@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, Clock, Globe, Info, Laptop, MapPin, Monitor, RefreshCw, Smartphone } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -134,6 +134,146 @@ function deviceIcon(deviceType: string | null) {
   if (deviceType === "mobile") return <Smartphone style={style} />;
   if (deviceType === "tablet") return <Smartphone style={style} />;
   return <Globe style={style} />;
+}
+
+type ReviewDraft = {
+  entryReason: string;
+  exitReason: string;
+  reviewSummary: string;
+};
+
+const EMPTY_REVIEW_DRAFT: ReviewDraft = {
+  entryReason: "",
+  exitReason: "",
+  reviewSummary: "",
+};
+
+function TradeReviewManager() {
+  const [selectedExecId, setSelectedExecId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<ReviewDraft>(EMPTY_REVIEW_DRAFT);
+  const [status, setStatus] = useState<"draft" | "published">("published");
+  const [savedMessage, setSavedMessage] = useState("");
+  const { data: history, isLoading } = trpc.hyperliquid.tradeHistory.useQuery(
+    { startDate: "2026-06-27", limit: 1000 },
+    { refetchInterval: 120_000 }
+  );
+  const trades = history?.trades ?? [];
+  const selectedTrade = trades.find((trade) => trade.execId === selectedExecId);
+  const { data: review, isFetching: isReviewFetching } = trpc.hyperliquid.tradeReview.useQuery(
+    { tradeExecId: selectedExecId ?? "none" },
+    { enabled: selectedExecId != null }
+  );
+  const saveMutation = trpc.hyperliquid.saveTradeReview.useMutation();
+
+  useEffect(() => {
+    setDraft({
+      entryReason: review?.entryReason ?? "",
+      exitReason: review?.exitReason ?? "",
+      reviewSummary: review?.reviewSummary ?? "",
+    });
+    setStatus(review?.status === "draft" ? "draft" : "published");
+    setSavedMessage("");
+  }, [review]);
+
+  const saveReview = async () => {
+    if (!selectedTrade) return;
+    await saveMutation.mutateAsync({
+      tradeExecId: selectedTrade.execId,
+      symbol: selectedTrade.symbol,
+      ...draft,
+      status,
+    });
+    setSavedMessage(status === "published" ? "已保存并展示给学员" : "草稿已保存");
+  };
+
+  return (
+    <Panel title="交易复盘管理" sub="编辑后保存，前台复盘页自动呈现">
+      <div className="grid gap-5 lg:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.6fr)]">
+        <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
+          {isLoading ? (
+            <div className="py-8 text-center text-muted-foreground text-sm">加载交易记录中…</div>
+          ) : trades.length === 0 ? (
+            <EmptyState />
+          ) : (
+            trades.map((trade) => {
+              const isSelected = trade.execId === selectedExecId;
+              const isBuy = trade.side === "buy" || trade.side === "B";
+              return (
+                <button
+                  key={trade.execId}
+                  onClick={() => setSelectedExecId(trade.execId)}
+                  className="w-full text-left rounded-lg px-3 py-3 transition-colors"
+                  style={{
+                    background: isSelected ? "rgb(92 211 184 / 10%)" : "var(--surface-subtle)",
+                    border: `1px solid ${isSelected ? "rgb(92 211 184 / 42%)" : "var(--panel-border)"}`,
+                  }}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-medium text-foreground" style={{ fontSize: "0.76rem" }}>{trade.symbol}</span>
+                    <span style={{ color: isBuy ? GREEN : "oklch(62% 0.15 25)", fontSize: "0.68rem" }}>{isBuy ? "买入" : "卖出"}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 mt-1 text-muted-foreground/65" style={{ fontSize: "0.64rem" }}>
+                    <span>{new Date(Number(trade.createdTime)).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                    <span className="num-display">盈亏 {Number(trade.execPnl) >= 0 ? "+" : ""}{Number(trade.execPnl).toLocaleString("en-US", { maximumFractionDigits: 2 })}</span>
+                  </div>
+                </button>
+              );
+            })
+          )}
+        </div>
+
+        {selectedTrade ? (
+          <div className="rounded-lg p-4" style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}>
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <div className="text-foreground font-medium">{selectedTrade.symbol} · 交易复盘</div>
+                <div className="text-muted-foreground/60 mt-1" style={{ fontSize: "0.66rem" }}>成交编号：{selectedTrade.execId}</div>
+              </div>
+              <span className="text-muted-foreground" style={{ fontSize: "0.66rem" }}>{isReviewFetching ? "读取中…" : review?.status === "published" ? "已发布" : "未发布"}</span>
+            </div>
+            <div className="grid gap-3">
+              {([
+                ["买入理由", "entryReason"],
+                ["卖出理由", "exitReason"],
+                ["复盘总结", "reviewSummary"],
+              ] as const).map(([label, key]) => (
+                <label key={key} className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
+                  {label}
+                  <textarea
+                    rows={key === "reviewSummary" ? 5 : 3}
+                    value={draft[key]}
+                    onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}
+                    className="w-full rounded-lg px-3 py-2 bg-transparent text-foreground outline-none resize-y"
+                    style={{ border: "1px solid var(--panel-border)" }}
+                    placeholder={`填写${label}…`}
+                  />
+                </label>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
+              <div className="flex items-center gap-2 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
+                <span>状态</span>
+                <select value={status} onChange={(event) => setStatus(event.target.value as "draft" | "published")} className="rounded-md px-2 py-1 bg-transparent text-foreground" style={{ border: "1px solid var(--panel-border)" }}>
+                  <option value="draft">草稿</option>
+                  <option value="published">展示给学员</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-3">
+                {savedMessage && <span className="text-profit" style={{ fontSize: "0.68rem" }}>{savedMessage}</span>}
+                <button onClick={saveReview} disabled={saveMutation.isPending || isReviewFetching} className="rounded-full px-4 py-1.5 text-xs disabled:opacity-50" style={{ background: "rgb(92 211 184 / 14%)", border: "1px solid rgb(92 211 184 / 40%)", color: "rgb(92 211 184 / 92%)" }}>
+                  {saveMutation.isPending ? "保存中…" : "保存复盘"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="min-h-52 flex items-center justify-center rounded-lg text-muted-foreground/60 text-sm" style={{ background: "var(--surface-subtle)", border: "1px dashed var(--panel-border)" }}>
+            从左侧选择一笔交易开始编辑
+          </div>
+        )}
+      </div>
+    </Panel>
+  );
 }
 
 // ─── Dashboard ─────────────────────────────────────────────────────────────
@@ -549,6 +689,8 @@ function AnalyticsDashboard() {
                 </div>
               )}
             </Panel>
+
+            <TradeReviewManager />
 
             {/* Footer status */}
             <div className="flex items-center justify-center gap-2 text-muted-foreground/55 pb-4" style={{ fontSize: "0.66rem" }}>

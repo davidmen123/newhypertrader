@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLang } from "@/contexts/LangContext";
 import {
@@ -291,7 +291,6 @@ export default function PnlChart() {
   const [selectedTrade, setSelectedTrade] = useState<TradeMarker | null>(null);
   const [hoveredTradeId, setHoveredTradeId] = useState<string | null>(null);
   const [showReviewDetail, setShowReviewDetail] = useState(false);
-  const [reviewDraft, setReviewDraft] = useState({ entryReason: "", exitReason: "", reviewSummary: "" });
 
   // Compute startDate from timeRange
   // 7D  = past 7 calendar days
@@ -330,20 +329,11 @@ export default function PnlChart() {
     },
     { enabled: showReviewDetail && selectedTrade != null }
   );
-  const reviewQuery = trpc.hyperliquid.tradeReview.useQuery(
+  const { data: review } = trpc.hyperliquid.tradeReview.useQuery(
     { tradeExecId: selectedTrade?.trade.execId || "none" },
     { enabled: selectedTrade != null }
   );
-  const saveReviewMutation = trpc.hyperliquid.saveTradeReview.useMutation();
-
-  useEffect(() => {
-    const review = reviewQuery.data;
-    setReviewDraft({
-      entryReason: review?.entryReason ?? "",
-      exitReason: review?.exitReason ?? "",
-      reviewSummary: review?.reviewSummary ?? "",
-    });
-  }, [reviewQuery.data]);
+  const visibleReview = review?.status === "published" ? review : null;
 
   // Backend already returns data in ascending date order (earliest → latest)
   const snapshots = (data || []) as PnlSnapshot[];
@@ -452,17 +442,6 @@ export default function PnlChart() {
       if (wouldAllBeHidden) return prev;
       return { ...prev, [key]: nextActive };
     });
-  };
-
-  const saveReview = async (status: "draft" | "published") => {
-    if (!selectedTrade) return;
-    await saveReviewMutation.mutateAsync({
-      tradeExecId: selectedTrade.trade.execId,
-      symbol: selectedTrade.trade.symbol,
-      ...reviewDraft,
-      status,
-    });
-    await reviewQuery.refetch();
   };
 
   return (
@@ -850,22 +829,13 @@ export default function PnlChart() {
               ["卖出理由", "exitReason"],
               ["复盘总结", "reviewSummary"],
             ] as const).map(([label, key]) => (
-              <label key={label} className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
-                {label}
-                <textarea
-                  rows={4}
-                  value={reviewDraft[key]}
-                  onChange={(event) => setReviewDraft((current) => ({ ...current, [key]: event.target.value }))}
-                  className="w-full rounded-lg px-3 py-2 bg-transparent text-foreground outline-none resize-y"
-                  style={{ border: "1px solid var(--panel-border)" }}
-                  placeholder="输入内容…"
-                />
-              </label>
+              <div key={label} className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
+                <span>{label}</span>
+                <div className="min-h-24 whitespace-pre-wrap rounded-lg px-3 py-2 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
+                  {visibleReview?.[key] || <span className="text-muted-foreground/50">暂无内容</span>}
+                </div>
+              </div>
             ))}
-          </div>
-          <div className="flex justify-end gap-2 mt-4">
-            <button onClick={() => saveReview("draft")} disabled={saveReviewMutation.isPending} className="rounded-full px-3 py-1.5 text-xs border border-border/40 text-muted-foreground disabled:opacity-50">保存草稿</button>
-            <button onClick={() => saveReview("published")} disabled={saveReviewMutation.isPending} className="rounded-full px-3 py-1.5 text-xs disabled:opacity-50" style={{ background: "rgb(92 211 184 / 14%)", border: "1px solid rgb(92 211 184 / 40%)", color: "rgb(92 211 184 / 92%)" }}>展示给学员</button>
           </div>
         </div>
       )}
