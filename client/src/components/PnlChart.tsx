@@ -200,7 +200,9 @@ function CustomTooltip({ active, payload, label, labels, visible }: TooltipProps
 
 function ReviewTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload?: TradeMarker }> }) {
   if (!active || !payload?.[0]?.payload) return null;
-  const marker = payload[0].payload;
+  const point = payload[0].payload as TradeMarker & { reviewMarkers?: TradeMarker[] };
+  const marker = point.reviewMarkers?.[0];
+  if (!marker?.trade?.symbol) return null;
   return (
     <div style={{
       background: "rgb(2 15 14 / 94%)",
