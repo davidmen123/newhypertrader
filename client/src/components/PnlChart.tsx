@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLang } from "@/contexts/LangContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import {
   ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceArea, ReferenceLine,
   ResponsiveContainer,
@@ -211,7 +212,7 @@ function CustomTooltip({ active, payload, label, labels, visible }: TooltipProps
   );
 }
 
-function MiniCandleChart({ candles, trade, interval }: { candles: Candle[]; trade: TradeFill; interval: CandleInterval }) {
+function MiniCandleChart({ candles, trade, interval, emaColor, emaHaloColor }: { candles: Candle[]; trade: TradeFill; interval: CandleInterval; emaColor: string; emaHaloColor: string }) {
   const visibleStart = Math.max(candles.length - 48, 0);
   const visible = candles.slice(visibleStart);
   if (visible.length === 0) return <div className="py-10 text-center text-muted-foreground text-sm">暂无K线数据</div>;
@@ -269,8 +270,8 @@ function MiniCandleChart({ candles, trade, interval }: { candles: Candle[]; trad
       })}
       {emaPoints && (
         <>
-          <polyline points={emaPoints} fill="none" stroke="rgb(209 231 226 / 58%)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
-          <polyline points={emaPoints} fill="none" stroke="#111" strokeWidth="1" strokeLinejoin="round" strokeLinecap="round" />
+          <polyline points={emaPoints} fill="none" stroke={emaHaloColor} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+          <polyline points={emaPoints} fill="none" stroke={emaColor} strokeWidth="1" strokeLinejoin="round" strokeLinecap="round" />
         </>
       )}
       <g>
@@ -347,6 +348,7 @@ function SeriesToggle({
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function PnlChart() {
   const { lang } = useLang();
+  const { theme } = useTheme();
   type TimeRange = "7D" | "30D" | "90D" | "MAX";
   const [visible, setVisible] = useState<Record<SeriesKey, boolean>>({
     accountPerformance: true,
@@ -994,7 +996,13 @@ export default function PnlChart() {
                 ))}
               </div>
             </div>
-            <MiniCandleChart candles={(candles ?? []) as Candle[]} trade={selectedTrade.trade} interval={candleInterval} />
+            <MiniCandleChart
+              candles={(candles ?? []) as Candle[]}
+              trade={selectedTrade.trade}
+              interval={candleInterval}
+              emaColor={theme === "dark" ? "rgb(225 235 232 / 82%)" : "#111"}
+              emaHaloColor={theme === "dark" ? "rgb(225 235 232 / 24%)" : "rgb(255 255 255 / 58%)"}
+            />
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             {([
