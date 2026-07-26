@@ -1098,16 +1098,37 @@ export default function PnlChart() {
               emaColor={theme === "dark" ? "#fff" : "#111"}
             />
           </div>
-          <div className={`grid gap-3 ${reviewDetailFields.length > 2 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
-            {reviewDetailFields.map(({ label, value }) => (
-              <div key={label} className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
-                <span>{label}</span>
-                <div className="min-h-24 whitespace-pre-wrap rounded-lg px-3 py-2 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
-                  {value || <span className="text-muted-foreground/50">暂无内容</span>}
+          {selectedTrade.trade.closeMethod ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {reviewDetailFields.map(({ label, value }) => (
+                <div key={label} className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
+                  <span>{label}</span>
+                  <div className="whitespace-pre-wrap rounded-lg px-3 py-2 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
+                    {value || <span className="text-muted-foreground/50">暂无内容</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {reviewDetailFields.slice(0, 4).map(({ label, value }) => (
+                  <div key={label} className="grid gap-1 text-muted-foreground" style={{ fontSize: "0.66rem" }}>
+                    <span>{label}</span>
+                    <div className="whitespace-pre-wrap rounded-lg px-2 py-1.5 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
+                      {value || <span className="text-muted-foreground/50">暂无</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="grid gap-1 mt-3 text-muted-foreground" style={{ fontSize: "0.66rem" }}>
+                <span>{reviewDetailFields[4]?.label}</span>
+                <div className="whitespace-pre-wrap rounded-lg px-2 py-1.5 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
+                  {reviewDetailFields[4]?.value || <span className="text-muted-foreground/50">暂无内容</span>}
                 </div>
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </div>
       )}
     </div>
