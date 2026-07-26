@@ -14,6 +14,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.53.0",
+    "date": "2026-07-27",
+    "zh": "完善复盘交易风险信息",
+    "en": "Added trade risk details to review mode"
+  },
+  {
     "version": "1.52.0",
     "date": "2026-07-27",
     "zh": "增加复盘模式及对应组件",
