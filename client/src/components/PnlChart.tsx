@@ -198,29 +198,6 @@ function CustomTooltip({ active, payload, label, labels, visible }: TooltipProps
   );
 }
 
-function ReviewTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload?: TradeMarker }> }) {
-  if (!active || !payload?.[0]?.payload) return null;
-  const point = payload[0].payload as TradeMarker & { reviewMarkers?: TradeMarker[] };
-  const marker = point.reviewMarkers?.[0];
-  if (!marker?.trade?.symbol) return null;
-  return (
-    <div style={{
-      background: "rgb(2 15 14 / 94%)",
-      border: "1px solid rgb(92 211 184 / 18%)",
-      borderRadius: 8,
-      padding: "8px 11px",
-      boxShadow: "0 12px 30px rgb(0 0 0 / 35%)",
-    }}>
-      <div style={{ color: marker.action === "买入" ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)", fontSize: "0.78rem" }}>
-        {marker.action}
-      </div>
-      <div style={{ color: "rgb(209 231 226 / 78%)", fontSize: "0.72rem", marginTop: 2 }}>
-        {marker.trade.symbol}
-      </div>
-    </div>
-  );
-}
-
 function MiniCandleChart({ candles, trade }: { candles: Candle[]; trade: TradeFill }) {
   const visible = candles.slice(-48);
   if (visible.length === 0) return <div className="py-10 text-center text-muted-foreground text-sm">暂无K线数据</div>;
@@ -312,6 +289,7 @@ export default function PnlChart() {
   const [timeRange, setTimeRange] = useState<TimeRange | null>(null);
   const [reviewMode, setReviewMode] = useState(false);
   const [selectedTrade, setSelectedTrade] = useState<TradeMarker | null>(null);
+  const [hoveredTradeId, setHoveredTradeId] = useState<string | null>(null);
   const [showReviewDetail, setShowReviewDetail] = useState(false);
   const [reviewDraft, setReviewDraft] = useState({ entryReason: "", exitReason: "", reviewSummary: "" });
 
@@ -561,7 +539,7 @@ export default function PnlChart() {
         {reviewMode && (
           <div className="flex items-center gap-2 text-muted-foreground" style={{ fontSize: "0.68rem" }}>
             <span className="inline-block w-2 h-2 rounded-full" style={{ background: "oklch(72% 0.08 230)" }} />
-            {lang === "zh" ? "复盘模式：账户净值 + 交易节点" : "Review mode: equity + trade nodes"}
+            {lang === "zh" ? "复盘模式：账户净值 + 交易节点 · 点击节点查看详情" : "Review mode: equity + trade nodes · Click a node for details"}
           </div>
         )}
         {/* Time range */}
@@ -737,7 +715,6 @@ export default function PnlChart() {
                   }
                 />
               )}
-              {reviewMode && <Tooltip content={<ReviewTooltip />} />}
               {!reviewMode && visible.accountPerformance && (
                 <Area
                   yAxisId="left"
@@ -801,15 +778,22 @@ export default function PnlChart() {
                     const props = rawProps as { cx?: number; cy?: number; payload?: Record<string, unknown> };
                     const marker = props.payload?.[tradeKey] as TradeMarker | undefined;
                     if (!marker || props.cx == null || props.cy == null) return <circle cx={0} cy={0} r={0} />;
+                    const isHovered = hoveredTradeId === marker.trade.execId;
                     return (
                       <circle
                         cx={props.cx}
                         cy={props.cy}
-                        r={5}
+                        r={isHovered ? 7 : 5}
                         fill={color}
                         stroke="var(--background)"
                         strokeWidth={2}
-                        style={{ cursor: "pointer" }}
+                        style={{
+                          cursor: "pointer",
+                          filter: isHovered ? `drop-shadow(0 0 5px ${color})` : undefined,
+                          transition: "r 120ms ease, filter 120ms ease",
+                        }}
+                        onMouseEnter={() => setHoveredTradeId(marker.trade.execId)}
+                        onMouseLeave={() => setHoveredTradeId(null)}
                         onClick={() => {
                           setSelectedTrade(marker);
                           setShowReviewDetail(false);
