@@ -248,7 +248,7 @@ function MiniCandleChart({ candles, trade, interval, emaColor }: { candles: Cand
     const previous = emaValues[index - 1] ?? candle.close;
     emaValues.push((candle.close - previous) * multiplier + previous);
   });
-  const visibleEma = emaValues.slice(visibleStart);
+  const visibleEma = emaValues.slice(visibleStart, visibleStart + visible.length);
   const selectedIndex = visible.reduce((best, candle, index) => {
     const distance = Math.abs(candle.time - tradeTime);
     const bestDistance = Math.abs(visible[best].time - tradeTime);
@@ -674,7 +674,7 @@ export default function PnlChart() {
 
       {reviewMode && (
         <div className="flex flex-wrap items-start gap-x-3 gap-y-1 mb-5 rounded-lg px-3 py-2.5 text-muted-foreground" style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)", fontSize: "0.68rem" }}>
-          <span className="shrink-0 text-foreground/80 tracking-widest">{lang === "zh" ? "复盘说明" : "Review guide"}</span>
+          <span className="shrink-0 text-foreground/80 tracking-widest">{lang === "zh" ? "说明" : "Guide"}</span>
           <span>
             {lang === "zh"
               ? "点击净值曲线上的交易节点查看详情；同日有多笔交易时，可在详情区切换；K 线支持 1h、4h、1d、1w，EMA20 仅作辅助参考。"
