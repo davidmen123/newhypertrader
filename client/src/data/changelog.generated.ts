@@ -14,6 +14,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.52.0",
+    "date": "2026-07-27",
+    "zh": "复盘模式与交易详情增强",
+    "en": "Enhanced review mode and trade details"
+  },
+  {
     "version": "1.51.3",
     "date": "2026-07-26",
     "zh": "修正统一账户可用余额计算逻辑",
