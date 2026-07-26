@@ -236,6 +236,10 @@ export async function upsertTradeReview(review: InsertTradeReview) {
     target: tradeReviews.tradeExecId,
     set: {
       symbol: review.symbol,
+      entryPrice: review.entryPrice ?? null,
+      stopLossPrice: review.stopLossPrice ?? null,
+      riskAmount: review.riskAmount ?? null,
+      takeProfitTarget: review.takeProfitTarget ?? null,
       entryReason: review.entryReason ?? null,
       exitReason: review.exitReason ?? null,
       reviewSummary: review.reviewSummary ?? null,

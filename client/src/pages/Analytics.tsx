@@ -137,12 +137,18 @@ function deviceIcon(deviceType: string | null) {
 }
 
 type ReviewDraft = {
+  entryPrice: string;
+  stopLossPrice: string;
+  takeProfitTarget: string;
   entryReason: string;
   exitReason: string;
   reviewSummary: string;
 };
 
 const EMPTY_REVIEW_DRAFT: ReviewDraft = {
+  entryPrice: "",
+  stopLossPrice: "",
+  takeProfitTarget: "",
   entryReason: "",
   exitReason: "",
   reviewSummary: "",
@@ -167,13 +173,16 @@ function TradeReviewManager() {
 
   useEffect(() => {
     setDraft({
+      entryPrice: review?.entryPrice ?? selectedTrade?.execPrice ?? "",
+      stopLossPrice: review?.stopLossPrice ?? selectedTrade?.triggerPrice ?? "",
+      takeProfitTarget: review?.takeProfitTarget ?? "",
       entryReason: review?.entryReason ?? "",
       exitReason: review?.exitReason ?? "",
       reviewSummary: review?.reviewSummary ?? "",
     });
     setStatus(review?.status === "draft" ? "draft" : "published");
     setSavedMessage("");
-  }, [review]);
+  }, [review, selectedTrade]);
 
   const saveReview = async () => {
     if (!selectedTrade) return;
@@ -181,6 +190,7 @@ function TradeReviewManager() {
       tradeExecId: selectedTrade.execId,
       symbol: selectedTrade.symbol,
       ...draft,
+      execQty: selectedTrade.execQty,
       status,
     });
     setSavedMessage(status === "published" ? "已保存并展示给学员" : "草稿已保存");
@@ -232,23 +242,76 @@ function TradeReviewManager() {
               <span className="text-muted-foreground" style={{ fontSize: "0.66rem" }}>{isReviewFetching ? "读取中…" : review?.status === "published" ? "已发布" : "未发布"}</span>
             </div>
             <div className="grid gap-3">
-              {([
-                ["买入理由", "entryReason"],
-                ["卖出理由", "exitReason"],
-                ["复盘总结", "reviewSummary"],
-              ] as const).map(([label, key]) => (
-                <label key={key} className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
-                  {label}
-                  <textarea
-                    rows={key === "reviewSummary" ? 5 : 3}
-                    value={draft[key]}
-                    onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}
-                    className="w-full rounded-lg px-3 py-2 bg-transparent text-foreground outline-none resize-y"
-                    style={{ border: "1px solid var(--panel-border)" }}
-                    placeholder={`填写${label}…`}
-                  />
-                </label>
-              ))}
+              {!selectedTrade.closeMethod ? (
+                <>
+                  {([
+                    ["进场价格", "entryPrice"],
+                    ["止损价格", "stopLossPrice"],
+                    ["止盈目标（可选）", "takeProfitTarget"],
+                  ] as const).map(([label, key]) => (
+                    <label key={key} className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
+                      {label}
+                      <input
+                        value={draft[key]}
+                        onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}
+                        className="w-full rounded-lg px-3 py-2 bg-transparent text-foreground outline-none"
+                        style={{ border: "1px solid var(--panel-border)" }}
+                        placeholder={key === "stopLossPrice" ? "Hyperliquid 未提供时手动填写" : `填写${label}…`}
+                      />
+                    </label>
+                  ))}
+                  <div className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
+                    单笔风险
+                    <div className="rounded-lg px-3 py-2 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
+                      {(() => {
+                        const entry = Number(draft.entryPrice);
+                        const stop = Number(draft.stopLossPrice);
+                        const qty = Number(selectedTrade.execQty);
+                        const risk = Number.isFinite(entry) && Number.isFinite(stop) && Number.isFinite(qty) && entry > 0 && stop > 0 && qty > 0
+                          ? Math.abs(entry - stop) * qty
+                          : Number(review?.riskAmount);
+                        return Number.isFinite(risk) && risk > 0 ? risk.toLocaleString("en-US", { maximumFractionDigits: 8 }) : "保存后自动计算";
+                      })()}
+                    </div>
+                  </div>
+                  <label className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
+                    {selectedTrade.side === "buy" || selectedTrade.side === "B" ? "买入/做多理由" : "卖出/做空理由"}
+                    <textarea
+                      rows={3}
+                      value={draft[selectedTrade.side === "buy" || selectedTrade.side === "B" ? "entryReason" : "exitReason"]}
+                      onChange={(event) => setDraft((current) => ({ ...current, [selectedTrade.side === "buy" || selectedTrade.side === "B" ? "entryReason" : "exitReason"]: event.target.value }))}
+                      className="w-full rounded-lg px-3 py-2 bg-transparent text-foreground outline-none resize-y"
+                      style={{ border: "1px solid var(--panel-border)" }}
+                      placeholder={`填写${selectedTrade.side === "buy" || selectedTrade.side === "B" ? "买入/做多理由" : "卖出/做空理由"}…`}
+                    />
+                  </label>
+                </>
+              ) : (
+                <>
+                  <label className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
+                    {selectedTrade.side === "buy" || selectedTrade.side === "B" ? "买入/做多理由" : "卖出/做空理由"}
+                    <textarea
+                      rows={3}
+                      value={draft[selectedTrade.side === "buy" || selectedTrade.side === "B" ? "entryReason" : "exitReason"]}
+                      onChange={(event) => setDraft((current) => ({ ...current, [selectedTrade.side === "buy" || selectedTrade.side === "B" ? "entryReason" : "exitReason"]: event.target.value }))}
+                      className="w-full rounded-lg px-3 py-2 bg-transparent text-foreground outline-none resize-y"
+                      style={{ border: "1px solid var(--panel-border)" }}
+                      placeholder={`填写${selectedTrade.side === "buy" || selectedTrade.side === "B" ? "买入/做多理由" : "卖出/做空理由"}…`}
+                    />
+                  </label>
+                  <label className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
+                    复盘总结
+                    <textarea
+                      rows={5}
+                      value={draft.reviewSummary}
+                      onChange={(event) => setDraft((current) => ({ ...current, reviewSummary: event.target.value }))}
+                      className="w-full rounded-lg px-3 py-2 bg-transparent text-foreground outline-none resize-y"
+                      style={{ border: "1px solid var(--panel-border)" }}
+                      placeholder="填写复盘总结…"
+                    />
+                  </label>
+                </>
+              )}
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
               <div className="flex items-center gap-2 text-muted-foreground" style={{ fontSize: "0.7rem" }}>

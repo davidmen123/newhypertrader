@@ -398,13 +398,28 @@ export const hyperliquidRouter = router({
     .input(z.object({
       tradeExecId: z.string().min(1).max(160),
       symbol: z.string().min(1).max(64),
+      entryPrice: z.string().max(64).optional(),
+      stopLossPrice: z.string().max(64).optional(),
+      takeProfitTarget: z.string().max(64).optional(),
+      execQty: z.string().max(64).optional(),
       entryReason: z.string().max(10000).optional(),
       exitReason: z.string().max(10000).optional(),
       reviewSummary: z.string().max(20000).optional(),
       status: z.enum(["draft", "published"]).default("draft"),
     }))
     .mutation(async ({ input }) => {
-      const review = await upsertTradeReview(input);
+      const entryPrice = Number(input.entryPrice);
+      const stopLossPrice = Number(input.stopLossPrice);
+      const execQty = Number(input.execQty);
+      const riskAmount = Number.isFinite(entryPrice) && entryPrice > 0
+        && Number.isFinite(stopLossPrice) && stopLossPrice > 0
+        && Number.isFinite(execQty) && execQty > 0
+        ? String(Math.abs(entryPrice - stopLossPrice) * execQty)
+        : undefined;
+      const review = await upsertTradeReview({
+        ...input,
+        riskAmount,
+      });
       return { success: true, review };
     }),
 

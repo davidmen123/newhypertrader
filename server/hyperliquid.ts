@@ -1253,6 +1253,7 @@ export async function getHyperliquidTradeHistory(params: {
         updatedTime: String(group.latestTime),
         execPnl: String(group.pnl),
         closeMethod,
+        triggerPrice: toNumber(historicalOrder?.triggerPrice) > 0 ? String(historicalOrder?.triggerPrice) : "",
         isRPI: "false",
       };
     });

@@ -61,6 +61,7 @@ type TradeFill = {
   createdTime: string;
   execPnl: string;
   closeMethod?: string;
+  triggerPrice?: string;
 };
 
 type TradeMarker = ChartPoint & {
@@ -82,6 +83,19 @@ function formatSigned(value: number, decimals = 2) {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   })}`;
+}
+
+function formatReviewNumber(value: string | number | null | undefined) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number.toLocaleString("en-US", { maximumFractionDigits: 8 }) : "—";
+}
+
+function calculateRiskAmount(entryPrice: string | number | null | undefined, stopLossPrice: string | number | null | undefined, quantity: string | number | null | undefined) {
+  const entry = Number(entryPrice);
+  const stop = Number(stopLossPrice);
+  const qty = Number(quantity);
+  if (![entry, stop, qty].every(Number.isFinite) || entry <= 0 || stop <= 0 || qty <= 0) return "";
+  return String(Math.abs(entry - stop) * qty);
 }
 
 function formatAxisDay(value: string) {
@@ -425,6 +439,33 @@ export default function PnlChart() {
     { enabled: selectedTrade != null }
   );
   const visibleReview = review?.status === "published" ? review : null;
+  const reviewDetailFields = selectedTrade
+    ? selectedTrade.trade.closeMethod
+      ? [
+          {
+            label: selectedTrade.action === "买入" ? "买入/做多理由" : "卖出/做空理由",
+            value: visibleReview?.[selectedTrade.action === "买入" ? "entryReason" : "exitReason"] ?? "",
+          },
+          { label: "复盘总结", value: visibleReview?.reviewSummary ?? "" },
+        ]
+      : [
+          { label: "进场价格", value: formatReviewNumber(visibleReview?.entryPrice ?? selectedTrade.trade.execPrice) },
+          { label: "止损价格", value: formatReviewNumber(visibleReview?.stopLossPrice ?? selectedTrade.trade.triggerPrice) },
+          {
+            label: "单笔风险",
+            value: formatReviewNumber(visibleReview?.riskAmount ?? calculateRiskAmount(
+              visibleReview?.entryPrice ?? selectedTrade.trade.execPrice,
+              visibleReview?.stopLossPrice ?? selectedTrade.trade.triggerPrice,
+              selectedTrade.trade.execQty,
+            )),
+          },
+          { label: "止盈目标", value: formatReviewNumber(visibleReview?.takeProfitTarget) },
+          {
+            label: selectedTrade.action === "买入" ? "买入/做多理由" : "卖出/做空理由",
+            value: visibleReview?.[selectedTrade.action === "买入" ? "entryReason" : "exitReason"] ?? "",
+          },
+        ]
+    : [];
 
   // Backend already returns data in ascending date order (earliest → latest)
   const snapshots = (data || []) as PnlSnapshot[];
@@ -1032,16 +1073,12 @@ export default function PnlChart() {
               emaColor={theme === "dark" ? "#fff" : "#111"}
             />
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {([
-              ["买入理由", "entryReason"],
-              ["卖出理由", "exitReason"],
-              ["复盘总结", "reviewSummary"],
-            ] as const).map(([label, key]) => (
+          <div className={`grid gap-3 ${reviewDetailFields.length > 2 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+            {reviewDetailFields.map(({ label, value }) => (
               <div key={label} className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
                 <span>{label}</span>
                 <div className="min-h-24 whitespace-pre-wrap rounded-lg px-3 py-2 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
-                  {visibleReview?.[key] || <span className="text-muted-foreground/50">暂无内容</span>}
+                  {value || <span className="text-muted-foreground/50">暂无内容</span>}
                 </div>
               </div>
             ))}

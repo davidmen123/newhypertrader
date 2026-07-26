@@ -150,6 +150,10 @@ export async function runMigrations(): Promise<void> {
         updatedAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    await db.execute(sql`ALTER TABLE trade_reviews ADD COLUMN IF NOT EXISTS entryprice numeric(20,8)`).catch(() => {});
+    await db.execute(sql`ALTER TABLE trade_reviews ADD COLUMN IF NOT EXISTS stoplossprice numeric(20,8)`).catch(() => {});
+    await db.execute(sql`ALTER TABLE trade_reviews ADD COLUMN IF NOT EXISTS riskamount numeric(20,8)`).catch(() => {});
+    await db.execute(sql`ALTER TABLE trade_reviews ADD COLUMN IF NOT EXISTS takeprofittarget numeric(20,8)`).catch(() => {});
 
     await db.execute(sql`ALTER TABLE visitor_logs ADD COLUMN IF NOT EXISTS city varchar(64)`).catch(() => {});
     await db.execute(sql`ALTER TABLE visitor_logs ADD COLUMN IF NOT EXISTS region varchar(64)`).catch(() => {});
