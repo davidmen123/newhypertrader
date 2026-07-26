@@ -311,8 +311,6 @@ export default function PnlChart() {
   // Generous limit — actual filtering is done server-side by startDate
   const queryLimit = 1000;
 
-  const snapshotMutation = trpc.hyperliquid.snapshotPnl.useMutation();
-
   const { data, isLoading, error, refetch, isFetching } = trpc.hyperliquid.pnlHistory.useQuery(
     { startDate, limit: queryLimit },
     { refetchInterval: 60_000 }
@@ -492,17 +490,6 @@ export default function PnlChart() {
             }}
           >
             {reviewMode ? (lang === "zh" ? "退出复盘" : "Exit Review") : (lang === "zh" ? "复盘" : "Review")}
-          </button>
-          <button
-            onClick={async () => {
-              await snapshotMutation.mutateAsync();
-              refetch();
-            }}
-            disabled={snapshotMutation.isPending}
-            className="text-muted-foreground hover:text-foreground transition-colors text-xs tracking-widest uppercase border border-border/40 rounded-full px-3 py-1 disabled:opacity-40"
-            style={{ fontSize: "0.65rem" }}
-          >
-            {snapshotMutation.isPending ? (lang === "zh" ? "保存中" : "Saving") : (lang === "zh" ? "记录" : "Record")}
           </button>
           <button onClick={() => { refetch(); }} className="text-muted-foreground hover:text-foreground transition-colors p-1">
             <RefreshCw size={13} className={isFetching ? "animate-spin" : ""} />

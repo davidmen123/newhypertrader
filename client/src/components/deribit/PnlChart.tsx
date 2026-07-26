@@ -172,8 +172,6 @@ export default function PnlChart() {
   // Generous limit — actual filtering is done server-side by startDate
   const queryLimit = 1000;
 
-  const snapshotMutation = trpc.deribit.snapshotPnl.useMutation();
-
   const { data, isLoading, error, refetch, isFetching } = trpc.deribit.pnlHistory.useQuery(
     { denomination, startDate, limit: queryLimit },
     { refetchInterval: 60_000 }
@@ -264,18 +262,6 @@ export default function PnlChart() {
           <div className="mt-2" style={{ width: 40, height: 1, background: "oklch(58% 0.015 200 / 60%)" }} />
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={async () => {
-              await snapshotMutation.mutateAsync({});
-              refetch();
-              refetchScheduler();
-            }}
-            disabled={snapshotMutation.isPending}
-            className="text-muted-foreground hover:text-foreground transition-colors text-xs tracking-widest uppercase border border-border/40 rounded-full px-3 py-1 disabled:opacity-40"
-            style={{ fontSize: "0.65rem" }}
-          >
-            {snapshotMutation.isPending ? (lang === "zh" ? "保存中" : "Saving") : (lang === "zh" ? "记录" : "Record")}
-          </button>
           <button onClick={() => { refetch(); refetchScheduler(); }} className="text-muted-foreground hover:text-foreground transition-colors p-1">
             <RefreshCw size={13} className={isFetching ? "animate-spin" : ""} />
           </button>
@@ -450,8 +436,8 @@ export default function PnlChart() {
           </div>
           <div className="text-muted-foreground/50" style={{ fontSize: "0.7rem" }}>
             {lang === "zh"
-              ? `点击"记录"按钮记录当前 ${unit} 账户净值`
-              : `Click "Record" to record the current ${unit} account equity`}
+              ? `系统会自动记录当前 ${unit} 账户净值`
+              : `The system automatically records current ${unit} account equity`}
           </div>
         </div>
       )}
