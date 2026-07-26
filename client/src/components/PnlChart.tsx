@@ -273,18 +273,28 @@ function MiniCandleChart({ candles, trade, interval }: { candles: Candle[]; trad
           <polyline points={emaPoints} fill="none" stroke="#111" strokeWidth="1" strokeLinejoin="round" strokeLinecap="round" />
         </>
       )}
-      <text
-        x={selectedIndex * step + step / 2}
-        y={trade.side === "buy" || trade.side === "B" ? Math.min(y(selected.low) + 14, chartBottom - 2) : Math.max(y(selected.high) - 14, chartTop + 8)}
-        textAnchor="middle"
-        dominantBaseline="central"
-        fill={markerColor}
-        fontSize="12"
-        fontWeight="700"
-        fontFamily="DM Mono, monospace"
-      >
-        {markerLabel}
-      </text>
+      <g>
+        <circle
+          cx={selectedIndex * step + step / 2}
+          cy={trade.side === "buy" || trade.side === "B" ? Math.min(y(selected.low) + 14, chartBottom - 2) : Math.max(y(selected.high) - 14, chartTop + 8)}
+          r="8"
+          fill="none"
+          stroke={markerColor}
+          strokeWidth="1"
+        />
+        <text
+          x={selectedIndex * step + step / 2}
+          y={trade.side === "buy" || trade.side === "B" ? Math.min(y(selected.low) + 14, chartBottom - 2) : Math.max(y(selected.high) - 14, chartTop + 8)}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill={markerColor}
+          fontSize="10"
+          fontWeight="700"
+          fontFamily="DM Mono, monospace"
+        >
+          {markerLabel}
+        </text>
+      </g>
       {visible.map((candle, index) => index % labelStep === 0 && (
         <text key={`date-${candle.time}`} x={index * step + step / 2} y="202" textAnchor="middle" fill="rgb(160 190 182 / 62%)" fontSize="10" fontFamily="DM Mono, monospace">
           {formatAxisDate(candle.time)}
