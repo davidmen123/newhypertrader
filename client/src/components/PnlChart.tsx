@@ -491,21 +491,6 @@ export default function PnlChart() {
           <div className="mt-2" style={{ width: 40, height: 1, background: "rgb(215 187 114 / 62%)" }} />
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => {
-              setReviewMode((active) => !active);
-              setSelectedTrade(null);
-              setShowReviewDetail(false);
-            }}
-            className="text-xs tracking-widest rounded-full px-3 py-1 transition-colors"
-            style={{
-              border: `1px solid ${reviewMode ? "rgb(92 211 184 / 62%)" : "var(--panel-border)"}`,
-              color: reviewMode ? "rgb(92 211 184 / 92%)" : "var(--text-soft)",
-              background: reviewMode ? "rgb(92 211 184 / 10%)" : "transparent",
-            }}
-          >
-            {reviewMode ? (lang === "zh" ? "退出复盘" : "Exit Review") : (lang === "zh" ? "复盘" : "Review")}
-          </button>
           <button onClick={() => { refetch(); }} className="text-muted-foreground hover:text-foreground transition-colors p-1">
             <RefreshCw size={13} className={isFetching ? "animate-spin" : ""} />
           </button>
@@ -538,12 +523,6 @@ export default function PnlChart() {
 
       {/* Controls row: time range + series toggles — stacks on mobile */}
       <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-4 mb-5 sm:mb-6">
-        {reviewMode && (
-          <div className="flex items-center gap-2 text-muted-foreground" style={{ fontSize: "0.68rem" }}>
-            <span className="inline-block w-2 h-2 rounded-full" style={{ background: "oklch(72% 0.08 230)" }} />
-            {lang === "zh" ? "复盘模式：账户净值 + 交易节点 · 点击节点查看详情" : "Review mode: equity + trade nodes · Click a node for details"}
-          </div>
-        )}
         {/* Time range */}
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.62rem" }}>
@@ -582,6 +561,31 @@ export default function PnlChart() {
             ))}
           </div>
         </div>}
+
+        {reviewMode && (
+          <div className="flex items-center gap-2 text-muted-foreground" style={{ fontSize: "0.68rem" }}>
+            <span className="inline-block w-2 h-2 rounded-full" style={{ background: "oklch(72% 0.08 230)" }} />
+            {lang === "zh" ? "账户净值" : "Account Equity"}
+          </div>
+        )}
+
+        <div className="hidden sm:block" style={{ width: 1, height: 16, background: "var(--panel-border)" }} />
+
+        <button
+          onClick={() => {
+            setReviewMode((active) => !active);
+            setSelectedTrade(null);
+            setShowReviewDetail(false);
+          }}
+          className="text-xs tracking-widest rounded-full px-3 py-1 transition-colors"
+          style={{
+            border: `1px solid ${reviewMode ? "rgb(92 211 184 / 62%)" : "var(--panel-border)"}`,
+            color: reviewMode ? "rgb(92 211 184 / 92%)" : "var(--text-soft)",
+            background: reviewMode ? "rgb(92 211 184 / 10%)" : "transparent",
+          }}
+        >
+          {reviewMode ? (lang === "zh" ? "退出复盘模式" : "Exit Review Mode") : (lang === "zh" ? "复盘模式" : "Review Mode")}
+        </button>
       </div>
 
       {isLoading && <div className="text-muted-foreground text-sm animate-pulse py-8 text-center">{lang === "zh" ? "加载中..." : "Loading..."}</div>}
