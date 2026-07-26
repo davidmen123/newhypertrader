@@ -321,7 +321,7 @@ function TradeReviewManager() {
                           <span className="grid gap-0.5">
                             <span>{risk.toLocaleString("en-US", { maximumFractionDigits: 8 })} USDC</span>
                             <span className="text-muted-foreground/65" style={{ fontSize: "0.62rem" }}>
-                              {riskPercent != null ? `${riskPercent.toFixed(2)}% ÷ 当前账户净值` : "风险比例待账户净值加载"}
+                              {riskPercent != null ? `${riskPercent.toFixed(2)}%` : "—"}
                             </span>
                           </span>
                         ) : "保存后自动计算";
