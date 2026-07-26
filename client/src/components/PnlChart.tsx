@@ -475,8 +475,8 @@ export default function PnlChart() {
       const sell = dayMarkers.find((candidate) => candidate.action === "卖出");
       return {
         ...point,
-        buyMarkerY: buy?.date === point.date ? point.assetTrend + markerOffset : null,
-        sellMarkerY: sell?.date === point.date ? point.assetTrend - markerOffset : null,
+        buyMarkerY: buy?.date === point.date ? point.assetTrend - markerOffset : null,
+        sellMarkerY: sell?.date === point.date ? point.assetTrend + markerOffset : null,
         buyTrade: buy?.date === point.date ? buy : undefined,
         sellTrade: sell?.date === point.date ? sell : undefined,
       };
