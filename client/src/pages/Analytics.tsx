@@ -175,6 +175,10 @@ function TradeReviewManager() {
     undefined,
     { enabled: selectedTrade != null && !selectedTrade.closeMethod, refetchInterval: 10_000 }
   );
+  const { data: accountOverview } = trpc.hyperliquid.accountOverview.useQuery(
+    undefined,
+    { refetchInterval: 60_000 }
+  );
   const saveMutation = trpc.hyperliquid.saveTradeReview.useMutation();
   const canAutoRead = selectedTrade != null && Number(selectedTrade.createdTime) >= REVIEW_AUTO_READ_FROM;
 
@@ -311,7 +315,16 @@ function TradeReviewManager() {
                         const risk = Number.isFinite(entry) && Number.isFinite(stop) && Number.isFinite(qty) && entry > 0 && stop > 0 && qty > 0
                           ? Math.abs(entry - stop) * qty
                           : Number(review?.riskAmount);
-                        return Number.isFinite(risk) && risk > 0 ? risk.toLocaleString("en-US", { maximumFractionDigits: 8 }) : "保存后自动计算";
+                        const equity = Number(accountOverview?.totalEquityUsdc);
+                        const riskPercent = Number.isFinite(risk) && risk > 0 && equity > 0 ? (risk / equity) * 100 : null;
+                        return Number.isFinite(risk) && risk > 0 ? (
+                          <span className="grid gap-0.5">
+                            <span>{risk.toLocaleString("en-US", { maximumFractionDigits: 8 })} USDC</span>
+                            <span className="text-muted-foreground/65" style={{ fontSize: "0.62rem" }}>
+                              {riskPercent != null ? `${riskPercent.toFixed(2)}% ÷ 当前账户净值` : "风险比例待账户净值加载"}
+                            </span>
+                          </span>
+                        ) : "保存后自动计算";
                       })()}
                     </div>
                   </div>

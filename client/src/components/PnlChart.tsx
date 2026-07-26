@@ -438,6 +438,10 @@ export default function PnlChart() {
     { tradeExecId: selectedTrade?.trade.execId || "none" },
     { enabled: selectedTrade != null }
   );
+  const { data: accountOverview } = trpc.hyperliquid.accountOverview.useQuery(
+    undefined,
+    { enabled: selectedTrade != null && !selectedTrade.trade.closeMethod, refetchInterval: 60_000 }
+  );
   const visibleReview = review?.status === "published" ? review : null;
   const reviewDetailFields = selectedTrade
     ? selectedTrade.trade.closeMethod
@@ -453,11 +457,18 @@ export default function PnlChart() {
           { label: "止损价格", value: formatReviewNumber(visibleReview?.stopLossPrice ?? selectedTrade.trade.triggerPrice) },
           {
             label: "单笔风险",
-            value: formatReviewNumber(visibleReview?.riskAmount ?? calculateRiskAmount(
-              visibleReview?.entryPrice ?? selectedTrade.trade.execPrice,
-              visibleReview?.stopLossPrice ?? selectedTrade.trade.triggerPrice,
-              selectedTrade.trade.execQty,
-            )),
+            value: (() => {
+              const riskAmount = Number(visibleReview?.riskAmount ?? calculateRiskAmount(
+                visibleReview?.entryPrice ?? selectedTrade.trade.execPrice,
+                visibleReview?.stopLossPrice ?? selectedTrade.trade.triggerPrice,
+                selectedTrade.trade.execQty,
+              ));
+              const equity = Number(accountOverview?.totalEquityUsdc);
+              const riskPercent = riskAmount > 0 && equity > 0 ? (riskAmount / equity) * 100 : null;
+              return riskAmount > 0
+                ? `${formatReviewNumber(riskAmount)} USDC${riskPercent != null ? `\n${riskPercent.toFixed(2)}% ÷ 当前账户净值` : ""}`
+                : "";
+            })(),
           },
           { label: "止盈目标", value: formatReviewNumber(visibleReview?.takeProfitTarget) },
           {
