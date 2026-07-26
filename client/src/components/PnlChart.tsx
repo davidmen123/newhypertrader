@@ -442,7 +442,21 @@ export default function PnlChart() {
     undefined,
     { enabled: selectedTrade != null && !selectedTrade.trade.closeMethod, refetchInterval: 60_000 }
   );
+  const { data: openOrders } = trpc.hyperliquid.openOrders.useQuery(
+    undefined,
+    { enabled: selectedTrade != null && !selectedTrade.trade.closeMethod, refetchInterval: 10_000 }
+  );
   const visibleReview = review?.status === "published" ? review : null;
+  const selectedStopOrder = selectedTrade && !selectedTrade.trade.closeMethod
+    ? openOrders?.find((order) => {
+        const orderType = String(order.orderType ?? "").toLowerCase();
+        const isStopOrder = orderType.includes("stop") || (
+          Boolean(order.isTrigger) && Boolean(order.reduceOnly) && !orderType.includes("take profit")
+        );
+        return order.symbol === selectedTrade.trade.symbol && isStopOrder && Number(order.triggerPrice) > 0;
+      })
+    : undefined;
+  const selectedStopLossPrice = visibleReview?.stopLossPrice || selectedStopOrder?.triggerPrice || selectedTrade?.trade.triggerPrice || "";
   const reviewDetailFields = selectedTrade
     ? selectedTrade.trade.closeMethod
       ? [
@@ -454,13 +468,13 @@ export default function PnlChart() {
         ]
       : [
           { label: "进场价格", value: formatReviewNumber(visibleReview?.entryPrice ?? selectedTrade.trade.execPrice) },
-          { label: "止损价格", value: formatReviewNumber(visibleReview?.stopLossPrice ?? selectedTrade.trade.triggerPrice) },
+          { label: "止损价格", value: formatReviewNumber(selectedStopLossPrice) },
           {
             label: "单笔风险",
             value: (() => {
-              const riskAmount = Number(visibleReview?.riskAmount ?? calculateRiskAmount(
-                visibleReview?.entryPrice ?? selectedTrade.trade.execPrice,
-                visibleReview?.stopLossPrice ?? selectedTrade.trade.triggerPrice,
+              const riskAmount = Number(visibleReview?.riskAmount || calculateRiskAmount(
+                visibleReview?.entryPrice || selectedTrade.trade.execPrice,
+                selectedStopLossPrice,
                 selectedTrade.trade.execQty,
               ));
               const equity = Number(accountOverview?.totalEquityUsdc);
