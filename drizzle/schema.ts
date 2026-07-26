@@ -78,6 +78,21 @@ export const pnlSnapshots = pgTable("pnl_snapshots", {
 export type PnlSnapshot = typeof pnlSnapshots.$inferSelect;
 export type InsertPnlSnapshot = typeof pnlSnapshots.$inferInsert;
 
+export const tradeReviews = pgTable("trade_reviews", {
+  id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+  tradeExecId: varchar("tradeexecid", { length: 160 }).notNull().unique(),
+  symbol: varchar("symbol", { length: 64 }).notNull(),
+  entryReason: text("entryreason"),
+  exitReason: text("exitreason"),
+  reviewSummary: text("reviewsummary"),
+  status: varchar("status", { length: 16 }).notNull().default("draft"),
+  createdAt: timestamp("createdat").defaultNow().notNull(),
+  updatedAt: timestamp("updatedat").defaultNow().notNull(),
+});
+
+export type TradeReview = typeof tradeReviews.$inferSelect;
+export type InsertTradeReview = typeof tradeReviews.$inferInsert;
+
 // Plain integer PK (not identity): the app upserts the singleton row with an
 // explicit id = 1, which GENERATED ALWAYS columns reject.
 export const pageViews = pgTable("page_views", {

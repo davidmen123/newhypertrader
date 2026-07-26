@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, gte, isNull, lte, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { InsertUser, InsertTrade, InsertPnlSnapshot, InsertVisitorLog, pnlSnapshots, trades, users, pageViews, visitorLogs } from "../drizzle/schema.js";
+import { InsertUser, InsertTrade, InsertPnlSnapshot, InsertVisitorLog, InsertTradeReview, pnlSnapshots, trades, tradeReviews, users, pageViews, visitorLogs } from "../drizzle/schema.js";
 import { ENV } from './_core/env.js';
 import { getIndexPrice } from './deribit.js';
 
@@ -219,6 +219,31 @@ export async function getPnlSnapshots(params: {
     .where(and(...conditions))
     .orderBy(desc(pnlSnapshots.snapshotAt))
     .limit(params.limit ?? 90);
+}
+
+export async function getTradeReview(tradeExecId: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(tradeReviews).where(eq(tradeReviews.tradeExecId, tradeExecId)).limit(1);
+  return rows[0];
+}
+
+export async function upsertTradeReview(review: InsertTradeReview) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const now = new Date();
+  const rows = await db.insert(tradeReviews).values({ ...review, updatedAt: now }).onConflictDoUpdate({
+    target: tradeReviews.tradeExecId,
+    set: {
+      symbol: review.symbol,
+      entryReason: review.entryReason ?? null,
+      exitReason: review.exitReason ?? null,
+      reviewSummary: review.reviewSummary ?? null,
+      status: review.status ?? "draft",
+      updatedAt: now,
+    },
+  }).returning();
+  return rows[0];
 }
 
 export async function incrementPageViews(): Promise<number> {

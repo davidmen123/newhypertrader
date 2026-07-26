@@ -137,6 +137,20 @@ export async function runMigrations(): Promise<void> {
       )
     `);
 
+    await createTable("trade_reviews", `
+      CREATE TABLE IF NOT EXISTS trade_reviews (
+        id SERIAL PRIMARY KEY,
+        tradeExecId varchar(160) NOT NULL UNIQUE,
+        symbol varchar(64) NOT NULL,
+        entryReason text,
+        exitReason text,
+        reviewSummary text,
+        status varchar(16) NOT NULL DEFAULT 'draft',
+        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     await db.execute(sql`ALTER TABLE visitor_logs ADD COLUMN IF NOT EXISTS city varchar(64)`).catch(() => {});
     await db.execute(sql`ALTER TABLE visitor_logs ADD COLUMN IF NOT EXISTS region varchar(64)`).catch(() => {});
     await db.execute(sql`ALTER TABLE visitor_logs ADD COLUMN IF NOT EXISTS isProxy boolean`).catch(() => {});

@@ -1,11 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLang } from "@/contexts/LangContext";
 import {
-  ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceArea, ReferenceLine,
+  ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceArea, ReferenceLine, Scatter,
   ResponsiveContainer,
 } from "recharts";
-import { RefreshCw, Database } from "lucide-react";
+import { RefreshCw, Database, X } from "lucide-react";
 
 // ─── Series config ────────────────────────────────────────────────────────────
 const SERIES = [
@@ -50,6 +50,26 @@ type ChartPoint = {
   btcPrice: number | null;
   assetTrend: number;
 };
+
+type TradeFill = {
+  execId: string;
+  symbol: string;
+  side: string;
+  execPrice: string;
+  execQty: string;
+  createdTime: string;
+  execPnl: string;
+  closeMethod?: string;
+};
+
+type TradeMarker = ChartPoint & {
+  trade: TradeFill;
+  action: "买入" | "卖出";
+  childLabel?: string;
+};
+
+type Candle = { time: number; open: number; high: number; low: number; close: number };
+type PnlSnapshot = { date: string; equity: string; totalPnl?: string | null; btcPrice?: string | number | null };
 
 function formatSigned(value: number, decimals = 2) {
   if (!Number.isFinite(value)) return "—";
@@ -178,6 +198,66 @@ function CustomTooltip({ active, payload, label, labels, visible }: TooltipProps
   );
 }
 
+function ReviewTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload?: TradeMarker }> }) {
+  if (!active || !payload?.[0]?.payload) return null;
+  const marker = payload[0].payload;
+  return (
+    <div style={{
+      background: "rgb(2 15 14 / 94%)",
+      border: "1px solid rgb(92 211 184 / 18%)",
+      borderRadius: 8,
+      padding: "8px 11px",
+      boxShadow: "0 12px 30px rgb(0 0 0 / 35%)",
+    }}>
+      <div style={{ color: marker.action === "买入" ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)", fontSize: "0.78rem" }}>
+        {marker.action}
+      </div>
+      <div style={{ color: "rgb(209 231 226 / 78%)", fontSize: "0.72rem", marginTop: 2 }}>
+        {marker.trade.symbol}
+      </div>
+    </div>
+  );
+}
+
+function MiniCandleChart({ candles, trade }: { candles: Candle[]; trade: TradeFill }) {
+  const visible = candles.slice(-48);
+  if (visible.length === 0) return <div className="py-10 text-center text-muted-foreground text-sm">暂无K线数据</div>;
+  const values = visible.flatMap((candle) => [candle.high, candle.low]);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = Math.max(max - min, 1);
+  const y = (value: number) => 182 - ((value - min) / range) * 154;
+  const width = 620;
+  const step = width / visible.length;
+  const tradeTime = Number(trade.createdTime);
+  const selectedIndex = visible.reduce((best, candle, index) => {
+    const distance = Math.abs(candle.time - tradeTime);
+    const bestDistance = Math.abs(visible[best].time - tradeTime);
+    return distance < bestDistance ? index : best;
+  }, 0);
+  const selected = visible[selectedIndex];
+  const markerColor = trade.side === "buy" || trade.side === "B" ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)";
+  return (
+    <svg viewBox={`0 0 ${width} 220`} className="w-full h-52" role="img" aria-label="历史成交K线">
+      <line x1="0" y1="182" x2={width} y2="182" stroke="var(--panel-border)" />
+      {visible.map((candle, index) => {
+        const x = index * step + step / 2;
+        const top = y(Math.max(candle.open, candle.close));
+        const bottom = y(Math.min(candle.open, candle.close));
+        const bullish = candle.close >= candle.open;
+        const color = bullish ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)";
+        return (
+          <g key={candle.time}>
+            <line x1={x} x2={x} y1={y(candle.high)} y2={y(candle.low)} stroke={color} strokeWidth="1.2" />
+            <rect x={x - Math.max(step * 0.28, 2)} y={top} width={Math.max(step * 0.56, 3)} height={Math.max(bottom - top, 2)} fill={bullish ? "transparent" : color} stroke={color} strokeWidth="1.2" />
+          </g>
+        );
+      })}
+      <circle cx={selectedIndex * step + step / 2} cy={trade.side === "buy" || trade.side === "B" ? y(selected.low) + 12 : y(selected.high) - 12} r="5" fill={markerColor} stroke="var(--background)" strokeWidth="2" />
+    </svg>
+  );
+}
+
 // ─── Series toggle button ─────────────────────────────────────────────────────
 function SeriesToggle({
   label,
@@ -228,6 +308,10 @@ export default function PnlChart() {
     assetTrend: false,
   });
   const [timeRange, setTimeRange] = useState<TimeRange | null>(null);
+  const [reviewMode, setReviewMode] = useState(false);
+  const [selectedTrade, setSelectedTrade] = useState<TradeMarker | null>(null);
+  const [showReviewDetail, setShowReviewDetail] = useState(false);
+  const [reviewDraft, setReviewDraft] = useState({ entryReason: "", exitReason: "", reviewSummary: "" });
 
   // Compute startDate from timeRange
   // 7D  = past 7 calendar days
@@ -253,9 +337,39 @@ export default function PnlChart() {
     { startDate, limit: queryLimit },
     { refetchInterval: 60_000 }
   );
+  const { data: tradeHistory } = trpc.hyperliquid.tradeHistory.useQuery(
+    { startDate, limit: 100 },
+    { refetchInterval: 120_000 }
+  );
+  const selectedCoin = selectedTrade?.trade.symbol?.replace(/-PERP$/i, "") || "BTC";
+  const selectedTime = Number(selectedTrade?.trade.createdTime);
+  const { data: candles } = trpc.hyperliquid.candles.useQuery(
+    {
+      coin: selectedCoin,
+      interval: "4h",
+      startTime: Number.isFinite(selectedTime) ? selectedTime - 14 * 24 * 60 * 60 * 1000 : undefined,
+      endTime: Number.isFinite(selectedTime) ? selectedTime + 14 * 24 * 60 * 60 * 1000 : undefined,
+    },
+    { enabled: showReviewDetail && selectedTrade != null }
+  );
+  const reviewQuery = trpc.hyperliquid.tradeReview.useQuery(
+    { tradeExecId: selectedTrade?.trade.execId || "none" },
+    { enabled: selectedTrade != null }
+  );
+  const saveReviewMutation = trpc.hyperliquid.saveTradeReview.useMutation();
+
+  useEffect(() => {
+    const review = reviewQuery.data;
+    setReviewDraft({
+      entryReason: review?.entryReason ?? "",
+      exitReason: review?.exitReason ?? "",
+      reviewSummary: review?.reviewSummary ?? "",
+    });
+  }, [reviewQuery.data]);
 
   // Backend already returns data in ascending date order (earliest → latest)
-  const snapshots = data || [];
+  const snapshots = (data || []) as PnlSnapshot[];
+  const trades = (tradeHistory?.trades ?? []) as TradeFill[];
 
   // Labels per language
   const labels: Record<SeriesKey, string> = {
@@ -291,6 +405,27 @@ export default function PnlChart() {
       assetTrend: eq,
     };
   });
+  const tradeMarkers = useMemo<TradeMarker[]>(() => {
+    if (chartData.length === 0) return [];
+    return trades
+      .map((trade) => {
+        const timestamp = Number(trade.createdTime);
+        if (!Number.isFinite(timestamp)) return null;
+        const tradeDate = new Date(timestamp).toISOString().slice(0, 10);
+        const point = chartData.reduce((nearest, candidate) => {
+          const distance = Math.abs(new Date(candidate.date).getTime() - new Date(tradeDate).getTime());
+          const nearestDistance = Math.abs(new Date(nearest.date).getTime() - new Date(tradeDate).getTime());
+          return distance < nearestDistance ? candidate : nearest;
+        }, chartData[0]);
+        const action: "买入" | "卖出" = trade.side === "buy" || trade.side === "B" ? "买入" : "卖出";
+        const closeMethod = String(trade.closeMethod ?? "");
+        const childLabel = closeMethod.includes("take_profit") ? "止盈"
+          : closeMethod.includes("stop_loss") ? "止损"
+            : undefined;
+        return childLabel ? { ...point, trade, action, childLabel } : { ...point, trade, action };
+      })
+      .filter((marker): marker is TradeMarker => marker !== null);
+  }, [chartData, trades]);
   const axisTicks = chartData.reduce<string[]>((ticks, point) => {
     const day = getDateKey(point.date);
     const previous = ticks[ticks.length - 1];
@@ -307,8 +442,8 @@ export default function PnlChart() {
     Math.max(0, assetMin - assetPadding),
     assetMax + assetPadding,
   ];
-  const percentVisible = visible.accountPerformance || visible.btcBenchmark;
-  const assetTrendVisible = visible.assetTrend;
+  const percentVisible = !reviewMode && (visible.accountPerformance || visible.btcBenchmark);
+  const assetTrendVisible = reviewMode || visible.assetTrend;
   const percentGridValues = chartData.flatMap((d) => [
     visible.accountPerformance ? d.accountPerformance : null,
     visible.btcBenchmark ? d.btcBenchmark : null,
@@ -327,6 +462,17 @@ export default function PnlChart() {
     });
   };
 
+  const saveReview = async (status: "draft" | "published") => {
+    if (!selectedTrade) return;
+    await saveReviewMutation.mutateAsync({
+      tradeExecId: selectedTrade.trade.execId,
+      symbol: selectedTrade.trade.symbol,
+      ...reviewDraft,
+      status,
+    });
+    await reviewQuery.refetch();
+  };
+
   return (
     <div className="glass-card px-4 sm:px-8 py-5 sm:py-7 fade-in">
       {/* Header */}
@@ -338,6 +484,21 @@ export default function PnlChart() {
           <div className="mt-2" style={{ width: 40, height: 1, background: "rgb(215 187 114 / 62%)" }} />
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              setReviewMode((active) => !active);
+              setSelectedTrade(null);
+              setShowReviewDetail(false);
+            }}
+            className="text-xs tracking-widest rounded-full px-3 py-1 transition-colors"
+            style={{
+              border: `1px solid ${reviewMode ? "rgb(92 211 184 / 62%)" : "var(--panel-border)"}`,
+              color: reviewMode ? "rgb(92 211 184 / 92%)" : "var(--text-soft)",
+              background: reviewMode ? "rgb(92 211 184 / 10%)" : "transparent",
+            }}
+          >
+            {reviewMode ? (lang === "zh" ? "退出复盘" : "Exit Review") : (lang === "zh" ? "复盘" : "Review")}
+          </button>
           <button
             onClick={async () => {
               await snapshotMutation.mutateAsync();
@@ -381,6 +542,12 @@ export default function PnlChart() {
 
       {/* Controls row: time range + series toggles — stacks on mobile */}
       <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-4 mb-5 sm:mb-6">
+        {reviewMode && (
+          <div className="flex items-center gap-2 text-muted-foreground" style={{ fontSize: "0.68rem" }}>
+            <span className="inline-block w-2 h-2 rounded-full" style={{ background: "oklch(72% 0.08 230)" }} />
+            {lang === "zh" ? "复盘模式：账户净值 + 交易节点" : "Review mode: equity + trade nodes"}
+          </div>
+        )}
         {/* Time range */}
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.62rem" }}>
@@ -403,7 +570,7 @@ export default function PnlChart() {
         <div className="hidden sm:block" style={{ width: 1, height: 16, background: "var(--panel-border)" }} />
 
         {/* Series toggles */}
-        <div className="flex items-center gap-2">
+        {!reviewMode && <div className="flex items-center gap-2">
           <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.62rem" }}>
             {lang === "zh" ? "显示" : "Show"}
           </span>
@@ -418,7 +585,7 @@ export default function PnlChart() {
               />
             ))}
           </div>
-        </div>
+        </div>}
       </div>
 
       {isLoading && <div className="text-muted-foreground text-sm animate-pulse py-8 text-center">{lang === "zh" ? "加载中..." : "Loading..."}</div>}
@@ -544,14 +711,17 @@ export default function PnlChart() {
                   tickFormatter={(v) => v.toLocaleString("en-US", { maximumFractionDigits: 0 })}
                 />
               )}
-              <Tooltip
-                content={
-                  <CustomTooltip
-                    labels={labels}
-                    visible={visible}
-                  />
-                }
-              />
+              {!reviewMode && (
+                <Tooltip
+                  content={
+                    <CustomTooltip
+                      labels={labels}
+                      visible={visible}
+                    />
+                  }
+                />
+              )}
+              {reviewMode && <Tooltip content={<ReviewTooltip />} />}
               {visible.accountPerformance && (
                 <Area
                   yAxisId="left"
@@ -586,7 +756,7 @@ export default function PnlChart() {
                 />
               )}
 
-              {visible.assetTrend && (
+              {(visible.assetTrend || reviewMode) && (
                 <Line
                   yAxisId="right"
                   type="monotone"
@@ -600,8 +770,103 @@ export default function PnlChart() {
                   strokeLinejoin="round"
                 />
               )}
+              {reviewMode && (
+                <Scatter
+                  yAxisId="right"
+                  data={tradeMarkers}
+                  dataKey="assetTrend"
+                  fill="transparent"
+                  line={false}
+                  onClick={(entry: { payload?: TradeMarker }) => {
+                    if (entry?.payload) {
+                      setSelectedTrade(entry.payload);
+                      setShowReviewDetail(false);
+                    }
+                  }}
+                  shape={(rawProps: unknown) => {
+                    const props = rawProps as { cx?: number; cy?: number; payload?: TradeMarker };
+                    const marker = props.payload;
+                    if (!marker || props.cx == null || props.cy == null) return <circle cx={0} cy={0} r={0} />;
+                    const fill = marker.action === "买入" ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)";
+                    return <circle cx={props.cx} cy={props.cy} r={5} fill={fill} stroke="var(--background)" strokeWidth={2} style={{ cursor: "pointer" }} />;
+                  }}
+                />
+              )}
             </ComposedChart>
           </ResponsiveContainer>
+        </div>
+      )}
+
+      {reviewMode && (
+        <div className="flex items-center justify-center gap-5 text-muted-foreground mb-3" style={{ fontSize: "0.7rem" }}>
+          <span className="flex items-center gap-1.5"><i className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "oklch(68% 0.15 145)" }} />买入</span>
+          <span className="flex items-center gap-1.5"><i className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "oklch(62% 0.15 25)" }} />卖出</span>
+        </div>
+      )}
+
+      {selectedTrade && (
+        <div className="mt-4 rounded-xl p-4 sm:p-5" style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: selectedTrade.action === "买入" ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)" }} />
+                <span className="text-foreground font-medium">{selectedTrade.action}</span>
+                <span className="text-muted-foreground">{selectedTrade.trade.symbol}</span>
+              </div>
+              <div className="flex flex-wrap gap-x-5 gap-y-1 mt-3 text-muted-foreground" style={{ fontSize: "0.72rem" }}>
+                <span>成交价：{Number(selectedTrade.trade.execPrice).toLocaleString("en-US", { maximumFractionDigits: 4 })}</span>
+                <span>数量：{Number(selectedTrade.trade.execQty).toLocaleString("en-US", { maximumFractionDigits: 4 })}</span>
+                <span>盈亏：{Number(selectedTrade.trade.execPnl) >= 0 ? "+" : ""}{Number(selectedTrade.trade.execPnl).toLocaleString("en-US", { maximumFractionDigits: 2 })}</span>
+                {selectedTrade.childLabel && <span>{selectedTrade.childLabel}</span>}
+              </div>
+            </div>
+            <button onClick={() => setSelectedTrade(null)} className="text-muted-foreground hover:text-foreground p-1" aria-label="关闭交易明细"><X size={15} /></button>
+          </div>
+          <div className="flex justify-end mt-4">
+            <button
+              onClick={() => setShowReviewDetail(true)}
+              className="rounded-full px-4 py-1.5 text-xs tracking-widest transition-colors"
+              style={{ border: "1px solid rgb(92 211 184 / 44%)", color: "rgb(92 211 184 / 92%)" }}
+            >
+              查看详情
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showReviewDetail && selectedTrade && (
+        <div className="mt-4 rounded-xl p-4 sm:p-6" style={{ background: "var(--surface-subtle)", border: "1px solid rgb(92 211 184 / 30%)" }}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-foreground font-medium">{selectedTrade.trade.symbol} · 交易详情 / 复盘</div>
+            <button onClick={() => setShowReviewDetail(false)} className="text-muted-foreground hover:text-foreground p-1" aria-label="关闭交易详情"><X size={15} /></button>
+          </div>
+          <div className="rounded-lg p-3 mb-5" style={{ background: "var(--background)", border: "1px solid var(--panel-border)" }}>
+            <div className="text-muted-foreground mb-2" style={{ fontSize: "0.68rem", letterSpacing: "0.08em" }}>历史成交 K线</div>
+            <MiniCandleChart candles={(candles ?? []) as Candle[]} trade={selectedTrade.trade} />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {([
+              ["买入理由", "entryReason"],
+              ["卖出理由", "exitReason"],
+              ["复盘总结", "reviewSummary"],
+            ] as const).map(([label, key]) => (
+              <label key={label} className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
+                {label}
+                <textarea
+                  rows={4}
+                  value={reviewDraft[key]}
+                  onChange={(event) => setReviewDraft((current) => ({ ...current, [key]: event.target.value }))}
+                  className="w-full rounded-lg px-3 py-2 bg-transparent text-foreground outline-none resize-y"
+                  style={{ border: "1px solid var(--panel-border)" }}
+                  placeholder="输入内容…"
+                />
+              </label>
+            ))}
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <button onClick={() => saveReview("draft")} disabled={saveReviewMutation.isPending} className="rounded-full px-3 py-1.5 text-xs border border-border/40 text-muted-foreground disabled:opacity-50">保存草稿</button>
+            <button onClick={() => saveReview("published")} disabled={saveReviewMutation.isPending} className="rounded-full px-3 py-1.5 text-xs disabled:opacity-50" style={{ background: "rgb(92 211 184 / 14%)", border: "1px solid rgb(92 211 184 / 40%)", color: "rgb(92 211 184 / 92%)" }}>展示给学员</button>
+          </div>
         </div>
       )}
     </div>

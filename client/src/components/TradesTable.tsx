@@ -41,9 +41,9 @@ export default function TradesTable() {
   );
 
   const activeQuery = mode === "recent" ? recentQuery : historicalQuery;
-  const trades = mode === "recent"
+  const trades = (mode === "recent"
     ? (recentQuery.data || [])
-    : (historicalQuery.data?.trades || []);
+    : (historicalQuery.data?.trades || [])) as Array<Record<string, unknown>>;
 
   return (
     <div className="glass-card px-8 py-7 fade-in">

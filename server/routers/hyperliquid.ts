@@ -17,7 +17,7 @@ import {
   getHyperliquidSpotState,
   getHyperliquidTradeHistory,
 } from "../hyperliquid.js";
-import { getPnlSnapshots, upsertPnlSnapshot } from "../db.js";
+import { getPnlSnapshots, getTradeReview, upsertPnlSnapshot, upsertTradeReview } from "../db.js";
 import { seriesIndicators } from "../indicators.js";
 
 const yahooUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
@@ -361,6 +361,51 @@ export const hyperliquidRouter = router({
         ? new Date(`${input.endDate}T23:59:59`).getTime()
         : Date.now();
       return getHyperliquidTradeHistory({ startTime, endTime, limit: input.limit });
+    }),
+
+  candles: publicProcedure
+    .input(
+      z.object({
+        coin: z.string().min(1).max(24),
+        interval: z.string().default("4h"),
+        startTime: z.number().optional(),
+        endTime: z.number().optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const endTime = input.endTime ?? Date.now();
+      const startTime = input.startTime ?? endTime - 30 * 24 * 60 * 60 * 1000;
+      const candles = await getHyperliquidCandles({
+        coin: input.coin.replace(/-PERP$/i, ""),
+        interval: input.interval,
+        startTime,
+        endTime,
+      });
+      return candles.map((candle) => ({
+        time: candle.t ?? candle.T ?? 0,
+        open: Number(candle.o),
+        high: Number(candle.h),
+        low: Number(candle.l),
+        close: Number(candle.c),
+      }));
+    }),
+
+  tradeReview: publicProcedure
+    .input(z.object({ tradeExecId: z.string().min(1).max(160) }))
+    .query(async ({ input }) => getTradeReview(input.tradeExecId) ?? null),
+
+  saveTradeReview: publicProcedure
+    .input(z.object({
+      tradeExecId: z.string().min(1).max(160),
+      symbol: z.string().min(1).max(64),
+      entryReason: z.string().max(10000).optional(),
+      exitReason: z.string().max(10000).optional(),
+      reviewSummary: z.string().max(20000).optional(),
+      status: z.enum(["draft", "published"]).default("draft"),
+    }))
+    .mutation(async ({ input }) => {
+      const review = await upsertTradeReview(input);
+      return { success: true, review };
     }),
 
   pnlHistory: publicProcedure
