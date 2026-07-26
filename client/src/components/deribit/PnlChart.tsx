@@ -274,7 +274,7 @@ export default function PnlChart() {
             className="text-muted-foreground hover:text-foreground transition-colors text-xs tracking-widest uppercase border border-border/40 rounded-full px-3 py-1 disabled:opacity-40"
             style={{ fontSize: "0.65rem" }}
           >
-            {snapshotMutation.isPending ? (lang === "zh" ? "保存中" : "Saving") : (lang === "zh" ? "快照" : "Snapshot")}
+            {snapshotMutation.isPending ? (lang === "zh" ? "保存中" : "Saving") : (lang === "zh" ? "记录" : "Record")}
           </button>
           <button onClick={() => { refetch(); refetchScheduler(); }} className="text-muted-foreground hover:text-foreground transition-colors p-1">
             <RefreshCw size={13} className={isFetching ? "animate-spin" : ""} />
@@ -290,7 +290,7 @@ export default function PnlChart() {
         <div className="flex items-center gap-1.5">
           <div className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" />
           <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.62rem" }}>
-            {lang === "zh" ? "自动快照" : "Auto Snapshot"}
+            {lang === "zh" ? "自动记录" : "Auto Record"}
           </span>
           <span className="text-profit tracking-widest" style={{ fontSize: "0.62rem" }}>
             {lang === "zh" ? "每小时 · BTC + USDC" : "Hourly · BTC + USDC"}
@@ -446,12 +446,12 @@ export default function PnlChart() {
       {!isLoading && snapshots.length === 0 && (
         <div className="py-12 text-center space-y-2">
           <div className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.75rem" }}>
-            {lang === "zh" ? "暂无快照数据" : "No snapshot data"}
+            {lang === "zh" ? "暂无历史数据" : "No history data"}
           </div>
           <div className="text-muted-foreground/50" style={{ fontSize: "0.7rem" }}>
             {lang === "zh"
-              ? `点击"快照"按钮记录当前 ${unit} 账户净值`
-              : `Click "Snapshot" to record the current ${unit} account equity`}
+              ? `点击"记录"按钮记录当前 ${unit} 账户净值`
+              : `Click "Record" to record the current ${unit} account equity`}
           </div>
         </div>
       )}
