@@ -398,6 +398,8 @@ function AnalyticsDashboard() {
           )}
         </div>
 
+        <TradeReviewManager />
+
         {isLoading ? (
           <div className="glass-card px-8 py-16 text-center text-muted-foreground text-sm animate-pulse">加载访问数据...</div>
         ) : (
@@ -689,8 +691,6 @@ function AnalyticsDashboard() {
                 </div>
               )}
             </Panel>
-
-            <TradeReviewManager />
 
             {/* Footer status */}
             <div className="flex items-center justify-center gap-2 text-muted-foreground/55 pb-4" style={{ fontSize: "0.66rem" }}>

@@ -267,7 +267,12 @@ function MiniCandleChart({ candles, trade, interval }: { candles: Candle[]; trad
           </g>
         );
       })}
-      {emaPoints && <polyline points={emaPoints} fill="none" stroke="#111" strokeWidth="1" strokeLinejoin="round" strokeLinecap="round" />}
+      {emaPoints && (
+        <>
+          <polyline points={emaPoints} fill="none" stroke="rgb(209 231 226 / 58%)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+          <polyline points={emaPoints} fill="none" stroke="#111" strokeWidth="1" strokeLinejoin="round" strokeLinecap="round" />
+        </>
+      )}
       <text
         x={selectedIndex * step + step / 2}
         y={trade.side === "buy" || trade.side === "B" ? Math.min(y(selected.low) + 14, chartBottom - 2) : Math.max(y(selected.high) - 14, chartTop + 8)}
