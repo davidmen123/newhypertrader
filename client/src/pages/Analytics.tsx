@@ -288,6 +288,7 @@ const PERIODS: Array<{ key: Period; label: string }> = [
 
 function AnalyticsDashboard() {
   const [period, setPeriod] = useState<Period>("week");
+  const [view, setView] = useState<"traffic" | "reviews">("traffic");
   const [customStart, setCustomStart] = useState(() => utc8DateStr(Date.now() - 6 * DAY_MS));
   const [customEnd, setCustomEnd] = useState(() => utc8DateStr(Date.now()));
 
@@ -348,26 +349,28 @@ function AnalyticsDashboard() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className="text-xl sm:text-2xl font-light" style={{ fontFamily: "Cormorant Garamond, serif" }}>
-                访问统计
+                {view === "traffic" ? "访问统计" : "交易复盘"}
               </h2>
               <div className="mt-2" style={{ width: 40, height: 1, background: "rgb(215 187 114 / 62%)" }} />
               <p className="text-muted-foreground/70 mt-2" style={{ fontSize: "0.72rem" }}>
-                网站访问数据 · 时间均为 UTC+8 · 不含本页访问
+                {view === "traffic" ? "网站访问数据 · 时间均为 UTC+8 · 不含本页访问" : "编辑交易复盘内容 · 保存后前台自动呈现"}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {PERIODS.map((p) => (
+              {view === "traffic" && PERIODS.map((p) => (
                 <button key={p.key} onClick={() => setPeriod(p.key)} className={`pill-tab ${period === p.key ? "active" : ""}`}>
                   {p.label}
                 </button>
               ))}
-              <button
-                onClick={() => refetch()}
-                className="text-muted-foreground hover:text-foreground transition-colors p-1"
-                title="刷新"
-              >
-                <RefreshCw size={13} className={isFetching ? "animate-spin" : ""} />
-              </button>
+              {view === "traffic" && (
+                <button
+                  onClick={() => refetch()}
+                  className="text-muted-foreground hover:text-foreground transition-colors p-1"
+                  title="刷新"
+                >
+                  <RefreshCw size={13} className={isFetching ? "animate-spin" : ""} />
+                </button>
+              )}
               <a
                 href="/"
                 className="text-muted-foreground hover:text-foreground transition-colors p-1"
@@ -377,7 +380,7 @@ function AnalyticsDashboard() {
               </a>
             </div>
           </div>
-          {period === "custom" && (
+          {view === "traffic" && period === "custom" && (
             <div className="mt-4 flex items-center gap-2">
               <input
                 type="date"
@@ -398,9 +401,30 @@ function AnalyticsDashboard() {
           )}
         </div>
 
-        <TradeReviewManager />
+        <div className="flex items-center gap-1 rounded-lg p-1" style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}>
+          {([
+            ["traffic", "访问统计"],
+            ["reviews", "交易复盘"],
+          ] as const).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setView(key)}
+              className="flex-1 rounded-md px-4 py-2 transition-colors"
+              style={{
+                fontSize: "0.72rem",
+                color: view === key ? "var(--foreground)" : "var(--text-soft)",
+                background: view === key ? "var(--background)" : "transparent",
+                boxShadow: view === key ? "0 2px 10px rgb(0 0 0 / 18%)" : "none",
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
-        {isLoading ? (
+        {view === "reviews" ? (
+          <TradeReviewManager />
+        ) : isLoading ? (
           <div className="glass-card px-8 py-16 text-center text-muted-foreground text-sm animate-pulse">加载访问数据...</div>
         ) : (
           <>
