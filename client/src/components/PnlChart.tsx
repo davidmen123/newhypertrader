@@ -64,6 +64,7 @@ type TradeFill = {
 
 type TradeMarker = ChartPoint & {
   trade: TradeFill;
+  trades: TradeFill[];
   action: "买入" | "卖出";
   childLabel?: string;
 };
@@ -94,6 +95,15 @@ function getDateKey(value: string) {
 function formatUtc8Date(date: Date) {
   const utc8OffsetMs = 8 * 60 * 60 * 1000;
   return new Date(date.getTime() + utc8OffsetMs).toISOString().slice(0, 10);
+}
+
+function getTradeMeta(trade: TradeFill): { action: "买入" | "卖出"; childLabel?: string } {
+  const action: "买入" | "卖出" = trade.side === "buy" || trade.side === "B" ? "买入" : "卖出";
+  const closeMethod = String(trade.closeMethod ?? "");
+  const childLabel = closeMethod.includes("take_profit") ? "止盈"
+    : closeMethod.includes("stop_loss") ? "止损"
+      : undefined;
+  return { action, childLabel };
 }
 
 function makeValueGridTicks(values: number[], preferredCount = 6) {
@@ -320,6 +330,7 @@ export default function PnlChart() {
   const [hoveredTradeId, setHoveredTradeId] = useState<string | null>(null);
   const [showReviewDetail, setShowReviewDetail] = useState(false);
   const [candleInterval, setCandleInterval] = useState<CandleInterval>("4h");
+  const [selectedDayTrades, setSelectedDayTrades] = useState<TradeFill[]>([]);
 
   // Compute startDate from timeRange
   // 7D  = past 7 calendar days
@@ -411,36 +422,37 @@ export default function PnlChart() {
   });
   const tradeMarkers = useMemo<TradeMarker[]>(() => {
     if (chartData.length === 0) return [];
-    return trades
-      .map((trade) => {
+    const grouped = new Map<string, TradeMarker>();
+    trades.forEach((trade) => {
         const timestamp = Number(trade.createdTime);
-        if (!Number.isFinite(timestamp)) return null;
+        if (!Number.isFinite(timestamp)) return;
         const tradeDate = new Date(timestamp).toISOString().slice(0, 10);
         const point = chartData.reduce((nearest, candidate) => {
           const distance = Math.abs(new Date(candidate.date).getTime() - new Date(tradeDate).getTime());
           const nearestDistance = Math.abs(new Date(nearest.date).getTime() - new Date(tradeDate).getTime());
           return distance < nearestDistance ? candidate : nearest;
         }, chartData[0]);
-        const action: "买入" | "卖出" = trade.side === "buy" || trade.side === "B" ? "买入" : "卖出";
-        const closeMethod = String(trade.closeMethod ?? "");
-        const childLabel = closeMethod.includes("take_profit") ? "止盈"
-          : closeMethod.includes("stop_loss") ? "止损"
-            : undefined;
-        return childLabel ? { ...point, trade, action, childLabel } : { ...point, trade, action };
-      })
-      .filter((marker): marker is TradeMarker => marker !== null);
+        const dayKey = getDateKey(point.date);
+        const existing = grouped.get(dayKey);
+        if (existing) {
+          existing.trades.push(trade);
+          return;
+        }
+        const { action, childLabel } = getTradeMeta(trade);
+        grouped.set(dayKey, childLabel
+          ? { ...point, trade, trades: [trade], action, childLabel }
+          : { ...point, trade, trades: [trade], action });
+      });
+    return Array.from(grouped.values());
   }, [chartData, trades]);
   const reviewChartData = useMemo(() => {
     return chartData.map((point) => {
-      const markers = tradeMarkers.filter((marker) => marker.date === point.date);
-      const buy = markers.find((marker) => marker.action === "买入");
-      const sell = markers.find((marker) => marker.action === "卖出");
+      const marker = tradeMarkers.find((candidate) => getDateKey(candidate.date) === getDateKey(point.date));
+      const isMarkerPoint = marker?.date === point.date;
       return {
         ...point,
-        buyMarker: buy?.assetTrend ?? null,
-        sellMarker: sell?.assetTrend ?? null,
-        buyTrade: buy,
-        sellTrade: sell,
+        tradeMarkerY: isMarkerPoint ? marker?.assetTrend ?? null : null,
+        tradeMarker: isMarkerPoint ? marker : undefined,
       };
     });
   }, [chartData, tradeMarkers]);
@@ -769,48 +781,54 @@ export default function PnlChart() {
                   strokeLinejoin="round"
                 />
               )}
-              {reviewMode && ([
-                ["buyMarker", "buyTrade", "oklch(68% 0.15 145)"],
-                ["sellMarker", "sellTrade", "oklch(62% 0.15 25)"],
-              ] as const).map(([dataKey, tradeKey, color]) => (
+              {reviewMode && (
                 <Line
-                  key={dataKey}
                   yAxisId="right"
                   type="monotone"
-                  dataKey={dataKey}
+                  dataKey="tradeMarkerY"
                   stroke="transparent"
                   strokeWidth={0}
                   dot={(rawProps: unknown) => {
                     const props = rawProps as { cx?: number; cy?: number; payload?: Record<string, unknown> };
-                    const marker = props.payload?.[tradeKey] as TradeMarker | undefined;
+                    const marker = props.payload?.tradeMarker as TradeMarker | undefined;
                     if (!marker || props.cx == null || props.cy == null) return <circle cx={0} cy={0} r={0} />;
+                    const color = marker.action === "买入" ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)";
                     const isHovered = hoveredTradeId === marker.trade.execId;
                     return (
-                      <circle
-                        cx={props.cx}
-                        cy={props.cy}
-                        r={isHovered ? 7 : 5}
-                        fill={color}
-                        stroke="var(--background)"
-                        strokeWidth={2}
-                        style={{
-                          cursor: "pointer",
-                          filter: isHovered ? `drop-shadow(0 0 5px ${color})` : undefined,
-                          transition: "r 120ms ease, filter 120ms ease",
-                        }}
+                      <g
+                        style={{ cursor: "pointer" }}
                         onMouseEnter={() => setHoveredTradeId(marker.trade.execId)}
                         onMouseLeave={() => setHoveredTradeId(null)}
                         onClick={() => {
                           setSelectedTrade(marker);
+                          setSelectedDayTrades(marker.trades);
                           setShowReviewDetail(false);
                         }}
-                      />
+                      >
+                        <circle
+                          cx={props.cx}
+                          cy={props.cy}
+                          r={isHovered ? 7 : 5}
+                          fill={color}
+                          stroke="var(--background)"
+                          strokeWidth={2}
+                          style={{
+                            filter: isHovered ? `drop-shadow(0 0 5px ${color})` : undefined,
+                            transition: "r 120ms ease, filter 120ms ease",
+                          }}
+                        />
+                        {marker.trades.length > 1 && (
+                          <text x={(props.cx ?? 0) + 8} y={(props.cy ?? 0) - 8} fill="var(--foreground)" fontSize="10" fontFamily="DM Mono, monospace">
+                            {marker.trades.length}
+                          </text>
+                        )}
+                      </g>
                     );
                   }}
                   activeDot={false}
                   connectNulls={false}
                 />
-              ))}
+              )}
             </ComposedChart>
           </ResponsiveContainer>
         </div>
@@ -837,6 +855,7 @@ export default function PnlChart() {
                 <span>数量：{Number(selectedTrade.trade.execQty).toLocaleString("en-US", { maximumFractionDigits: 4 })}</span>
                 <span>盈亏：{Number(selectedTrade.trade.execPnl) >= 0 ? "+" : ""}{Number(selectedTrade.trade.execPnl).toLocaleString("en-US", { maximumFractionDigits: 2 })}</span>
                 {selectedTrade.childLabel && <span>{selectedTrade.childLabel}</span>}
+                {selectedDayTrades.length > 1 && <span>当日交易：{selectedDayTrades.length} 笔</span>}
               </div>
             </div>
             <button onClick={() => setSelectedTrade(null)} className="text-muted-foreground hover:text-foreground p-1" aria-label="关闭交易明细"><X size={15} /></button>
@@ -859,6 +878,33 @@ export default function PnlChart() {
             <div className="text-foreground font-medium">{selectedTrade.trade.symbol} · 交易详情 / 复盘</div>
             <button onClick={() => setShowReviewDetail(false)} className="text-muted-foreground hover:text-foreground p-1" aria-label="关闭交易详情"><X size={15} /></button>
           </div>
+          {selectedDayTrades.length > 1 && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {selectedDayTrades.map((trade) => {
+                const meta = getTradeMeta(trade);
+                const isActive = trade.execId === selectedTrade.trade.execId;
+                return (
+                  <button
+                    key={trade.execId}
+                    onClick={() => setSelectedTrade({ ...selectedTrade, trade, action: meta.action, childLabel: meta.childLabel })}
+                    className="rounded-lg px-3 py-2 text-left transition-colors"
+                    style={{
+                      border: `1px solid ${isActive ? "rgb(92 211 184 / 52%)" : "var(--panel-border)"}`,
+                      background: isActive ? "rgb(92 211 184 / 10%)" : "transparent",
+                    }}
+                  >
+                    <div className="flex items-center gap-2 text-foreground" style={{ fontSize: "0.7rem" }}>
+                      <span className="inline-block w-2 h-2 rounded-full" style={{ background: meta.action === "买入" ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)" }} />
+                      {meta.action} · {trade.symbol}
+                    </div>
+                    <div className="text-muted-foreground/60 mt-1" style={{ fontSize: "0.62rem" }}>
+                      {new Date(Number(trade.createdTime)).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} · 盈亏 {Number(trade.execPnl) >= 0 ? "+" : ""}{Number(trade.execPnl).toLocaleString("en-US", { maximumFractionDigits: 2 })}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <div className="rounded-lg p-3 mb-5" style={{ background: "var(--background)", border: "1px solid var(--panel-border)" }}>
             <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
               <div className="text-muted-foreground" style={{ fontSize: "0.68rem", letterSpacing: "0.08em" }}>历史成交 K线 · EMA20</div>
