@@ -212,9 +212,21 @@ function CustomTooltip({ active, payload, label, labels, visible }: TooltipProps
   );
 }
 
-function MiniCandleChart({ candles, trade, interval, emaColor, emaHaloColor }: { candles: Candle[]; trade: TradeFill; interval: CandleInterval; emaColor: string; emaHaloColor: string }) {
-  const visibleStart = Math.max(candles.length - 48, 0);
-  const visible = candles.slice(visibleStart);
+function MiniCandleChart({ candles, trade, interval, emaColor }: { candles: Candle[]; trade: TradeFill; interval: CandleInterval; emaColor: string }) {
+  const tradeTime = Number(trade.createdTime);
+  const fullSelectedIndex = candles.reduce((best, candle, index) => {
+    const distance = Math.abs(candle.time - tradeTime);
+    const bestDistance = Math.abs(candles[best].time - tradeTime);
+    return distance < bestDistance ? index : best;
+  }, 0);
+  const maxVisible = 48;
+  const lastVisibleStart = Math.max(candles.length - maxVisible, 0);
+  const centeredVisibleStart = Math.max(
+    0,
+    Math.min(fullSelectedIndex - Math.floor(maxVisible / 2), Math.max(candles.length - maxVisible, 0))
+  );
+  const visibleStart = interval === "1h" || interval === "4h" ? centeredVisibleStart : lastVisibleStart;
+  const visible = candles.slice(visibleStart, visibleStart + maxVisible);
   if (visible.length === 0) return <div className="py-10 text-center text-muted-foreground text-sm">暂无K线数据</div>;
   const values = visible.flatMap((candle) => [candle.high, candle.low]);
   const min = Math.min(...values);
@@ -237,7 +249,6 @@ function MiniCandleChart({ candles, trade, interval, emaColor, emaHaloColor }: {
     emaValues.push((candle.close - previous) * multiplier + previous);
   });
   const visibleEma = emaValues.slice(visibleStart);
-  const tradeTime = Number(trade.createdTime);
   const selectedIndex = visible.reduce((best, candle, index) => {
     const distance = Math.abs(candle.time - tradeTime);
     const bestDistance = Math.abs(visible[best].time - tradeTime);
@@ -268,12 +279,7 @@ function MiniCandleChart({ candles, trade, interval, emaColor, emaHaloColor }: {
           </g>
         );
       })}
-      {emaPoints && (
-        <>
-          <polyline points={emaPoints} fill="none" stroke={emaHaloColor} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
-          <polyline points={emaPoints} fill="none" stroke={emaColor} strokeWidth="1" strokeLinejoin="round" strokeLinecap="round" />
-        </>
-      )}
+      {emaPoints && <polyline points={emaPoints} fill="none" stroke={emaColor} strokeWidth="1" strokeLinejoin="round" strokeLinecap="round" />}
       <g>
         <circle
           cx={selectedIndex * step + step / 2}
@@ -1005,8 +1011,7 @@ export default function PnlChart() {
               candles={(candles ?? []) as Candle[]}
               trade={selectedTrade.trade}
               interval={candleInterval}
-              emaColor={theme === "dark" ? "rgb(225 235 232 / 82%)" : "#111"}
-              emaHaloColor={theme === "dark" ? "rgb(225 235 232 / 24%)" : "rgb(255 255 255 / 58%)"}
+              emaColor={theme === "dark" ? "#fff" : "#111"}
             />
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
