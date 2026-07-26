@@ -28,8 +28,8 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     "version": "1.51.2",
     "date": "2026-07-25",
-    "zh": "修正交易指标的成交排序",
-    "en": "Fixed trade metrics for newest-first fill batches"
+    "zh": "修正交易绩效指标统计结果",
+    "en": "Fixed trade performance metric calculations"
   },
   {
     "version": "1.51.1",

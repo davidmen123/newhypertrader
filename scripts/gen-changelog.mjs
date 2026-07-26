@@ -56,6 +56,7 @@ const EXCLUDED_SHAS = new Set([
 // the original commit messages stay untouched. Keep new zh text <= 15 chars.
 const OVERRIDES = new Map([
   ["acba0c0", { zh: "增加复盘模式及对应组件", en: "Added review mode and related components" }],
+  ["0ad15fc", { zh: "修正交易绩效指标统计结果", en: "Fixed trade performance metric calculations" }],
   ["16de62e", { zh: "修正统一账户可用余额计算逻辑", en: "Fixed unified account available balance calculation logic" }],
   ["68dab2d", { zh: "新增访问页", en: "Added access page" }],
   ["c361f1a", { zh: "行情新增日经与韩国指数", en: "Added Nikkei and KOSPI tickers" }],
