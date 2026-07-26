@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLang } from "@/contexts/LangContext";
 import {
-  ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceArea, ReferenceLine, Scatter,
+  ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceArea, ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
 import { RefreshCw, Database, X } from "lucide-react";
@@ -426,6 +426,20 @@ export default function PnlChart() {
       })
       .filter((marker): marker is TradeMarker => marker !== null);
   }, [chartData, trades]);
+  const reviewChartData = useMemo(() => {
+    return chartData.map((point) => {
+      const markers = tradeMarkers.filter((marker) => marker.date === point.date);
+      const buy = markers.find((marker) => marker.action === "买入");
+      const sell = markers.find((marker) => marker.action === "卖出");
+      return {
+        ...point,
+        buyMarker: buy?.assetTrend ?? null,
+        sellMarker: sell?.assetTrend ?? null,
+        buyTrade: buy,
+        sellTrade: sell,
+      };
+    });
+  }, [chartData, tradeMarkers]);
   const axisTicks = chartData.reduce<string[]>((ticks, point) => {
     const day = getDateKey(point.date);
     const previous = ticks[ticks.length - 1];
@@ -612,7 +626,7 @@ export default function PnlChart() {
           }}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 14, right: assetTrendVisible ? 78 : 62, left: 8, bottom: 10 }}>
+            <ComposedChart data={reviewMode ? reviewChartData : chartData} margin={{ top: 14, right: assetTrendVisible ? 78 : 62, left: 8, bottom: 10 }}>
               <defs>
                 <linearGradient id="accountPerformanceGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="oklch(68% 0.15 145)" stopOpacity={0.28} />
@@ -770,28 +784,41 @@ export default function PnlChart() {
                   strokeLinejoin="round"
                 />
               )}
-              {reviewMode && (
-                <Scatter
+              {reviewMode && ([
+                ["buyMarker", "buyTrade", "oklch(68% 0.15 145)"],
+                ["sellMarker", "sellTrade", "oklch(62% 0.15 25)"],
+              ] as const).map(([dataKey, tradeKey, color]) => (
+                <Line
+                  key={dataKey}
                   yAxisId="right"
-                  data={tradeMarkers}
-                  dataKey="assetTrend"
-                  fill="transparent"
-                  line={false}
-                  onClick={(entry: { payload?: TradeMarker }) => {
-                    if (entry?.payload) {
-                      setSelectedTrade(entry.payload);
-                      setShowReviewDetail(false);
-                    }
-                  }}
-                  shape={(rawProps: unknown) => {
-                    const props = rawProps as { cx?: number; cy?: number; payload?: TradeMarker };
-                    const marker = props.payload;
+                  type="monotone"
+                  dataKey={dataKey}
+                  stroke="transparent"
+                  strokeWidth={0}
+                  dot={(rawProps: unknown) => {
+                    const props = rawProps as { cx?: number; cy?: number; payload?: Record<string, unknown> };
+                    const marker = props.payload?.[tradeKey] as TradeMarker | undefined;
                     if (!marker || props.cx == null || props.cy == null) return <circle cx={0} cy={0} r={0} />;
-                    const fill = marker.action === "买入" ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)";
-                    return <circle cx={props.cx} cy={props.cy} r={5} fill={fill} stroke="var(--background)" strokeWidth={2} style={{ cursor: "pointer" }} />;
+                    return (
+                      <circle
+                        cx={props.cx}
+                        cy={props.cy}
+                        r={5}
+                        fill={color}
+                        stroke="var(--background)"
+                        strokeWidth={2}
+                        style={{ cursor: "pointer" }}
+                        onClick={() => {
+                          setSelectedTrade(marker);
+                          setShowReviewDetail(false);
+                        }}
+                      />
+                    );
                   }}
+                  activeDot={false}
+                  connectNulls={false}
                 />
-              )}
+              ))}
             </ComposedChart>
           </ResponsiveContainer>
         </div>
