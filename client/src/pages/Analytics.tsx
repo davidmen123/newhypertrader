@@ -247,7 +247,6 @@ function TradeReviewManager() {
                   {([
                     ["进场价格", "entryPrice"],
                     ["止损价格", "stopLossPrice"],
-                    ["止盈目标（可选）", "takeProfitTarget"],
                   ] as const).map(([label, key]) => (
                     <label key={key} className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
                       {label}
@@ -274,6 +273,16 @@ function TradeReviewManager() {
                       })()}
                     </div>
                   </div>
+                  <label className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
+                    止盈目标（可选）
+                    <input
+                      value={draft.takeProfitTarget}
+                      onChange={(event) => setDraft((current) => ({ ...current, takeProfitTarget: event.target.value }))}
+                      className="w-full rounded-lg px-3 py-2 bg-transparent text-foreground outline-none"
+                      style={{ border: "1px solid var(--panel-border)" }}
+                      placeholder="可留空，按后台填写为准"
+                    />
+                  </label>
                   <label className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
                     {selectedTrade.side === "buy" || selectedTrade.side === "B" ? "买入/做多理由" : "卖出/做空理由"}
                     <textarea
