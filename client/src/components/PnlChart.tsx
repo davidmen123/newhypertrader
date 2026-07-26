@@ -65,6 +65,8 @@ type TradeFill = {
 type TradeMarker = ChartPoint & {
   trade: TradeFill;
   trades: TradeFill[];
+  dayTrades: TradeFill[];
+  dayKey: string;
   action: "买入" | "卖出";
   childLabel?: string;
 };
@@ -422,40 +424,64 @@ export default function PnlChart() {
   });
   const tradeMarkers = useMemo<TradeMarker[]>(() => {
     if (chartData.length === 0) return [];
+    const tradesByDay = new Map<string, TradeFill[]>();
+    trades.forEach((trade) => {
+      const timestamp = Number(trade.createdTime);
+      if (!Number.isFinite(timestamp)) return;
+      const dayKey = formatUtc8Date(new Date(timestamp));
+      const dayTrades = tradesByDay.get(dayKey) ?? [];
+      dayTrades.push(trade);
+      tradesByDay.set(dayKey, dayTrades);
+    });
     const grouped = new Map<string, TradeMarker>();
     trades.forEach((trade) => {
-        const timestamp = Number(trade.createdTime);
-        if (!Number.isFinite(timestamp)) return;
-        const tradeDate = new Date(timestamp).toISOString().slice(0, 10);
-        const point = chartData.reduce((nearest, candidate) => {
-          const distance = Math.abs(new Date(candidate.date).getTime() - new Date(tradeDate).getTime());
-          const nearestDistance = Math.abs(new Date(nearest.date).getTime() - new Date(tradeDate).getTime());
-          return distance < nearestDistance ? candidate : nearest;
-        }, chartData[0]);
-        const dayKey = getDateKey(point.date);
-        const existing = grouped.get(dayKey);
-        if (existing) {
-          existing.trades.push(trade);
-          return;
-        }
-        const { action, childLabel } = getTradeMeta(trade);
-        grouped.set(dayKey, childLabel
-          ? { ...point, trade, trades: [trade], action, childLabel }
-          : { ...point, trade, trades: [trade], action });
-      });
+      const timestamp = Number(trade.createdTime);
+      if (!Number.isFinite(timestamp)) return;
+      const dayKey = formatUtc8Date(new Date(timestamp));
+      const { action, childLabel } = getTradeMeta(trade);
+      const dayPoints = chartData.filter((candidate) => getDateKey(candidate.date) === dayKey);
+      const point = (dayPoints.length > 0 ? dayPoints : chartData).reduce((nearest, candidate) => {
+        const distance = Math.abs(new Date(candidate.date).getTime() - timestamp);
+        const nearestDistance = Math.abs(new Date(nearest.date).getTime() - timestamp);
+        return distance < nearestDistance ? candidate : nearest;
+      }, (dayPoints.length > 0 ? dayPoints : chartData)[0]);
+      const groupKey = `${dayKey}:${action}`;
+      const existing = grouped.get(groupKey);
+      if (existing) {
+        existing.trades.push(trade);
+        return;
+      }
+      const marker = {
+        ...point,
+        trade,
+        trades: [trade],
+        dayTrades: tradesByDay.get(dayKey) ?? [trade],
+        dayKey,
+        action,
+      };
+      grouped.set(groupKey, childLabel ? { ...marker, childLabel } : marker);
+    });
     return Array.from(grouped.values());
   }, [chartData, trades]);
+  const markerOffset = (() => {
+    const values = chartData.map((point) => point.assetTrend).filter(Number.isFinite);
+    if (values.length < 2) return 1;
+    return Math.max((Math.max(...values) - Math.min(...values)) * 0.018, 1);
+  })();
   const reviewChartData = useMemo(() => {
     return chartData.map((point) => {
-      const marker = tradeMarkers.find((candidate) => getDateKey(candidate.date) === getDateKey(point.date));
-      const isMarkerPoint = marker?.date === point.date;
+      const dayMarkers = tradeMarkers.filter((candidate) => candidate.dayKey === getDateKey(point.date));
+      const buy = dayMarkers.find((candidate) => candidate.action === "买入");
+      const sell = dayMarkers.find((candidate) => candidate.action === "卖出");
       return {
         ...point,
-        tradeMarkerY: isMarkerPoint ? marker?.assetTrend ?? null : null,
-        tradeMarker: isMarkerPoint ? marker : undefined,
+        buyMarkerY: buy?.date === point.date ? point.assetTrend + markerOffset : null,
+        sellMarkerY: sell?.date === point.date ? point.assetTrend - markerOffset : null,
+        buyTrade: buy?.date === point.date ? buy : undefined,
+        sellTrade: sell?.date === point.date ? sell : undefined,
       };
     });
-  }, [chartData, tradeMarkers]);
+  }, [chartData, markerOffset, tradeMarkers]);
   const axisTicks = chartData.reduce<string[]>((ticks, point) => {
     const day = getDateKey(point.date);
     const previous = ticks[ticks.length - 1];
@@ -781,18 +807,21 @@ export default function PnlChart() {
                   strokeLinejoin="round"
                 />
               )}
-              {reviewMode && (
+              {reviewMode && ([
+                ["buyMarkerY", "buyTrade", "oklch(68% 0.15 145)"],
+                ["sellMarkerY", "sellTrade", "oklch(62% 0.15 25)"],
+              ] as const).map(([dataKey, tradeKey, color]) => (
                 <Line
+                  key={dataKey}
                   yAxisId="right"
                   type="monotone"
-                  dataKey="tradeMarkerY"
+                  dataKey={dataKey}
                   stroke="transparent"
                   strokeWidth={0}
                   dot={(rawProps: unknown) => {
                     const props = rawProps as { cx?: number; cy?: number; payload?: Record<string, unknown> };
-                    const marker = props.payload?.tradeMarker as TradeMarker | undefined;
+                    const marker = props.payload?.[tradeKey] as TradeMarker | undefined;
                     if (!marker || props.cx == null || props.cy == null) return <circle cx={0} cy={0} r={0} />;
-                    const color = marker.action === "买入" ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)";
                     const isHovered = hoveredTradeId === marker.trade.execId;
                     return (
                       <g
@@ -801,7 +830,7 @@ export default function PnlChart() {
                         onMouseLeave={() => setHoveredTradeId(null)}
                         onClick={() => {
                           setSelectedTrade(marker);
-                          setSelectedDayTrades(marker.trades);
+                          setSelectedDayTrades(marker.dayTrades);
                           setShowReviewDetail(false);
                         }}
                       >
@@ -828,7 +857,7 @@ export default function PnlChart() {
                   activeDot={false}
                   connectNulls={false}
                 />
-              )}
+              ))}
             </ComposedChart>
           </ResponsiveContainer>
         </div>
