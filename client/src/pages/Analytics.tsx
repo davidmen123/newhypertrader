@@ -154,12 +154,14 @@ const EMPTY_REVIEW_DRAFT: ReviewDraft = {
   reviewSummary: "",
 };
 
+const REVIEW_AUTO_READ_FROM = Date.parse("2026-07-26T02:00:00.000Z");
+
 function TradeReviewManager() {
   const [selectedExecId, setSelectedExecId] = useState<string | null>(null);
   const [draft, setDraft] = useState<ReviewDraft>(EMPTY_REVIEW_DRAFT);
   const [status, setStatus] = useState<"draft" | "published">("published");
   const [savedMessage, setSavedMessage] = useState("");
-  const { data: history, isLoading } = trpc.hyperliquid.tradeHistory.useQuery(
+  const { data: history, isLoading, refetch: refetchHistory } = trpc.hyperliquid.tradeHistory.useQuery(
     { startDate: "2026-06-27", limit: 1000 },
     { refetchInterval: 120_000 }
   );
@@ -170,6 +172,7 @@ function TradeReviewManager() {
     { enabled: selectedExecId != null }
   );
   const saveMutation = trpc.hyperliquid.saveTradeReview.useMutation();
+  const canAutoRead = selectedTrade != null && Number(selectedTrade.createdTime) >= REVIEW_AUTO_READ_FROM;
 
   useEffect(() => {
     setDraft({
@@ -194,6 +197,19 @@ function TradeReviewManager() {
       status,
     });
     setSavedMessage(status === "published" ? "已保存并展示给学员" : "草稿已保存");
+  };
+
+  const autoReadEntryFields = async () => {
+    if (!selectedTrade || !canAutoRead || selectedTrade.closeMethod) return;
+    const latest = await refetchHistory();
+    const latestTrade = latest.data?.trades.find((trade) => trade.execId === selectedTrade.execId) ?? selectedTrade;
+    const hasTriggerPrice = Boolean(latestTrade.triggerPrice) && Number(latestTrade.triggerPrice) > 0;
+    setDraft((current) => ({
+      ...current,
+      entryPrice: latestTrade.execPrice,
+      stopLossPrice: hasTriggerPrice ? latestTrade.triggerPrice ?? "" : current.stopLossPrice,
+    }));
+    setSavedMessage(hasTriggerPrice ? "已读取进场价和止损触发价，请保存" : "已读取进场价，未找到止损触发价，请手动填写后保存");
   };
 
   return (
@@ -244,6 +260,20 @@ function TradeReviewManager() {
             <div className="grid gap-3">
               {!selectedTrade.closeMethod ? (
                 <>
+                  {canAutoRead && (
+                    <div className="flex items-center justify-between gap-3 rounded-lg px-3 py-2" style={{ background: "rgb(92 211 184 / 7%)", border: "1px solid rgb(92 211 184 / 26%)" }}>
+                      <span className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>2026-07-26 10:00 后的订单支持自动读取</span>
+                      <button
+                        type="button"
+                        onClick={autoReadEntryFields}
+                        disabled={isReviewFetching || isLoading}
+                        className="rounded-full px-3 py-1 text-xs disabled:opacity-50"
+                        style={{ border: "1px solid rgb(92 211 184 / 42%)", color: "rgb(92 211 184 / 92%)" }}
+                      >
+                        自动读取
+                      </button>
+                    </div>
+                  )}
                   {([
                     ["进场价格", "entryPrice"],
                     ["止损价格", "stopLossPrice"],
