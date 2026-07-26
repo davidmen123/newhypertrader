@@ -171,6 +171,10 @@ function TradeReviewManager() {
     { tradeExecId: selectedExecId ?? "none" },
     { enabled: selectedExecId != null }
   );
+  const { refetch: refetchOpenOrders } = trpc.hyperliquid.openOrders.useQuery(
+    undefined,
+    { enabled: selectedTrade != null && !selectedTrade.closeMethod, refetchInterval: 10_000 }
+  );
   const saveMutation = trpc.hyperliquid.saveTradeReview.useMutation();
   const canAutoRead = selectedTrade != null && Number(selectedTrade.createdTime) >= REVIEW_AUTO_READ_FROM;
 
@@ -201,13 +205,21 @@ function TradeReviewManager() {
 
   const autoReadEntryFields = async () => {
     if (!selectedTrade || !canAutoRead || selectedTrade.closeMethod) return;
-    const latest = await refetchHistory();
+    const [latest, latestOpenOrders] = await Promise.all([refetchHistory(), refetchOpenOrders()]);
     const latestTrade = latest.data?.trades.find((trade) => trade.execId === selectedTrade.execId) ?? selectedTrade;
-    const hasTriggerPrice = Boolean(latestTrade.triggerPrice) && Number(latestTrade.triggerPrice) > 0;
+    const stopOrder = latestOpenOrders.data?.find((order) => {
+      const orderType = String(order.orderType ?? "").toLowerCase();
+      const isStopOrder = orderType.includes("stop") || (
+        Boolean(order.isTrigger) && Boolean(order.reduceOnly) && !orderType.includes("take profit")
+      );
+      return order.symbol === latestTrade.symbol && isStopOrder && Number(order.triggerPrice) > 0;
+    });
+    const stopPrice = stopOrder?.triggerPrice || latestTrade.triggerPrice || "";
+    const hasTriggerPrice = Number(stopPrice) > 0;
     setDraft((current) => ({
       ...current,
       entryPrice: latestTrade.execPrice,
-      stopLossPrice: hasTriggerPrice ? latestTrade.triggerPrice ?? "" : current.stopLossPrice,
+      stopLossPrice: hasTriggerPrice ? stopPrice : current.stopLossPrice,
     }));
     setSavedMessage(hasTriggerPrice ? "已读取进场价和止损触发价，请保存" : "已读取进场价，未找到止损触发价，请手动填写后保存");
   };
