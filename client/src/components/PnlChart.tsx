@@ -736,7 +736,7 @@ export default function PnlChart() {
                 />
               )}
               {reviewMode && <Tooltip content={<ReviewTooltip />} />}
-              {visible.accountPerformance && (
+              {!reviewMode && visible.accountPerformance && (
                 <Area
                   yAxisId="left"
                   type="monotone"
@@ -752,7 +752,7 @@ export default function PnlChart() {
               )}
 
               {/* BTC benchmark line */}
-              {visible.btcBenchmark && (
+              {!reviewMode && visible.btcBenchmark && (
                 <Area
                   yAxisId="left"
                   type="natural"
