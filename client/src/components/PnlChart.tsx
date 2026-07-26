@@ -586,6 +586,16 @@ export default function PnlChart() {
             {snapshots.length}
           </span>
         </div>
+        {reviewMode && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.62rem" }}>
+              {lang === "zh" ? "交易范围" : "Trade scope"}
+            </span>
+            <span className="text-foreground/80" style={{ fontSize: "0.68rem" }}>
+              {lang === "zh" ? "最近 100 条" : "Latest 100"}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Controls row: time range + series toggles — stacks on mobile */}
@@ -654,11 +664,6 @@ export default function PnlChart() {
           {reviewMode ? (lang === "zh" ? "退出复盘模式" : "Exit Review Mode") : (lang === "zh" ? "复盘模式" : "Review Mode")}
         </button>
 
-        {reviewMode && (
-          <span className="text-muted-foreground" style={{ fontSize: "0.66rem" }}>
-            {lang === "zh" ? "最近 100 条交易" : "Latest 100 trades"}
-          </span>
-        )}
       </div>
 
       {isLoading && <div className="text-muted-foreground text-sm animate-pulse py-8 text-center">{lang === "zh" ? "加载中..." : "Loading..."}</div>}
