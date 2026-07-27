@@ -418,6 +418,10 @@ export default function AccountOverview() {
                 value={totalPnlDisplay != null ? `${fmtSign(totalPnlDisplay, isBtc ? 4 : 2)} ${equityUnit}` : "--"}
                 sub={data.totalPnlPct != null ? `${data.totalPnlPct >= 0 ? "+" : ""}${data.totalPnlPct.toFixed(2)}%` : undefined}
                 tone={pnlTone}
+                tooltip={t(
+                  "总盈亏 = 当前账户净值 − 初始资金，包含未实现盈亏；百分比按初始资金计算。",
+                  "Total PnL = current account equity − initial capital, including unrealized PnL; the percentage is based on initial capital."
+                )}
               />
               <MetricTile
                 label={t("可用余额", "Available Balance")}
