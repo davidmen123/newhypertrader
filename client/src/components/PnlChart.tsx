@@ -742,7 +742,17 @@ export default function PnlChart() {
             background: reviewMode ? "rgb(92 211 184 / 10%)" : "transparent",
           }}
         >
-          {reviewMode ? (lang === "zh" ? "退出复盘模式" : "Exit Review Mode") : (lang === "zh" ? "复盘模式" : "Review Mode")}
+          {reviewMode ? (lang === "zh" ? "退出复盘模式" : "Exit Review Mode") : (
+            <span className="inline-flex items-center gap-2">
+              {lang === "zh" ? "复盘模式" : "Review Mode"}
+              <span
+                className="rounded-full px-1.5 py-0.5 font-semibold tracking-normal"
+                style={{ fontSize: "0.52rem", lineHeight: 1, color: "rgb(92 211 184 / 96%)", background: "rgb(92 211 184 / 14%)", border: "1px solid rgb(92 211 184 / 38%)" }}
+              >
+                NEW
+              </span>
+            </span>
+          )}
         </button>
 
       </div>
