@@ -409,8 +409,12 @@ export const hyperliquidRouter = router({
       status: z.enum(["draft", "published"]).default("draft"),
     }))
     .mutation(async ({ input }) => {
-      const entryPrice = Number(input.entryPrice);
-      const stopLossPrice = Number(input.stopLossPrice);
+      const normalizeDecimal = (value?: string) => value?.trim() ? value.trim() : undefined;
+      const entryPriceValue = normalizeDecimal(input.entryPrice);
+      const stopLossPriceValue = normalizeDecimal(input.stopLossPrice);
+      const takeProfitTargetValue = normalizeDecimal(input.takeProfitTarget);
+      const entryPrice = Number(entryPriceValue);
+      const stopLossPrice = Number(stopLossPriceValue);
       const execQty = Number(input.execQty);
       const riskAmount = Number.isFinite(entryPrice) && entryPrice > 0
         && Number.isFinite(stopLossPrice) && stopLossPrice > 0
@@ -419,6 +423,9 @@ export const hyperliquidRouter = router({
         : undefined;
       const review = await upsertTradeReview({
         ...input,
+        entryPrice: entryPriceValue,
+        stopLossPrice: stopLossPriceValue,
+        takeProfitTarget: takeProfitTargetValue,
         riskAmount,
       });
       if (!review) {
