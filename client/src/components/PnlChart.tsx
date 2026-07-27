@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLang } from "@/contexts/LangContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -388,6 +388,7 @@ export default function PnlChart() {
   const [selectedTrade, setSelectedTrade] = useState<TradeMarker | null>(null);
   const [hoveredTradeId, setHoveredTradeId] = useState<string | null>(null);
   const [showReviewDetail, setShowReviewDetail] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [candleInterval, setCandleInterval] = useState<CandleInterval>("4h");
   const [selectedDayTrades, setSelectedDayTrades] = useState<TradeFill[]>([]);
 
@@ -413,6 +414,13 @@ export default function PnlChart() {
     { startDate, limit: queryLimit },
     { refetchInterval: 60_000 }
   );
+
+  useEffect(() => {
+    const updateViewport = () => setIsMobileViewport(window.innerWidth < 640);
+    updateViewport();
+    window.addEventListener("resize", updateViewport);
+    return () => window.removeEventListener("resize", updateViewport);
+  }, []);
   const { data: tradeHistory } = trpc.hyperliquid.tradeHistory.useQuery(
     { startDate, limit: 100 },
     { refetchInterval: 120_000 }
@@ -629,7 +637,7 @@ export default function PnlChart() {
   };
 
   return (
-    <div className="glass-card px-4 sm:px-8 py-5 sm:py-7 fade-in">
+    <div className="glass-card w-full min-w-0 px-4 sm:px-8 py-5 sm:py-7 fade-in">
       {/* Header */}
       <div className="flex items-center justify-between mb-5 sm:mb-6">
         <div>
@@ -776,13 +784,13 @@ export default function PnlChart() {
 
       {snapshots.length > 0 && (
         <div
-          className="h-[360px] sm:h-[430px] -mx-1 sm:-mx-2"
+          className="w-full min-w-0 h-[360px] sm:h-[430px] -mx-1 sm:-mx-2"
           style={{
             filter: "drop-shadow(0 18px 30px rgb(0 0 0 / 22%))",
           }}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={reviewMode ? reviewChartData : chartData} margin={{ top: 14, right: 78, left: 8, bottom: 10 }}>
+            <ComposedChart data={reviewMode ? reviewChartData : chartData} margin={{ top: 14, right: isMobileViewport ? 48 : 78, left: 8, bottom: 10 }}>
               <defs>
                 <linearGradient id="accountPerformanceGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="oklch(68% 0.15 145)" stopOpacity={0.28} />
