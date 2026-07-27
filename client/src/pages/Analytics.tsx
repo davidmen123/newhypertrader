@@ -198,19 +198,21 @@ function TradeReviewManager() {
 
   const saveReview = async () => {
     if (!selectedTrade) return;
-    const result = await saveMutation.mutateAsync({
-      tradeExecId: selectedTrade.execId,
-      symbol: selectedTrade.symbol,
-      ...draft,
-      execQty: selectedTrade.execQty,
-      status,
-    });
-    if (result.review) {
+    try {
+      const result = await saveMutation.mutateAsync({
+        tradeExecId: selectedTrade.execId,
+        symbol: selectedTrade.symbol,
+        ...draft,
+        execQty: selectedTrade.execQty,
+        status,
+      });
       utils.hyperliquid.tradeReview.setData({ tradeExecId: selectedTrade.execId }, result.review);
+      await utils.hyperliquid.tradeReview.invalidate({ tradeExecId: selectedTrade.execId });
+      setStatus(result.review.status === "published" ? "published" : "draft");
+      setSavedMessage(result.review.status === "published" ? "已保存并展示给学员" : "草稿已保存");
+    } catch (error) {
+      setSavedMessage(error instanceof Error ? error.message : "保存失败，请稍后重试");
     }
-    await utils.hyperliquid.tradeReview.invalidate({ tradeExecId: selectedTrade.execId });
-    setStatus(result.review?.status === "published" ? "published" : "draft");
-    setSavedMessage(result.review?.status === "published" ? "已保存并展示给学员" : "草稿已保存");
   };
 
   const autoReadEntryFields = async () => {

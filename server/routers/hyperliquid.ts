@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { publicProcedure, router } from "../_core/trpc.js";
 import {
   getHyperliquidAccountOverview,
@@ -420,6 +421,12 @@ export const hyperliquidRouter = router({
         ...input,
         riskAmount,
       });
+      if (!review) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "复盘内容未能写入数据库，请检查数据库连接配置。",
+        });
+      }
       return { success: true, review };
     }),
 
