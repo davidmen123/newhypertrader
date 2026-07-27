@@ -1021,22 +1021,16 @@ export default function PnlChart() {
           </div>
           <div className="flex justify-end mt-4">
             <button
-              onClick={() => setShowReviewDetail(true)}
+              onClick={() => setShowReviewDetail((open) => !open)}
               className="rounded-full px-4 py-1.5 text-xs tracking-widest transition-colors"
               style={{ border: "1px solid rgb(92 211 184 / 44%)", color: "rgb(92 211 184 / 92%)" }}
             >
-              查看详情
+              {showReviewDetail ? "收起详情" : "查看详情"}
             </button>
           </div>
-        </div>
-      )}
 
-      {showReviewDetail && selectedTrade && (
-        <div className="mt-4 rounded-xl p-4 sm:p-6" style={{ background: "var(--surface-subtle)", border: "1px solid rgb(92 211 184 / 30%)" }}>
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-foreground font-medium">{selectedTrade.trade.symbol} · 交易详情 / 复盘</div>
-            <button onClick={() => setShowReviewDetail(false)} className="text-muted-foreground hover:text-foreground p-1" aria-label="关闭交易详情"><X size={15} /></button>
-          </div>
+          {showReviewDetail && (
+        <div className="mt-5 pt-5" style={{ borderTop: "1px solid rgb(92 211 184 / 22%)" }}>
           {selectedDayTrades.length > 1 && (
             <div className="flex flex-wrap gap-2 mb-4">
               {selectedDayTrades.map((trade) => {
@@ -1129,6 +1123,8 @@ export default function PnlChart() {
               </div>
             </>
           )}
+        </div>
+      )}
         </div>
       )}
     </div>
