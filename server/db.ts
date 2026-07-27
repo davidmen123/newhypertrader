@@ -231,30 +231,38 @@ export async function getTradeReview(tradeExecId: string) {
 export async function upsertTradeReview(review: InsertTradeReview) {
   const db = await getDb();
   if (!db) return undefined;
-  // Keep older deployments compatible when the review fields were added after
-  // the original trade_reviews table had already been created.
-  await db.execute(sql`ALTER TABLE trade_reviews
-    ADD COLUMN IF NOT EXISTS entryprice numeric(20,8),
-    ADD COLUMN IF NOT EXISTS stoplossprice numeric(20,8),
-    ADD COLUMN IF NOT EXISTS riskamount numeric(20,8),
-    ADD COLUMN IF NOT EXISTS takeprofittarget numeric(20,8)`);
-  const now = new Date();
-  const rows = await db.insert(tradeReviews).values({ ...review, updatedAt: now }).onConflictDoUpdate({
-    target: tradeReviews.tradeExecId,
-    set: {
-      symbol: review.symbol,
-      entryPrice: review.entryPrice ?? null,
-      stopLossPrice: review.stopLossPrice ?? null,
-      riskAmount: review.riskAmount ?? null,
-      takeProfitTarget: review.takeProfitTarget ?? null,
-      entryReason: review.entryReason ?? null,
-      exitReason: review.exitReason ?? null,
-      reviewSummary: review.reviewSummary ?? null,
-      status: review.status ?? "draft",
-      updatedAt: now,
-    },
-  }).returning();
-  return rows[0];
+  try {
+    // Keep older deployments compatible when the review fields were added after
+    // the original trade_reviews table had already been created.
+    await db.execute(sql`ALTER TABLE trade_reviews
+      ADD COLUMN IF NOT EXISTS entryprice numeric(20,8),
+      ADD COLUMN IF NOT EXISTS stoplossprice numeric(20,8),
+      ADD COLUMN IF NOT EXISTS riskamount numeric(20,8),
+      ADD COLUMN IF NOT EXISTS takeprofittarget numeric(20,8)`);
+    const now = new Date();
+    const rows = await db.insert(tradeReviews).values({ ...review, updatedAt: now }).onConflictDoUpdate({
+      target: tradeReviews.tradeExecId,
+      set: {
+        symbol: review.symbol,
+        entryPrice: review.entryPrice ?? null,
+        stopLossPrice: review.stopLossPrice ?? null,
+        riskAmount: review.riskAmount ?? null,
+        takeProfitTarget: review.takeProfitTarget ?? null,
+        entryReason: review.entryReason ?? null,
+        exitReason: review.exitReason ?? null,
+        reviewSummary: review.reviewSummary ?? null,
+        status: review.status ?? "draft",
+        updatedAt: now,
+      },
+    }).returning();
+    return rows[0];
+  } catch (error) {
+    const cause = (error as { cause?: { message?: string; code?: string } })?.cause;
+    const message = error instanceof Error ? error.message : String(error);
+    const detail = [cause?.code, cause?.message].filter(Boolean).join(": ");
+    console.error("[Database] Failed to save trade review:", error);
+    throw new Error(detail ? `${message} (${detail})` : message);
+  }
 }
 
 export async function incrementPageViews(): Promise<number> {
