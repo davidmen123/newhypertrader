@@ -180,6 +180,7 @@ function TradeReviewManager() {
     { refetchInterval: 60_000 }
   );
   const saveMutation = trpc.hyperliquid.saveTradeReview.useMutation();
+  const utils = trpc.useUtils();
   const canAutoRead = selectedTrade != null && Number(selectedTrade.createdTime) >= REVIEW_AUTO_READ_FROM;
 
   useEffect(() => {
@@ -197,14 +198,16 @@ function TradeReviewManager() {
 
   const saveReview = async () => {
     if (!selectedTrade) return;
-    await saveMutation.mutateAsync({
+    const result = await saveMutation.mutateAsync({
       tradeExecId: selectedTrade.execId,
       symbol: selectedTrade.symbol,
       ...draft,
       execQty: selectedTrade.execQty,
       status,
     });
-    setSavedMessage(status === "published" ? "已保存并展示给学员" : "草稿已保存");
+    await utils.hyperliquid.tradeReview.invalidate({ tradeExecId: selectedTrade.execId });
+    setStatus(result.review?.status === "published" ? "published" : "draft");
+    setSavedMessage(result.review?.status === "published" ? "已保存并展示给学员" : "草稿已保存");
   };
 
   const autoReadEntryFields = async () => {
