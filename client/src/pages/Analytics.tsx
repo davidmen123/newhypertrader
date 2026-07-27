@@ -154,7 +154,7 @@ const EMPTY_REVIEW_DRAFT: ReviewDraft = {
   reviewSummary: "",
 };
 
-const REVIEW_AUTO_READ_FROM = Date.parse("2026-07-26T02:00:00.000Z");
+const REVIEW_AUTO_READ_FROM = Date.parse("2026-07-25T16:00:00.000Z");
 
 function TradeReviewManager() {
   const [selectedExecId, setSelectedExecId] = useState<string | null>(null);
@@ -184,8 +184,8 @@ function TradeReviewManager() {
 
   useEffect(() => {
     setDraft({
-      entryPrice: review?.entryPrice ?? selectedTrade?.execPrice ?? "",
-      stopLossPrice: review?.stopLossPrice ?? selectedTrade?.triggerPrice ?? "",
+      entryPrice: review?.entryPrice ?? (canAutoRead ? selectedTrade?.execPrice ?? "" : ""),
+      stopLossPrice: review?.stopLossPrice ?? (canAutoRead ? selectedTrade?.triggerPrice ?? "" : ""),
       takeProfitTarget: review?.takeProfitTarget ?? "",
       entryReason: review?.entryReason ?? "",
       exitReason: review?.exitReason ?? "",
@@ -193,7 +193,7 @@ function TradeReviewManager() {
     });
     setStatus(review?.status === "draft" ? "draft" : "published");
     setSavedMessage("");
-  }, [review, selectedTrade]);
+  }, [review, selectedTrade, canAutoRead]);
 
   const saveReview = async () => {
     if (!selectedTrade) return;
@@ -278,7 +278,7 @@ function TradeReviewManager() {
                 <>
                   {canAutoRead && (
                     <div className="flex items-center justify-between gap-3 rounded-lg px-3 py-2" style={{ background: "rgb(92 211 184 / 7%)", border: "1px solid rgb(92 211 184 / 26%)" }}>
-                      <span className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>2026-07-26 10:00 后的订单支持自动读取</span>
+                      <span className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>2026-07-26 00:00 后的订单支持自动读取</span>
                       <button
                         type="button"
                         onClick={autoReadEntryFields}

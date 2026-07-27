@@ -76,6 +76,7 @@ type TradeMarker = ChartPoint & {
 type Candle = { time: number; open: number; high: number; low: number; close: number };
 type PnlSnapshot = { date: string; equity: string; totalPnl?: string | null; btcPrice?: string | number | null };
 type CandleInterval = "1h" | "4h" | "1d" | "1w";
+const REVIEW_AUTO_READ_FROM = Date.parse("2026-07-25T16:00:00.000Z");
 
 function formatSigned(value: number, decimals = 2) {
   if (!Number.isFinite(value)) return "—";
@@ -447,6 +448,7 @@ export default function PnlChart() {
     { enabled: selectedTrade != null && !selectedTrade.trade.closeMethod, refetchInterval: 10_000 }
   );
   const visibleReview = review?.status === "published" ? review : null;
+  const canAutoReadSelectedTrade = selectedTrade != null && Number(selectedTrade.trade.createdTime) >= REVIEW_AUTO_READ_FROM;
   const selectedStopOrder = selectedTrade && !selectedTrade.trade.closeMethod
     ? openOrders?.find((order) => {
         const orderType = String(order.orderType ?? "").toLowerCase();
@@ -456,7 +458,7 @@ export default function PnlChart() {
         return order.symbol === selectedTrade.trade.symbol && isStopOrder && Number(order.triggerPrice) > 0;
       })
     : undefined;
-  const selectedStopLossPrice = visibleReview?.stopLossPrice || selectedStopOrder?.triggerPrice || selectedTrade?.trade.triggerPrice || "";
+  const selectedStopLossPrice = visibleReview?.stopLossPrice || (canAutoReadSelectedTrade ? selectedStopOrder?.triggerPrice || selectedTrade?.trade.triggerPrice : "") || "";
   const reviewDetailFields = selectedTrade
     ? selectedTrade.trade.closeMethod
       ? [
@@ -467,13 +469,13 @@ export default function PnlChart() {
           { label: "复盘总结", value: visibleReview?.reviewSummary ?? "" },
         ]
       : [
-          { label: "进场价格", value: formatReviewNumber(visibleReview?.entryPrice ?? selectedTrade.trade.execPrice) },
+          { label: "进场价格", value: formatReviewNumber(visibleReview?.entryPrice || (canAutoReadSelectedTrade ? selectedTrade.trade.execPrice : "")) },
           { label: "止损价格", value: formatReviewNumber(selectedStopLossPrice) },
           {
             label: "单笔风险",
             value: (() => {
               const riskAmount = Number(visibleReview?.riskAmount || calculateRiskAmount(
-                visibleReview?.entryPrice || selectedTrade.trade.execPrice,
+                visibleReview?.entryPrice || (canAutoReadSelectedTrade ? selectedTrade.trade.execPrice : ""),
                 selectedStopLossPrice,
                 selectedTrade.trade.execQty,
               ));
