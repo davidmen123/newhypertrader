@@ -233,12 +233,11 @@ export async function upsertTradeReview(review: InsertTradeReview) {
   if (!db) return undefined;
   // Keep older deployments compatible when the review fields were added after
   // the original trade_reviews table had already been created.
-  await Promise.all([
-    db.execute(sql`ALTER TABLE trade_reviews ADD COLUMN IF NOT EXISTS entryprice numeric(20,8)`),
-    db.execute(sql`ALTER TABLE trade_reviews ADD COLUMN IF NOT EXISTS stoplossprice numeric(20,8)`),
-    db.execute(sql`ALTER TABLE trade_reviews ADD COLUMN IF NOT EXISTS riskamount numeric(20,8)`),
-    db.execute(sql`ALTER TABLE trade_reviews ADD COLUMN IF NOT EXISTS takeprofittarget numeric(20,8)`),
-  ]);
+  await db.execute(sql`ALTER TABLE trade_reviews
+    ADD COLUMN IF NOT EXISTS entryprice numeric(20,8),
+    ADD COLUMN IF NOT EXISTS stoplossprice numeric(20,8),
+    ADD COLUMN IF NOT EXISTS riskamount numeric(20,8),
+    ADD COLUMN IF NOT EXISTS takeprofittarget numeric(20,8)`);
   const now = new Date();
   const rows = await db.insert(tradeReviews).values({ ...review, updatedAt: now }).onConflictDoUpdate({
     target: tradeReviews.tradeExecId,
