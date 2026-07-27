@@ -205,6 +205,9 @@ function TradeReviewManager() {
       execQty: selectedTrade.execQty,
       status,
     });
+    if (result.review) {
+      utils.hyperliquid.tradeReview.setData({ tradeExecId: selectedTrade.execId }, result.review);
+    }
     await utils.hyperliquid.tradeReview.invalidate({ tradeExecId: selectedTrade.execId });
     setStatus(result.review?.status === "published" ? "published" : "draft");
     setSavedMessage(result.review?.status === "published" ? "已保存并展示给学员" : "草稿已保存");
