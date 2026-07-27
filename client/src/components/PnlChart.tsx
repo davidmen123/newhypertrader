@@ -480,7 +480,7 @@ export default function PnlChart() {
               const equity = Number(accountOverview?.totalEquityUsdc);
               const riskPercent = riskAmount > 0 && equity > 0 ? (riskAmount / equity) * 100 : null;
               return riskAmount > 0
-                ? `${formatReviewNumber(riskAmount)} USDC${riskPercent != null ? `\n${riskPercent.toFixed(2)}%` : ""}`
+                ? `${formatReviewNumber(riskAmount)} USDC（${riskPercent != null ? `${riskPercent.toFixed(2)}%` : "—"}）`
                 : "";
             })(),
           },

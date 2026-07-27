@@ -318,12 +318,7 @@ function TradeReviewManager() {
                         const equity = Number(accountOverview?.totalEquityUsdc);
                         const riskPercent = Number.isFinite(risk) && risk > 0 && equity > 0 ? (risk / equity) * 100 : null;
                         return Number.isFinite(risk) && risk > 0 ? (
-                          <span className="grid gap-0.5">
-                            <span>{risk.toLocaleString("en-US", { maximumFractionDigits: 8 })} USDC</span>
-                            <span className="text-muted-foreground/65" style={{ fontSize: "0.62rem" }}>
-                              {riskPercent != null ? `${riskPercent.toFixed(2)}%` : "—"}
-                            </span>
-                          </span>
+                          <span>{risk.toLocaleString("en-US", { maximumFractionDigits: 8 })} USDC（{riskPercent != null ? `${riskPercent.toFixed(2)}%` : "—"}）</span>
                         ) : "保存后自动计算";
                       })()}
                     </div>
