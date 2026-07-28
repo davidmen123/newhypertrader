@@ -759,9 +759,21 @@ export default function PnlChart() {
         <div className="flex flex-wrap items-start gap-x-3 gap-y-1 mb-5 rounded-lg px-3 py-2.5 text-muted-foreground" style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)", fontSize: "0.68rem" }}>
           <span className="shrink-0 text-foreground/80 tracking-widest">{lang === "zh" ? "说明" : "Guide"}</span>
           <span>
-            {lang === "zh"
-              ? "点击净值曲线上的交易节点查看详情；同日有多笔交易时，可在详情区切换；K 线支持 1h、4h、1d、1w，EMA20 仅作辅助参考。"
-              : "Click a trade node on the equity curve for details; switch between same-day trades in the detail panel. Candles support 1h, 4h, 1d and 1w, with EMA20 as a reference."}
+            {lang === "zh" ? (
+              <>
+                点击净值曲线上的交易节点（
+                <i className="inline-block mx-0.5 h-2 w-2 rounded-full align-middle" style={{ background: "oklch(68% 0.15 145)" }} />
+                <i className="inline-block mx-0.5 h-2 w-2 rounded-full align-middle" style={{ background: "oklch(62% 0.15 25)" }} />
+                ）查看详情；同日有多笔交易时，可在详情区切换；K 线支持 1h、4h、1d、1w，EMA20 仅作辅助参考。
+              </>
+            ) : (
+              <>
+                Click a trade node on the equity curve (
+                <i className="inline-block mx-0.5 h-2 w-2 rounded-full align-middle" style={{ background: "oklch(68% 0.15 145)" }} />
+                <i className="inline-block mx-0.5 h-2 w-2 rounded-full align-middle" style={{ background: "oklch(62% 0.15 25)" }} />
+                ) for details; switch between same-day trades in the detail panel. Candles support 1h, 4h, 1d and 1w, with EMA20 as a reference.
+              </>
+            )}
           </span>
         </div>
       )}
