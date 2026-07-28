@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLang } from "@/contexts/LangContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -457,6 +457,8 @@ export default function PnlChart() {
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [candleInterval, setCandleInterval] = useState<CandleInterval>("4h");
   const [selectedDayTrades, setSelectedDayTrades] = useState<TradeFill[]>([]);
+  const [hoveredTradePreview, setHoveredTradePreview] = useState<{ marker: TradeMarker; x: number; y: number } | null>(null);
+  const hoverPreviewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Compute startDate from timeRange
   // 7D  = past 7 calendar days
@@ -487,6 +489,23 @@ export default function PnlChart() {
     window.addEventListener("resize", updateViewport);
     return () => window.removeEventListener("resize", updateViewport);
   }, []);
+  const clearHoverPreviewTimer = () => {
+    if (hoverPreviewTimer.current) {
+      clearTimeout(hoverPreviewTimer.current);
+      hoverPreviewTimer.current = null;
+    }
+  };
+  const dismissHoverPreviewSoon = () => {
+    clearHoverPreviewTimer();
+    hoverPreviewTimer.current = setTimeout(() => setHoveredTradePreview(null), 220);
+  };
+  const openTradeDetails = (marker: TradeMarker) => {
+    clearHoverPreviewTimer();
+    setHoveredTradePreview(null);
+    setSelectedTrade(marker);
+    setSelectedDayTrades(marker.dayTrades);
+    setShowReviewDetail(true);
+  };
   const { data: tradeHistory } = trpc.hyperliquid.tradeHistory.useQuery(
     { startDate, limit: 100 },
     { refetchInterval: 120_000 }
@@ -826,6 +845,8 @@ export default function PnlChart() {
         <button
           onClick={() => {
             setReviewMode((active) => !active);
+            clearHoverPreviewTimer();
+            setHoveredTradePreview(null);
             setSelectedTrade(null);
             setShowReviewDetail(false);
           }}
@@ -850,14 +871,14 @@ export default function PnlChart() {
                 点击净值曲线上的交易节点（
                 <i className="inline-block mx-0.5 h-2 w-2 rounded-full align-middle" style={{ background: "oklch(68% 0.15 145)" }} />
                 <i className="inline-block mx-0.5 h-2 w-2 rounded-full align-middle" style={{ background: "oklch(62% 0.15 25)" }} />
-                ）在右侧查看摘要，点击“查看详情”展开复盘；同日有多笔交易时，可在详情区切换；K 线支持 1h、4h、1d、1w，EMA20 仅作辅助参考。
+                ）悬停查看摘要，点击“查看详情”展开复盘；同日有多笔交易时，可在详情区切换；K 线支持 1h、4h、1d、1w，EMA20 仅作辅助参考。
               </>
             ) : (
               <>
                 Click a trade node on the equity curve (
                 <i className="inline-block mx-0.5 h-2 w-2 rounded-full align-middle" style={{ background: "oklch(68% 0.15 145)" }} />
                 <i className="inline-block mx-0.5 h-2 w-2 rounded-full align-middle" style={{ background: "oklch(62% 0.15 25)" }} />
-                ) to view a summary on the right; click “View Details” to expand the review. Switch between same-day trades in the detail panel. Candles support 1h, 4h, 1d and 1w, with EMA20 as a reference.
+                ) to preview a summary on hover; click “View Details” to expand the review. Switch between same-day trades in the detail panel. Candles support 1h, 4h, 1d and 1w, with EMA20 as a reference.
               </>
             )}
           </span>
@@ -880,11 +901,11 @@ export default function PnlChart() {
         </div>
       )}
 
-      <div className={reviewMode && selectedTrade && !showReviewDetail ? "flex flex-col lg:flex-row items-start gap-4" : "w-full"}>
+      <div className="w-full">
         <div className="w-full min-w-0 flex-1">
           {snapshots.length > 0 && (
             <div
-              className="w-full min-w-0 h-[360px] sm:h-[430px] -mx-1 sm:-mx-2"
+              className="relative w-full min-w-0 h-[360px] sm:h-[430px] -mx-1 sm:-mx-2"
           style={{
             filter: "drop-shadow(0 18px 30px rgb(0 0 0 / 22%))",
           }}
@@ -1068,12 +1089,19 @@ export default function PnlChart() {
                     return (
                       <g
                         style={{ cursor: "pointer" }}
-                        onMouseEnter={() => setHoveredTradeId(marker.trade.execId)}
-                        onMouseLeave={() => setHoveredTradeId(null)}
+                        onMouseEnter={() => {
+                          clearHoverPreviewTimer();
+                          setHoveredTradeId(marker.trade.execId);
+                          if (!isMobileViewport) {
+                            setHoveredTradePreview({ marker, x: props.cx ?? 0, y: props.cy ?? 0 });
+                          }
+                        }}
+                        onMouseLeave={() => {
+                          setHoveredTradeId(null);
+                          dismissHoverPreviewSoon();
+                        }}
                         onClick={() => {
-                          setSelectedTrade(marker);
-                          setSelectedDayTrades(marker.dayTrades);
-                          setShowReviewDetail(false);
+                          openTradeDetails(marker);
                         }}
                       >
                         <circle
@@ -1102,6 +1130,39 @@ export default function PnlChart() {
               ))}
             </ComposedChart>
               </ResponsiveContainer>
+              {hoveredTradePreview && !showReviewDetail && (
+                <div
+                  className="absolute rounded-lg p-3"
+                  onMouseEnter={clearHoverPreviewTimer}
+                  onMouseLeave={dismissHoverPreviewSoon}
+                  style={{
+                    zIndex: 20,
+                    width: 190,
+                    left: `clamp(8px, ${hoveredTradePreview.x + 12}px, calc(100% - 198px))`,
+                    top: `clamp(8px, ${hoveredTradePreview.y + 12}px, calc(100% - 150px))`,
+                    background: "var(--surface-subtle)",
+                    border: "1px solid rgb(92 211 184 / 42%)",
+                    boxShadow: "0 12px 28px rgb(0 0 0 / 22%)",
+                  }}
+                >
+                  <div className="grid gap-1.5">
+                    <span className="truncate text-foreground font-medium" style={{ fontSize: "0.78rem" }}>{hoveredTradePreview.marker.trade.symbol}</span>
+                    <span className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>
+                      <i className="inline-block mr-1.5 h-2 w-2 rounded-full align-middle" style={{ background: hoveredTradePreview.marker.action === "买入" ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)" }} />
+                      {hoveredTradePreview.marker.action}
+                    </span>
+                    <span className="text-foreground" style={{ fontSize: "0.78rem" }}>成交价：{Number(hoveredTradePreview.marker.trade.execPrice).toLocaleString("en-US", { maximumFractionDigits: 4 })}</span>
+                    <span className="whitespace-nowrap text-muted-foreground" style={{ fontSize: "0.68rem" }}>成交时间：{formatTradeTime(hoveredTradePreview.marker.trade.createdTime)}</span>
+                  </div>
+                  <button
+                    onClick={() => openTradeDetails(hoveredTradePreview.marker)}
+                    className="mt-3 w-full rounded-full px-3 py-1 text-xs tracking-widest transition-colors"
+                    style={{ border: "1px solid rgb(92 211 184 / 44%)", color: "rgb(92 211 184 / 92%)" }}
+                  >
+                    查看详情
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -1113,36 +1174,9 @@ export default function PnlChart() {
           )}
         </div>
 
-      {selectedTrade && (
-        <div className={showReviewDetail ? "mt-4 w-full rounded-xl p-4 sm:p-5" : "w-full lg:w-[210px] lg:shrink-0 rounded-xl p-3"} style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}>
-          {!showReviewDetail && (
-            <>
-              <div className="flex items-start justify-between gap-2">
-                <div className="grid min-w-0 gap-1.5">
-                  <span className="truncate text-foreground font-medium" style={{ fontSize: "0.78rem" }}>{selectedTrade.trade.symbol}</span>
-                  <span className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>
-                    <i className="inline-block mr-1.5 h-2 w-2 rounded-full align-middle" style={{ background: selectedTrade.action === "买入" ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)" }} />
-                    {selectedTrade.action}
-                  </span>
-                  <span className="text-foreground" style={{ fontSize: "0.78rem" }}>成交价：{Number(selectedTrade.trade.execPrice).toLocaleString("en-US", { maximumFractionDigits: 4 })}</span>
-                  <span className="whitespace-nowrap text-muted-foreground" style={{ fontSize: "0.68rem" }}>成交时间：{formatTradeTime(selectedTrade.trade.createdTime)}</span>
-                </div>
-                <button onClick={() => setSelectedTrade(null)} className="shrink-0 text-muted-foreground hover:text-foreground p-1" aria-label="关闭交易摘要"><X size={13} /></button>
-              </div>
-              <div className="flex justify-end mt-3">
-                <button
-                  onClick={() => setShowReviewDetail(true)}
-                  className="rounded-full px-3 py-1 text-xs tracking-widest transition-colors"
-                  style={{ border: "1px solid rgb(92 211 184 / 44%)", color: "rgb(92 211 184 / 92%)" }}
-                >
-                  查看详情
-                </button>
-              </div>
-            </>
-          )}
-
-          {showReviewDetail && (
-        <div className="pt-1" style={{ borderTop: "1px solid rgb(92 211 184 / 22%)" }}>
+      {selectedTrade && showReviewDetail && (
+        <div className="mt-4 w-full rounded-xl p-4 sm:p-5" style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}>
+          <div className="pt-1" style={{ borderTop: "1px solid rgb(92 211 184 / 22%)" }}>
           <div className="flex justify-end mb-3">
             <button
               onClick={() => setShowReviewDetail(false)}
@@ -1268,8 +1302,7 @@ export default function PnlChart() {
               </div>
             </>
           )}
-        </div>
-      )}
+          </div>
         </div>
       )}
       </div>
