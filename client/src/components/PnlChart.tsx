@@ -37,13 +37,14 @@ const PNL_START_DATE = "2026-06-27";
 interface TooltipProps {
   active?: boolean;
   payload?: Array<{ value: number | null; dataKey: string; color?: string; payload?: ChartPoint }>;
-  label?: string;
+  label?: string | number;
   labels: Record<SeriesKey, string>;
   visible: Record<SeriesKey, boolean>;
 }
 
 type ChartPoint = {
   date: string;
+  timestamp: number;
   equity: number;
   pnl: number;
   accountPerformance: number;
@@ -99,7 +100,10 @@ function calculateRiskAmount(entryPrice: string | number | null | undefined, sto
   return String(Math.abs(entry - stop) * qty);
 }
 
-function formatAxisDay(value: string) {
+function formatAxisDay(value: string | number) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return formatUtc8Date(new Date(value)).slice(5).replace("-", "/");
+  }
   const raw = String(value ?? "");
   const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (!match) return raw;
@@ -170,7 +174,7 @@ function CustomTooltip({ active, payload, label, labels, visible }: TooltipProps
       minWidth: 190,
     }}>
       <div style={{ fontSize: "0.66rem", color: "rgb(209 231 226 / 62%)", letterSpacing: "0.08em", marginBottom: 8 }}>
-        {label}
+        {formatAxisDay(label ?? "")}
       </div>
       {payload.map((p) => {
         const seriesKey = p.dataKey as SeriesKey;
@@ -532,6 +536,7 @@ export default function PnlChart() {
       : 0;
     return {
       date: s.date,
+      timestamp: Date.parse(`${s.date.slice(0, 10)}T00:00:00.000+08:00`),
       equity: eq,
       pnl,
       accountPerformance,
@@ -600,14 +605,14 @@ export default function PnlChart() {
       };
     });
   }, [chartData, markerOffset, tradeMarkers]);
-  const axisTicks = chartData.reduce<string[]>((ticks, point) => {
+  const axisTicks = chartData.reduce<number[]>((ticks, point) => {
     const day = getDateKey(point.date);
-    const previous = ticks[ticks.length - 1];
-    if (!previous || getDateKey(previous) !== day) {
-      ticks.push(point.date);
+    const previous = chartData.find((candidate) => candidate.timestamp === ticks[ticks.length - 1]);
+    if (!previous || getDateKey(previous.date) !== day) {
+      ticks.push(point.timestamp);
     }
     return ticks;
-  }, []);
+  }, [] as number[]);
   const assetValues = chartData.map((d) => d.assetTrend).filter(Number.isFinite);
   const assetMin = assetValues.length > 0 ? Math.min(...assetValues) : 0;
   const assetMax = assetValues.length > 0 ? Math.max(...assetValues) : 0;
@@ -802,7 +807,7 @@ export default function PnlChart() {
           }}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={reviewMode ? reviewChartData : chartData} margin={{ top: 14, right: isMobileViewport ? 48 : 78, left: 8, bottom: 10 }}>
+            <ComposedChart data={reviewMode ? reviewChartData : chartData} margin={{ top: 14, right: isMobileViewport ? 40 : 14, left: 8, bottom: 10 }}>
               <defs>
                 <linearGradient id="accountPerformanceGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="oklch(68% 0.15 145)" stopOpacity={0.28} />
@@ -869,7 +874,9 @@ export default function PnlChart() {
                 />
               ))}
               <XAxis
-                dataKey="date"
+                dataKey="timestamp"
+                type="number"
+                domain={["dataMin", "dataMax"]}
                 tick={{ fill: "rgb(160 190 182 / 42%)", fontSize: 11, fontFamily: "DM Mono" }}
                 tickLine={false}
                 axisLine={{ stroke: "rgb(117 160 148 / 12%)" }}
