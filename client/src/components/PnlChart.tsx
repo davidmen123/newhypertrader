@@ -6,7 +6,7 @@ import {
   ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceArea, ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
-import { RefreshCw, Database, X } from "lucide-react";
+import { Info, RefreshCw, Database, X } from "lucide-react";
 
 // ─── Series config ────────────────────────────────────────────────────────────
 const SERIES = [
@@ -1257,13 +1257,31 @@ export default function PnlChart() {
                   </div>
                 </div>
                 <div className="grid min-w-0 gap-1 text-muted-foreground" style={{ fontSize: "0.68rem" }}>
-                  <span>本次 R</span>
+                  <span className="flex items-center gap-1">
+                    本次 R
+                    <span
+                      className="inline-flex cursor-help"
+                      title="R 代表一份计划承担的风险金额。本次 R = 实际盈亏 ÷ 该笔交易的计划风险；例如 +2R 表示赚取了 2 倍计划风险，-1R 表示亏损 1 倍计划风险。"
+                      aria-label="R 倍数说明"
+                    >
+                      <Info className="text-muted-foreground/60" style={{ width: "12px", height: "12px" }} />
+                    </span>
+                  </span>
                   <div className="truncate rounded-lg px-2.5 py-1.5 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
                     {selectedRValue != null ? `${formatSigned(selectedRValue)}R` : "—"}
                   </div>
                 </div>
                 <div className="grid min-w-0 gap-1 text-muted-foreground" style={{ fontSize: "0.68rem" }}>
-                  <span>关联开仓</span>
+                  <span className="flex items-center gap-1">
+                    关联开仓
+                    <span
+                      className="inline-flex cursor-help"
+                      title="显示用于计算本次 R 和计划风险的相关开仓成交。若分批开仓，会合并列出相关开仓。"
+                      aria-label="关联开仓说明"
+                    >
+                      <Info className="text-muted-foreground/60" style={{ width: "12px", height: "12px" }} />
+                    </span>
+                  </span>
                   <div className="truncate rounded-lg px-2.5 py-1.5 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
                     {selectedOpeningTrades.length > 0
                       ? selectedOpeningTrades.map((trade) => `${formatTradeTime(trade.createdTime)} · ${Number(trade.execPrice).toLocaleString("en-US", { maximumFractionDigits: 4 })}`).join("；")
