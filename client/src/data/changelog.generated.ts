@@ -14,16 +14,10 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    "version": "1.55.0",
+    "version": "1.54.0",
     "date": "2026-07-28",
     "zh": "复盘模式新增悬停卡片及R指标与关联开仓",
     "en": "Added hover cards, R metrics and linked entries to review mode"
-  },
-  {
-    "version": "1.54.0",
-    "date": "2026-07-28",
-    "zh": "复盘模式新增交易节点悬停摘要卡片，并优化交易详情交互",
-    "en": "Added hover trade summaries and improved review detail interactions"
   },
   {
     "version": "1.53.1",
