@@ -458,6 +458,7 @@ export default function PnlChart() {
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [candleInterval, setCandleInterval] = useState<CandleInterval>("4h");
   const [selectedDayTrades, setSelectedDayTrades] = useState<TradeFill[]>([]);
+  const [expandedReviewSummary, setExpandedReviewSummary] = useState(false);
   const [hoveredTradePreview, setHoveredTradePreview] = useState<{ marker: TradeMarker; x: number; y: number } | null>(null);
   const hoverPreviewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -505,6 +506,7 @@ export default function PnlChart() {
     setHoveredTradePreview(null);
     setSelectedTrade(marker);
     setSelectedDayTrades(marker.dayTrades);
+    setExpandedReviewSummary(false);
     setShowReviewDetail(true);
   };
   const { data: tradeHistory } = trpc.hyperliquid.tradeHistory.useQuery(
@@ -1203,7 +1205,10 @@ export default function PnlChart() {
                 return (
                   <button
                     key={trade.execId}
-                    onClick={() => setSelectedTrade({ ...selectedTrade, trade, action: meta.action, childLabel: meta.childLabel })}
+                    onClick={() => {
+                      setSelectedTrade({ ...selectedTrade, trade, action: meta.action, childLabel: meta.childLabel });
+                      setExpandedReviewSummary(false);
+                    }}
                     className="rounded-lg px-3 py-2 text-left transition-colors"
                     style={{
                       border: `1px solid ${isActive ? "rgb(92 211 184 / 52%)" : "var(--panel-border)"}`,
@@ -1301,14 +1306,33 @@ export default function PnlChart() {
                 </div>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                {reviewDetailFields.map(({ label, value }) => (
-                  <div key={label} className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
-                    <span>{label}</span>
-                    <div className="whitespace-pre-wrap rounded-lg px-3 py-2 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
-                      {value || <span className="text-muted-foreground/50">暂无内容</span>}
+                {reviewDetailFields.map(({ label, value }) => {
+                  const isReviewSummary = label === "复盘总结";
+                  const hasMore = isReviewSummary && value.length > 20;
+                  const shownValue = hasMore && !expandedReviewSummary ? `${value.slice(0, 20)}…` : value;
+                  return (
+                    <div key={label} className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
+                      <span>{label}</span>
+                      <div
+                        className={`${expandedReviewSummary && isReviewSummary ? "whitespace-pre-wrap" : "flex min-w-0 items-center"} rounded-lg px-3 py-1.5 text-foreground`}
+                        style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}
+                      >
+                        <span className={!expandedReviewSummary && isReviewSummary ? "truncate" : undefined}>
+                          {shownValue || <span className="text-muted-foreground/50">暂无内容</span>}
+                        </span>
+                        {hasMore && (
+                          <button
+                            type="button"
+                            onClick={() => setExpandedReviewSummary((expanded) => !expanded)}
+                            className="ml-2 shrink-0 text-xs text-accent hover:underline"
+                          >
+                            {expandedReviewSummary ? "收起" : "更多"}
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
             </div>
             </>
           ) : (
