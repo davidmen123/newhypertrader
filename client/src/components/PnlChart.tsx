@@ -880,7 +880,7 @@ export default function PnlChart() {
         </div>
       )}
 
-      <div className={reviewMode && selectedTrade ? "flex flex-col lg:flex-row items-start gap-4" : "w-full"}>
+      <div className={reviewMode && selectedTrade && !showReviewDetail ? "flex flex-col lg:flex-row items-start gap-4" : "w-full"}>
         <div className="w-full min-w-0 flex-1">
           {snapshots.length > 0 && (
             <div
@@ -1114,33 +1114,44 @@ export default function PnlChart() {
         </div>
 
       {selectedTrade && (
-        <aside className="w-full lg:w-[340px] lg:shrink-0 lg:max-h-[430px] lg:overflow-y-auto rounded-xl p-4 sm:p-5" style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: selectedTrade.action === "买入" ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)" }} />
-                <span className="text-muted-foreground">{selectedTrade.trade.symbol}</span>
-                <span className="text-foreground font-medium">{selectedTrade.action}</span>
+        <div className={showReviewDetail ? "mt-4 w-full rounded-xl p-4 sm:p-5" : "w-full lg:w-[210px] lg:shrink-0 rounded-xl p-3"} style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}>
+          {!showReviewDetail && (
+            <>
+              <div className="flex items-start justify-between gap-2">
+                <div className="grid min-w-0 gap-1.5">
+                  <span className="truncate text-foreground font-medium" style={{ fontSize: "0.78rem" }}>{selectedTrade.trade.symbol}</span>
+                  <span className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>
+                    <i className="inline-block mr-1.5 h-2 w-2 rounded-full align-middle" style={{ background: selectedTrade.action === "买入" ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)" }} />
+                    {selectedTrade.action}
+                  </span>
+                  <span className="text-foreground" style={{ fontSize: "0.78rem" }}>成交价：{Number(selectedTrade.trade.execPrice).toLocaleString("en-US", { maximumFractionDigits: 4 })}</span>
+                  <span className="whitespace-nowrap text-muted-foreground" style={{ fontSize: "0.68rem" }}>成交时间：{formatTradeTime(selectedTrade.trade.createdTime)}</span>
+                </div>
+                <button onClick={() => setSelectedTrade(null)} className="shrink-0 text-muted-foreground hover:text-foreground p-1" aria-label="关闭交易摘要"><X size={13} /></button>
               </div>
-              <div className="grid gap-1.5 mt-3 text-muted-foreground" style={{ fontSize: "0.72rem" }}>
-                <span>成交价：{Number(selectedTrade.trade.execPrice).toLocaleString("en-US", { maximumFractionDigits: 4 })}</span>
-                <span>成交时间：{formatTradeTime(selectedTrade.trade.createdTime)}</span>
+              <div className="flex justify-end mt-3">
+                <button
+                  onClick={() => setShowReviewDetail(true)}
+                  className="rounded-full px-3 py-1 text-xs tracking-widest transition-colors"
+                  style={{ border: "1px solid rgb(92 211 184 / 44%)", color: "rgb(92 211 184 / 92%)" }}
+                >
+                  查看详情
+                </button>
               </div>
-            </div>
-            <button onClick={() => setSelectedTrade(null)} className="text-muted-foreground hover:text-foreground p-1" aria-label="关闭交易明细"><X size={15} /></button>
-          </div>
-          <div className="flex justify-end mt-4">
-            <button
-              onClick={() => setShowReviewDetail((open) => !open)}
-              className="rounded-full px-4 py-1.5 text-xs tracking-widest transition-colors"
-              style={{ border: "1px solid rgb(92 211 184 / 44%)", color: "rgb(92 211 184 / 92%)" }}
-            >
-              {showReviewDetail ? "收起详情" : "查看详情"}
-            </button>
-          </div>
+            </>
+          )}
 
           {showReviewDetail && (
-        <div className="mt-5 pt-5" style={{ borderTop: "1px solid rgb(92 211 184 / 22%)" }}>
+        <div className="pt-1" style={{ borderTop: "1px solid rgb(92 211 184 / 22%)" }}>
+          <div className="flex justify-end mb-3">
+            <button
+              onClick={() => setShowReviewDetail(false)}
+              className="rounded-full px-3 py-1 text-xs tracking-widest transition-colors"
+              style={{ border: "1px solid var(--panel-border)", color: "var(--text-soft)" }}
+            >
+              收起详情
+            </button>
+          </div>
           {selectedDayTrades.length > 1 && (
             <div className="flex flex-wrap gap-2 mb-4">
               {selectedDayTrades.map((trade) => {
@@ -1259,7 +1270,7 @@ export default function PnlChart() {
           )}
         </div>
       )}
-        </aside>
+        </div>
       )}
       </div>
     </div>
