@@ -228,12 +228,27 @@ function TradeReviewManager() {
     });
     const stopPrice = stopOrder?.triggerPrice || latestTrade.triggerPrice || "";
     const hasTriggerPrice = Number(stopPrice) > 0;
-    setDraft((current) => ({
-      ...current,
+    const nextDraft = {
+      ...draft,
       entryPrice: latestTrade.execPrice,
-      stopLossPrice: hasTriggerPrice ? stopPrice : current.stopLossPrice,
-    }));
-    setSavedMessage(hasTriggerPrice ? "已读取进场价和止损触发价，请保存" : "已读取进场价，未找到止损触发价，请手动填写后保存");
+      stopLossPrice: hasTriggerPrice ? stopPrice : draft.stopLossPrice,
+    };
+    setDraft(nextDraft);
+    try {
+      const result = await saveMutation.mutateAsync({
+        tradeExecId: selectedTrade.execId,
+        symbol: selectedTrade.symbol,
+        ...nextDraft,
+        execQty: selectedTrade.execQty,
+        status,
+      });
+      utils.hyperliquid.tradeReview.setData({ tradeExecId: selectedTrade.execId }, result.review);
+      await utils.hyperliquid.tradeReview.invalidate({ tradeExecId: selectedTrade.execId });
+      setStatus(result.review.status === "published" ? "published" : "draft");
+      setSavedMessage(hasTriggerPrice ? "已读取并保存进场价、止损价和风险" : "已读取并保存进场价，止损价请手动填写后保存");
+    } catch (error) {
+      setSavedMessage(error instanceof Error ? error.message : "自动读取后保存失败，请稍后重试");
+    }
   };
 
   return (
