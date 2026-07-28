@@ -1261,7 +1261,7 @@ export default function PnlChart() {
                     本次 R
                     <span
                       className="inline-flex cursor-help"
-                      title="R 代表一份计划承担的风险金额。本次 R = 实际盈亏 ÷ 该笔交易的计划风险；例如 +2R 表示赚取了 2 倍计划风险，-1R 表示亏损 1 倍计划风险。"
+                      title="R 代表一份计划承担的风险金额。本次 R = 实际盈亏 ÷ 该笔交易的计划风险；例如 +2R 表示赚取了 2 倍计划风险，-1R 表示亏损 1 倍计划风险。R 用于统一比较不同仓位的交易、判断实际亏损是否超出计划风险，并评估每笔交易的风险回报质量。"
                       aria-label="R 倍数说明"
                     >
                       <Info className="text-muted-foreground/60" style={{ width: "12px", height: "12px" }} />
