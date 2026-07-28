@@ -1130,7 +1130,7 @@ export default function PnlChart() {
               ))}
             </ComposedChart>
               </ResponsiveContainer>
-              {hoveredTradePreview && !showReviewDetail && (
+              {hoveredTradePreview && (
                 <div
                   className="absolute rounded-lg p-3"
                   onMouseEnter={clearHoverPreviewTimer}
