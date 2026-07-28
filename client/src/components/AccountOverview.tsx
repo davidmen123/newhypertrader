@@ -14,6 +14,7 @@ function MetricTile({
   // same size, so text values step down to keep optical weight in line.
   valueFont = "mono",
   tooltip,
+  tooltipClassName,
 }: {
   label: string;
   value: string;
@@ -22,6 +23,7 @@ function MetricTile({
   tone?: "neutral" | "profit" | "loss" | "warning";
   valueFont?: "mono" | "text";
   tooltip?: string;
+  tooltipClassName?: string;
 }) {
   const color =
     tone === "profit"
@@ -47,7 +49,7 @@ function MetricTile({
             <TooltipTrigger asChild>
               <Info className="text-muted-foreground/60 cursor-help" style={{ width: "12px", height: "12px" }} />
             </TooltipTrigger>
-            <TooltipContent className="text-xs" style={{ fontSize: "0.7rem" }}>
+            <TooltipContent className={tooltipClassName ?? "text-xs"} style={{ fontSize: "0.7rem" }}>
               {tooltip}
             </TooltipContent>
           </Tooltip>
@@ -563,9 +565,10 @@ export default function AccountOverview() {
               sub={t("每笔完整交易", "Per round trip")}
               tone={expectancyUsdc != null && expectancyUsdc > 0 ? "profit" : expectancyUsdc != null && expectancyUsdc < 0 ? "loss" : "neutral"}
               tooltip={t(
-                "每笔完整交易的平均已实现盈亏：总已实现盈亏 ÷ 完整交易笔数，等价于 胜率×平均盈利 − 败率×平均亏损。它把胜率与盈亏比压缩成一个数，为正即长期正期望。盈亏直接取自 Hyperliquid 的已实现盈亏，与历史成交一致；注意以 USDC 计价，仓位放大后数值自然变大，不宜跨时期直接比较。",
-                "Average realized PnL per completed round trip: total realized PnL ÷ number of round trips — equivalently win rate × avg win − loss rate × avg loss. It collapses win rate and P/L ratio into a single number; positive means a positive edge. PnL comes straight from Hyperliquid's realized PnL, matching the trade history; note it is denominated in USDC, so it scales with position size and is not comparable across periods."
+                "每笔完整交易平均赚亏多少 = 总已实现盈亏 ÷ 完整交易数；为正表示长期正期望，用于结合胜率和盈亏比判断策略是否有优势。",
+                "Average PnL per completed trade = total realized PnL ÷ completed trades; positive means a positive edge. Read it with win rate and P/L ratio to judge whether the strategy has an advantage."
               )}
+              tooltipClassName="max-w-[220px] px-2 py-1 text-xs leading-snug"
             />
             <MetricTile
               label={t("交易风格", "Trading Style")}
