@@ -14,6 +14,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.53.1",
+    "date": "2026-07-28",
+    "zh": "修正账户净值曲线小时数据时间轴显示",
+    "en": "Fixed intraday equity chart time-axis rendering"
+  },
+  {
     "version": "1.53.0",
     "date": "2026-07-27",
     "zh": "完善复盘交易风险信息",
