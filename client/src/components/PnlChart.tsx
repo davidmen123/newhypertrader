@@ -3,10 +3,11 @@ import { trpc } from "@/lib/trpc";
 import { useLang } from "@/contexts/LangContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import {
-  ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceArea, ReferenceLine,
+  ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ReferenceArea, ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
 import { Info, RefreshCw, Database, X } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 // ─── Series config ────────────────────────────────────────────────────────────
 const SERIES = [
@@ -1013,7 +1014,7 @@ export default function PnlChart() {
                 />
               )}
               {!reviewMode && (
-                <Tooltip
+                <ChartTooltip
                   content={
                     <CustomTooltip
                       labels={labels}
@@ -1267,13 +1268,14 @@ export default function PnlChart() {
                 <div className="grid min-w-0 gap-1 text-muted-foreground" style={{ fontSize: "0.68rem" }}>
                   <span className="flex items-center gap-1">
                     本次 R
-                    <span
-                      className="inline-flex cursor-help"
-                      title="R 代表一份计划承担的风险金额。本次 R = 实际盈亏 ÷ 该笔交易的计划风险；例如 +2R 表示赚取了 2 倍计划风险，-1R 表示亏损 1 倍计划风险。R 用于统一比较不同仓位的交易、判断实际亏损是否超出计划风险，并评估每笔交易的风险回报质量。"
-                      aria-label="R 倍数说明"
-                    >
-                      <Info className="text-muted-foreground/60" style={{ width: "12px", height: "12px" }} />
-                    </span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="cursor-help text-muted-foreground/60" style={{ width: "12px", height: "12px" }} />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-[280px] text-xs" style={{ fontSize: "0.7rem" }}>
+                        R 代表一份计划承担的风险金额。本次 R = 实际盈亏 ÷ 该笔交易的计划风险；例如 +2R 表示赚取了 2 倍计划风险，-1R 表示亏损 1 倍计划风险。R 用于统一比较不同仓位的交易、判断实际亏损是否超出计划风险，并评估每笔交易的风险回报质量。
+                      </TooltipContent>
+                    </Tooltip>
                   </span>
                   <div className="truncate rounded-lg px-2.5 py-1.5 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
                     {selectedRValue != null ? `${formatSigned(selectedRValue)}R` : "—"}
@@ -1282,13 +1284,14 @@ export default function PnlChart() {
                 <div className="grid min-w-0 gap-1 text-muted-foreground" style={{ fontSize: "0.68rem" }}>
                   <span className="flex items-center gap-1">
                     关联开仓
-                    <span
-                      className="inline-flex cursor-help"
-                      title="显示用于计算本次 R 和计划风险的相关开仓成交。若分批开仓，会合并列出相关开仓。"
-                      aria-label="关联开仓说明"
-                    >
-                      <Info className="text-muted-foreground/60" style={{ width: "12px", height: "12px" }} />
-                    </span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="cursor-help text-muted-foreground/60" style={{ width: "12px", height: "12px" }} />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-[280px] text-xs" style={{ fontSize: "0.7rem" }}>
+                        显示用于计算本次 R 和计划风险的相关开仓成交。若分批开仓，会合并列出相关开仓。
+                      </TooltipContent>
+                    </Tooltip>
                   </span>
                   <div className="truncate rounded-lg px-2.5 py-1.5 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
                     {selectedOpeningTrades.length > 0
