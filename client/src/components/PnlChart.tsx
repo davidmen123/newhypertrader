@@ -110,6 +110,16 @@ function formatAxisDay(value: string | number) {
   return `${Number(match[2])}/${Number(match[3])}`;
 }
 
+function parseUtc8Timestamp(value: string) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return Number.NaN;
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(raw)) {
+    return Date.parse(`${raw.replace(" ", "T")}+08:00`);
+  }
+  if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) return Date.parse(raw);
+  return Date.parse(`${raw.slice(0, 10)}T00:00:00.000+08:00`);
+}
+
 function getDateKey(value: string) {
   return String(value ?? "").slice(0, 10);
 }
@@ -536,7 +546,7 @@ export default function PnlChart() {
       : 0;
     return {
       date: s.date,
-      timestamp: Date.parse(`${s.date.slice(0, 10)}T00:00:00.000+08:00`),
+      timestamp: parseUtc8Timestamp(s.date),
       equity: eq,
       pnl,
       accountPerformance,
@@ -605,11 +615,12 @@ export default function PnlChart() {
       };
     });
   }, [chartData, markerOffset, tradeMarkers]);
+  let lastAxisDay = "";
   const axisTicks = chartData.reduce<number[]>((ticks, point) => {
     const day = getDateKey(point.date);
-    const previous = chartData.find((candidate) => candidate.timestamp === ticks[ticks.length - 1]);
-    if (!previous || getDateKey(previous.date) !== day) {
+    if (day !== lastAxisDay) {
       ticks.push(point.timestamp);
+      lastAxisDay = day;
     }
     return ticks;
   }, [] as number[]);
