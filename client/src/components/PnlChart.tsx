@@ -138,6 +138,58 @@ function getTradeMeta(trade: TradeFill): { action: "买入" | "卖出"; childLab
   return { action, childLabel };
 }
 
+function formatTradeTime(createdTime: string) {
+  const timestamp = Number(createdTime);
+  if (!Number.isFinite(timestamp)) return "—";
+  return new Date(timestamp).toLocaleString("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function getRelatedOpeningTrades(trades: TradeFill[], selectedTrade: TradeFill) {
+  const selectedTime = Number(selectedTrade.createdTime);
+  const sameSymbol = trades
+    .filter((trade) => trade.symbol === selectedTrade.symbol && Number(trade.createdTime) <= selectedTime)
+    .slice()
+    .sort((a, b) => Number(a.createdTime) - Number(b.createdTime));
+  const activeLots: Array<{ trade: TradeFill; remaining: number }> = [];
+  const matchedOpeningIds = new Set<string>();
+
+  for (const trade of sameSymbol) {
+    const quantity = Math.abs(Number(trade.execQty));
+    if (!Number.isFinite(quantity) || quantity <= 0) continue;
+    if (!trade.closeMethod) {
+      activeLots.push({ trade, remaining: quantity });
+      continue;
+    }
+
+    const openingAction = getTradeMeta(trade).action === "买入" ? "卖出" : "买入";
+    let remainingClose = quantity;
+    for (const lot of activeLots) {
+      if (remainingClose <= 0) break;
+      if (getTradeMeta(lot.trade).action !== openingAction || lot.remaining <= 0) continue;
+      const matched = Math.min(lot.remaining, remainingClose);
+      lot.remaining -= matched;
+      remainingClose -= matched;
+      if (trade.execId === selectedTrade.execId) {
+        // Keep each opening action once; its saved risk is the risk unit for
+        // the continuous position cycle, even when the close is partial.
+        matchedOpeningIds.add(lot.trade.execId);
+      }
+    }
+    if (trade.execId === selectedTrade.execId) {
+      return activeLots
+        .filter((lot) => matchedOpeningIds.has(lot.trade.execId))
+        .map((lot) => lot.trade);
+    }
+  }
+  return selectedTrade.closeMethod ? [] : [selectedTrade];
+}
+
 function makeValueGridTicks(values: number[], preferredCount = 6) {
   const finiteValues = values.filter(Number.isFinite);
   if (finiteValues.length === 0) return [0];
@@ -439,6 +491,7 @@ export default function PnlChart() {
     { startDate, limit: 100 },
     { refetchInterval: 120_000 }
   );
+  const trades = (tradeHistory?.trades ?? []) as TradeFill[];
   const selectedCoin = selectedTrade?.trade.symbol?.replace(/-PERP$/i, "") || "BTC";
   const selectedTime = Number(selectedTrade?.trade.createdTime);
   const candleWindowMs: Record<CandleInterval, number> = {
@@ -461,6 +514,15 @@ export default function PnlChart() {
     { tradeExecId: selectedTrade?.trade.execId || "none" },
     { enabled: selectedTrade != null }
   );
+  const selectedOpeningTrades = useMemo(
+    () => selectedTrade ? getRelatedOpeningTrades(trades, selectedTrade.trade) : [],
+    [selectedTrade, trades]
+  );
+  const selectedOpeningExecIds = selectedOpeningTrades.map((trade) => trade.execId);
+  const { data: openingReviews = [] } = trpc.hyperliquid.tradeReviews.useQuery(
+    { tradeExecIds: selectedOpeningExecIds.length > 0 ? selectedOpeningExecIds : ["none"] },
+    { enabled: selectedTrade != null }
+  );
   const { data: accountOverview } = trpc.hyperliquid.accountOverview.useQuery(
     undefined,
     { enabled: selectedTrade != null && !selectedTrade.trade.closeMethod, refetchInterval: 60_000 }
@@ -481,6 +543,16 @@ export default function PnlChart() {
       })
     : undefined;
   const selectedStopLossPrice = visibleReview?.stopLossPrice || (canAutoReadSelectedTrade ? selectedStopOrder?.triggerPrice || selectedTrade?.trade.triggerPrice : "") || "";
+  const openingRiskAmount = selectedOpeningTrades.reduce((total, trade) => {
+    const savedReview = openingReviews.find((item: { tradeExecId: string; status?: string; riskAmount?: string | null; entryPrice?: string | null; stopLossPrice?: string | null }) => item.tradeExecId === trade.execId && item.status === "published");
+    const savedRisk = Number(savedReview?.riskAmount);
+    if (Number.isFinite(savedRisk) && savedRisk > 0) return total + savedRisk;
+    return total + Number(calculateRiskAmount(savedReview?.entryPrice || trade.execPrice, savedReview?.stopLossPrice, trade.execQty) || 0);
+  }, 0);
+  const selectedActualPnl = selectedTrade?.trade.closeMethod ? Number(selectedTrade.trade.execPnl) : Number.NaN;
+  const selectedRValue = Number.isFinite(selectedActualPnl) && openingRiskAmount > 0
+    ? selectedActualPnl / openingRiskAmount
+    : null;
   const reviewDetailFields = selectedTrade
     ? selectedTrade.trade.closeMethod
       ? [
@@ -518,8 +590,6 @@ export default function PnlChart() {
 
   // Backend already returns data in ascending date order (earliest → latest)
   const snapshots = (data || []) as PnlSnapshot[];
-  const trades = (tradeHistory?.trades ?? []) as TradeFill[];
-
   // Labels per language
   const labels: Record<SeriesKey, string> = {
     accountPerformance: lang === "zh" ? "账户盈亏 (%)" : "Account PnL (%)",
@@ -780,14 +850,14 @@ export default function PnlChart() {
                 点击净值曲线上的交易节点（
                 <i className="inline-block mx-0.5 h-2 w-2 rounded-full align-middle" style={{ background: "oklch(68% 0.15 145)" }} />
                 <i className="inline-block mx-0.5 h-2 w-2 rounded-full align-middle" style={{ background: "oklch(62% 0.15 25)" }} />
-                ）查看详情；同日有多笔交易时，可在详情区切换；K 线支持 1h、4h、1d、1w，EMA20 仅作辅助参考。
+                ）在右侧查看摘要，点击“查看详情”展开复盘；同日有多笔交易时，可在详情区切换；K 线支持 1h、4h、1d、1w，EMA20 仅作辅助参考。
               </>
             ) : (
               <>
                 Click a trade node on the equity curve (
                 <i className="inline-block mx-0.5 h-2 w-2 rounded-full align-middle" style={{ background: "oklch(68% 0.15 145)" }} />
                 <i className="inline-block mx-0.5 h-2 w-2 rounded-full align-middle" style={{ background: "oklch(62% 0.15 25)" }} />
-                ) for details; switch between same-day trades in the detail panel. Candles support 1h, 4h, 1d and 1w, with EMA20 as a reference.
+                ) to view a summary on the right; click “View Details” to expand the review. Switch between same-day trades in the detail panel. Candles support 1h, 4h, 1d and 1w, with EMA20 as a reference.
               </>
             )}
           </span>
@@ -810,14 +880,16 @@ export default function PnlChart() {
         </div>
       )}
 
-      {snapshots.length > 0 && (
-        <div
-          className="w-full min-w-0 h-[360px] sm:h-[430px] -mx-1 sm:-mx-2"
+      <div className={reviewMode && selectedTrade ? "flex flex-col lg:flex-row items-start gap-4" : "w-full"}>
+        <div className="w-full min-w-0 flex-1">
+          {snapshots.length > 0 && (
+            <div
+              className="w-full min-w-0 h-[360px] sm:h-[430px] -mx-1 sm:-mx-2"
           style={{
             filter: "drop-shadow(0 18px 30px rgb(0 0 0 / 22%))",
           }}
-        >
-          <ResponsiveContainer width="100%" height="100%">
+            >
+              <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={reviewMode ? reviewChartData : chartData} margin={{ top: 14, right: isMobileViewport ? 40 : 14, left: 8, bottom: 10 }}>
               <defs>
                 <linearGradient id="accountPerformanceGrad" x1="0" y1="0" x2="0" y2="1">
@@ -1029,32 +1101,30 @@ export default function PnlChart() {
                 />
               ))}
             </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+              </ResponsiveContainer>
+            </div>
+          )}
 
-      {reviewMode && (
-        <div className="flex items-center justify-center gap-5 text-muted-foreground mb-3" style={{ fontSize: "0.7rem" }}>
-          <span className="flex items-center gap-1.5"><i className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "oklch(68% 0.15 145)" }} />买入</span>
-          <span className="flex items-center gap-1.5"><i className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "oklch(62% 0.15 25)" }} />卖出</span>
+          {reviewMode && (
+            <div className="flex items-center justify-center gap-5 text-muted-foreground mb-3" style={{ fontSize: "0.7rem" }}>
+              <span className="flex items-center gap-1.5"><i className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "oklch(68% 0.15 145)" }} />买入</span>
+              <span className="flex items-center gap-1.5"><i className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "oklch(62% 0.15 25)" }} />卖出</span>
+            </div>
+          )}
         </div>
-      )}
 
       {selectedTrade && (
-        <div className="mt-4 rounded-xl p-4 sm:p-5" style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}>
+        <aside className="w-full lg:w-[340px] lg:shrink-0 lg:max-h-[430px] lg:overflow-y-auto rounded-xl p-4 sm:p-5" style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}>
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
                 <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: selectedTrade.action === "买入" ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)" }} />
-                <span className="text-foreground font-medium">{selectedTrade.action}</span>
                 <span className="text-muted-foreground">{selectedTrade.trade.symbol}</span>
+                <span className="text-foreground font-medium">{selectedTrade.action}</span>
               </div>
-              <div className="flex flex-wrap gap-x-5 gap-y-1 mt-3 text-muted-foreground" style={{ fontSize: "0.72rem" }}>
+              <div className="grid gap-1.5 mt-3 text-muted-foreground" style={{ fontSize: "0.72rem" }}>
                 <span>成交价：{Number(selectedTrade.trade.execPrice).toLocaleString("en-US", { maximumFractionDigits: 4 })}</span>
-                <span>数量：{Number(selectedTrade.trade.execQty).toLocaleString("en-US", { maximumFractionDigits: 4 })}</span>
-                <span>盈亏：{Number(selectedTrade.trade.execPnl) >= 0 ? "+" : ""}{Number(selectedTrade.trade.execPnl).toLocaleString("en-US", { maximumFractionDigits: 2 })}</span>
-                {selectedTrade.childLabel && <span>{selectedTrade.childLabel}</span>}
-                {selectedDayTrades.length > 1 && <span>当日交易：{selectedDayTrades.length} 笔</span>}
+                <span>成交时间：{formatTradeTime(selectedTrade.trade.createdTime)}</span>
               </div>
             </div>
             <button onClick={() => setSelectedTrade(null)} className="text-muted-foreground hover:text-foreground p-1" aria-label="关闭交易明细"><X size={15} /></button>
@@ -1133,16 +1203,40 @@ export default function PnlChart() {
             />
           </div>
           {selectedTrade.trade.closeMethod ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {reviewDetailFields.map(({ label, value }) => (
-                <div key={label} className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
-                  <span>{label}</span>
-                  <div className="whitespace-pre-wrap rounded-lg px-3 py-2 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
-                    {value || <span className="text-muted-foreground/50">暂无内容</span>}
+            <>
+              <div className="grid gap-2 sm:grid-cols-2 mb-4">
+                <div className="grid gap-1 text-muted-foreground" style={{ fontSize: "0.68rem" }}>
+                  <span>实际盈亏</span>
+                  <div className="rounded-lg px-3 py-2 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
+                    {formatSigned(selectedActualPnl)} USDC
                   </div>
                 </div>
-              ))}
+                <div className="grid gap-1 text-muted-foreground" style={{ fontSize: "0.68rem" }}>
+                  <span>本次 R</span>
+                  <div className="rounded-lg px-3 py-2 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
+                    {selectedRValue != null ? `${formatSigned(selectedRValue)}R` : "—"}
+                  </div>
+                </div>
+              </div>
+              {selectedOpeningTrades.length > 0 && (
+                <div className="grid gap-1 mb-4 text-muted-foreground" style={{ fontSize: "0.68rem" }}>
+                  <span>关联开仓</span>
+                  <div className="rounded-lg px-3 py-2 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
+                    {selectedOpeningTrades.map((trade) => `${formatTradeTime(trade.createdTime)} · ${Number(trade.execPrice).toLocaleString("en-US", { maximumFractionDigits: 4 })}`).join("；")}
+                  </div>
+                </div>
+              )}
+              <div className="grid gap-3 sm:grid-cols-2">
+                {reviewDetailFields.map(({ label, value }) => (
+                  <div key={label} className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
+                    <span>{label}</span>
+                    <div className="whitespace-pre-wrap rounded-lg px-3 py-2 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
+                      {value || <span className="text-muted-foreground/50">暂无内容</span>}
+                    </div>
+                  </div>
+                ))}
             </div>
+            </>
           ) : (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -1165,8 +1259,9 @@ export default function PnlChart() {
           )}
         </div>
       )}
-        </div>
+        </aside>
       )}
+      </div>
     </div>
   );
 }

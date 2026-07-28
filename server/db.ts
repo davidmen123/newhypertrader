@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, isNull, lte, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { InsertUser, InsertTrade, InsertPnlSnapshot, InsertVisitorLog, InsertTradeReview, pnlSnapshots, trades, tradeReviews, users, pageViews, visitorLogs } from "../drizzle/schema.js";
@@ -226,6 +226,15 @@ export async function getTradeReview(tradeExecId: string) {
   if (!db) return undefined;
   const rows = await db.select().from(tradeReviews).where(eq(tradeReviews.tradeExecId, tradeExecId)).limit(1);
   return rows[0];
+}
+
+export async function getTradeReviews(tradeExecIds: string[]) {
+  const db = await getDb();
+  if (!db || tradeExecIds.length === 0) return [];
+  return db.select().from(tradeReviews).where(and(
+    inArray(tradeReviews.tradeExecId, tradeExecIds),
+    eq(tradeReviews.status, "published"),
+  ));
 }
 
 export async function upsertTradeReview(review: InsertTradeReview) {

@@ -18,7 +18,7 @@ import {
   getHyperliquidSpotState,
   getHyperliquidTradeHistory,
 } from "../hyperliquid.js";
-import { getPnlSnapshots, getTradeReview, upsertPnlSnapshot, upsertTradeReview } from "../db.js";
+import { getPnlSnapshots, getTradeReview, getTradeReviews, upsertPnlSnapshot, upsertTradeReview } from "../db.js";
 import { seriesIndicators } from "../indicators.js";
 
 const yahooUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
@@ -394,6 +394,10 @@ export const hyperliquidRouter = router({
   tradeReview: publicProcedure
     .input(z.object({ tradeExecId: z.string().min(1).max(160) }))
     .query(async ({ input }) => getTradeReview(input.tradeExecId) ?? null),
+
+  tradeReviews: publicProcedure
+    .input(z.object({ tradeExecIds: z.array(z.string().min(1).max(160)).min(1).max(100) }))
+    .query(async ({ input }) => getTradeReviews(input.tradeExecIds)),
 
   saveTradeReview: publicProcedure
     .input(z.object({
