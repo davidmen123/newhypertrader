@@ -1107,6 +1107,14 @@ export default function PnlChart() {
                         <circle
                           cx={props.cx}
                           cy={props.cy}
+                          r={12}
+                          fill="transparent"
+                          stroke="transparent"
+                          pointerEvents="all"
+                        />
+                        <circle
+                          cx={props.cx}
+                          cy={props.cy}
                           r={isHovered ? 7 : 5}
                           fill={color}
                           stroke="var(--background)"
