@@ -14,6 +14,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.54.0",
+    "date": "2026-07-28",
+    "zh": "复盘模式新增交易节点悬停摘要卡片，并优化交易详情交互",
+    "en": "Added hover trade summaries and improved review detail interactions"
+  },
+  {
     "version": "1.53.1",
     "date": "2026-07-28",
     "zh": "修正账户净值曲线小时数据时间轴显示",
