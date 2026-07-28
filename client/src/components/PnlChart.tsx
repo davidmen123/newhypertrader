@@ -1249,28 +1249,28 @@ export default function PnlChart() {
           </div>
           {selectedTrade.trade.closeMethod ? (
             <>
-              <div className="grid gap-2 sm:grid-cols-2 mb-4">
-                <div className="grid gap-1 text-muted-foreground" style={{ fontSize: "0.68rem" }}>
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                <div className="grid min-w-0 gap-1 text-muted-foreground" style={{ fontSize: "0.68rem" }}>
                   <span>实际盈亏</span>
-                  <div className="rounded-lg px-3 py-2 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
+                  <div className="truncate rounded-lg px-2.5 py-1.5 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
                     {formatSigned(selectedActualPnl)} USDC
                   </div>
                 </div>
-                <div className="grid gap-1 text-muted-foreground" style={{ fontSize: "0.68rem" }}>
+                <div className="grid min-w-0 gap-1 text-muted-foreground" style={{ fontSize: "0.68rem" }}>
                   <span>本次 R</span>
-                  <div className="rounded-lg px-3 py-2 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
+                  <div className="truncate rounded-lg px-2.5 py-1.5 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
                     {selectedRValue != null ? `${formatSigned(selectedRValue)}R` : "—"}
                   </div>
                 </div>
-              </div>
-              {selectedOpeningTrades.length > 0 && (
-                <div className="grid gap-1 mb-4 text-muted-foreground" style={{ fontSize: "0.68rem" }}>
+                <div className="grid min-w-0 gap-1 text-muted-foreground" style={{ fontSize: "0.68rem" }}>
                   <span>关联开仓</span>
-                  <div className="rounded-lg px-3 py-2 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
-                    {selectedOpeningTrades.map((trade) => `${formatTradeTime(trade.createdTime)} · ${Number(trade.execPrice).toLocaleString("en-US", { maximumFractionDigits: 4 })}`).join("；")}
+                  <div className="truncate rounded-lg px-2.5 py-1.5 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
+                    {selectedOpeningTrades.length > 0
+                      ? selectedOpeningTrades.map((trade) => `${formatTradeTime(trade.createdTime)} · ${Number(trade.execPrice).toLocaleString("en-US", { maximumFractionDigits: 4 })}`).join("；")
+                      : "—"}
                   </div>
                 </div>
-              )}
+              </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {reviewDetailFields.map(({ label, value }) => (
                   <div key={label} className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
