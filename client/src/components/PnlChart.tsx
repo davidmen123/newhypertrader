@@ -1272,13 +1272,13 @@ export default function PnlChart() {
                 </div>
                 <div className="grid min-w-0 gap-1 text-muted-foreground" style={{ fontSize: "0.68rem" }}>
                   <span className="flex items-center gap-1">
-                    本次 R
+                    本次平仓 R
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Info className="cursor-help text-muted-foreground/60" style={{ width: "12px", height: "12px" }} />
                       </TooltipTrigger>
                       <TooltipContent className="max-w-[280px] text-xs" style={{ fontSize: "0.7rem" }}>
-                        R 代表一份计划承担的风险金额。本次 R = 实际盈亏 ÷ 该笔交易的计划风险；例如 +2R 表示赚取了 2 倍计划风险，-1R 表示亏损 1 倍计划风险。R 用于统一比较不同仓位的交易、判断实际亏损是否超出计划风险，并评估每笔交易的风险回报质量。
+                        R 代表一份计划承担的风险金额。本次平仓 R = 本次平仓实际盈亏 ÷ 关联开仓的计划风险；例如 +2R 表示赚取了 2 倍计划风险，-1R 表示亏损 1 倍计划风险。R 用于统一比较不同仓位的交易、判断实际亏损是否超出计划风险，并评估每笔交易的风险回报质量。
                       </TooltipContent>
                     </Tooltip>
                   </span>
@@ -1294,7 +1294,7 @@ export default function PnlChart() {
                         <Info className="cursor-help text-muted-foreground/60" style={{ width: "12px", height: "12px" }} />
                       </TooltipTrigger>
                       <TooltipContent className="max-w-[280px] text-xs" style={{ fontSize: "0.7rem" }}>
-                        显示用于计算本次 R 和计划风险的相关开仓成交。若分批开仓，会合并列出相关开仓。
+                        显示用于计算本次平仓 R 和计划风险的相关开仓成交。若分批开仓，会合并列出相关开仓。
                       </TooltipContent>
                     </Tooltip>
                   </span>
