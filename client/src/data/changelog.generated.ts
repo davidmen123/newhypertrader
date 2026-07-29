@@ -14,6 +14,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.56.0",
+    "date": "2026-07-29",
+    "zh": "增加清算价估算及相关组件功能优化",
+    "en": "Added liquidation price estimation and related component improvements"
+  },
+  {
     "version": "1.55.0",
     "date": "2026-07-29",
     "zh": "财报日历新增前10/50/100市值筛选",
