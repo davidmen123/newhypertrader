@@ -584,10 +584,14 @@ export async function getHyperliquidPerpetualAssets(): Promise<HyperliquidPerpet
       .filter((asset) => asset.name && !asset.isDelisted && Number(asset.maxLeverage) > 0)
       .map((asset) => {
         const maxLeverage = Number(asset.maxLeverage);
+        const rawName = asset.name as string;
+        const normalizedName = dex && rawName.startsWith(`${dex}:`)
+          ? rawName.slice(dex.length + 1)
+          : rawName;
         const prefix = dex ? `${dex}:` : "";
         return {
-          value: `${prefix}${asset.name}-PERP`,
-          label: `${prefix}${asset.name}-PERP`,
+          value: `${prefix}${normalizedName}-PERP`,
+          label: `${prefix}${normalizedName}-PERP`,
           maxLeverage,
           maintenanceMarginPercent: (50 / maxLeverage).toFixed(2),
         };
