@@ -4,8 +4,8 @@
  *   Primary source: TradingView economic calendar (includes actual values)
  *   Weekly fallback: ForexFactory free JSON API (nfs.faireconomy.media)
  *   Uses in-memory cache to avoid excessive upstream requests
- * - earningsCalendar: Top 50 US stocks earnings for the next 7 days
- *   Source: Alpha Vantage free API (no key required for demo)
+ * - earningsCalendar: Top 10/50/100 US stocks earnings for the next 7 days
+ *   Earnings source: Alpha Vantage / Nasdaq; ranking source: Nasdaq screener
  */
 import { z } from "zod";
 import { publicProcedure, router } from "../_core/trpc.js";
@@ -42,24 +42,63 @@ const HEADERS = {
   Referer: "https://www.forexfactory.com/",
 };
 
-// S&P 100 constituents are used as the practical "top 100 US large-cap"
-// universe. The index has 101 tickers because Alphabet has two share classes.
-const TOP100_SYMBOLS = [
-  "AAPL", "ABBV", "ABT", "ACN", "ADBE", "AMAT", "AMD", "AMGN", "AMT", "AMZN",
-  "AVGO", "AXP", "BA", "BAC", "BKNG", "BLK", "BMY", "BNY", "BRK.B", "BRK-B",
-  "C", "CAT", "CL", "CMCSA", "COF", "COP", "COST", "CRM", "CSCO", "CVS",
-  "CVX", "DE", "DHR", "DIS", "DUK", "EMR", "FDX", "GD", "GE", "GEV",
-  "GILD", "GM", "GOOG", "GOOGL", "GS", "HD", "HON", "IBM", "INTC", "INTU",
-  "ISRG", "JNJ", "JPM", "KO", "LIN", "LLY", "LMT", "LOW", "LRCX", "MA",
-  "MCD", "MDLZ", "MDT", "META", "MMM", "MO", "MRK", "MS", "MSFT", "MU",
-  "NEE", "NFLX", "NKE", "NOW", "NVDA", "ORCL", "PEP", "PFE", "PG", "PLTR",
-  "PM", "QCOM", "RTX", "SBUX", "SCHW", "SO", "SPG", "T", "TMO", "TMUS",
-  "TSLA", "TXN", "UBER", "UNH", "UNP", "UPS", "USB", "V", "VZ", "WFC",
-  "WMT", "XOM",
+// Daily market-cap ranking is fetched from Nasdaq's stock screener below.
+// This current snapshot is only a fallback for upstream outages.
+const FALLBACK_TOP100_SYMBOLS = [
+  "NVDA", "AAPL", "GOOG", "MSFT", "AMZN", "AVGO", "META", "SPCX", "TSLA", "MU",
+  "BRK.B", "LLY", "JPM", "WMT", "AMD", "V", "XOM", "JNJ", "INTC", "MA",
+  "ABBV", "CSCO", "AMAT", "BAC", "COST", "CAT", "LRCX", "UNH", "CVX", "ORCL",
+  "GE", "KO", "PG", "MS", "HD", "PLTR", "GS", "MRK", "GEV", "PM",
+  "PANW", "NFLX", "KLAC", "TXN", "WFC", "DELL", "RTX", "AXP", "SNDK", "C",
+  "ANET", "TMUS", "CRWD", "IBM", "AMGN", "TMO", "APH", "MCD", "ADI", "MRVL",
+  "PEP", "NEE", "QCOM", "VZ", "WDC", "SCHW", "ABT", "UNP", "WELL", "BLK",
+  "TJX", "DIS", "BA", "GILD", "IBKR", "DE", "T", "BX", "SCCO", "UBER",
+  "APP", "COP", "PLD", "CRM", "PFE", "BKNG", "CVS", "GLW", "SPGI", "ISRG",
+  "COF", "MO", "BMY", "DHR", "PGR", "SYK", "PH", "VRTX", "SBUX", "FTNT",
 ];
 
-const TOP100_SET = new Set(TOP100_SYMBOLS);
-const TOP100_RANK = new Map(TOP100_SYMBOLS.map((symbol, index) => [symbol, index]));
+const MARKET_CAP_SCREENER_URL =
+  "https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=5000&offset=0&exchange=nasdaq,nyse,amex";
+
+function parseMarketCap(value: unknown): number {
+  const text = String(value ?? "").replace(/[$,\s]/g, "").toUpperCase();
+  const match = text.match(/^([\d.]+)([TMB])?$/);
+  if (!match) return 0;
+  const amount = Number(match[1]);
+  const multiplier = match[2] === "T" ? 1e12 : match[2] === "B" ? 1e9 : match[2] === "M" ? 1e6 : 1;
+  return Number.isFinite(amount) ? amount * multiplier : 0;
+}
+
+async function fetchMarketCapRanking(): Promise<string[]> {
+  const cached = getCached<string[]>("us_market_cap_ranking_v1");
+  if (cached) return cached;
+
+  try {
+    const text = await fetchText(MARKET_CAP_SCREENER_URL, "https://www.nasdaq.com/market-activity/stocks/screener");
+    const rows = JSON.parse(text)?.data?.rows;
+    if (Array.isArray(rows)) {
+      const ranked = rows
+        .map((row: any) => ({ symbol: normalizeEarningsSymbol(String(row?.symbol ?? "")), marketCap: parseMarketCap(row?.marketCap), country: String(row?.country ?? "") }))
+        .filter((row: { symbol: string; marketCap: number; country?: string }) => {
+          const country = String(row.country ?? "").toLowerCase();
+          return row.symbol && row.marketCap > 0 && (!country || country === "united states" || country === "usa");
+        })
+        .sort((a: { marketCap: number }, b: { marketCap: number }) => b.marketCap - a.marketCap)
+        .map((row: { symbol: string }) => row.symbol)
+        .filter((symbol: string, index: number, list: string[]) => list.indexOf(symbol) === index)
+        .slice(0, 100);
+      if (ranked.length >= 50) {
+        setCached("us_market_cap_ranking_v1", ranked, 24 * 60 * 60 * 1000);
+        return ranked;
+      }
+    }
+  } catch (error) {
+    console.warn("[EarningsCalendar] Nasdaq market-cap ranking unavailable; using fallback", error);
+  }
+
+  setCached("us_market_cap_ranking_v1", FALLBACK_TOP100_SYMBOLS, 30 * 60 * 1000);
+  return FALLBACK_TOP100_SYMBOLS;
+}
 
 const IMPACT_MAP: Record<string, number> = {
   High: 3,
@@ -423,7 +462,8 @@ function sortAndLimitEarnings(results: EarningsEvent[]) {
 }
 
 async function fetchNasdaqEarningsFallback(
-  dates: string[]
+  dates: string[],
+  marketCapRank: Map<string, number>
 ): Promise<EarningsEvent[]> {
   const results: EarningsEvent[] = [];
 
@@ -445,7 +485,7 @@ async function fetchNasdaqEarningsFallback(
 
     for (const row of rows) {
       const symbol = normalizeEarningsSymbol(String(row?.symbol ?? ""));
-      if (!symbol || !TOP100_SET.has(symbol)) continue;
+      if (!symbol || !marketCapRank.has(symbol)) continue;
 
       const timeOfDay = normalizeTimeOfDay(row?.time);
       results.push({
@@ -459,7 +499,7 @@ async function fetchNasdaqEarningsFallback(
         currency: "USD",
         timeOfDay,
         timeOfDayUtc8: describeUtc8Time(timeOfDay),
-        priorityRank: TOP100_RANK.get(symbol) ?? 9999,
+        priorityRank: marketCapRank.get(symbol) ?? 9999,
       });
     }
   }
@@ -610,13 +650,15 @@ export const calendarRouter = router({
    * Cached for 60 minutes
    */
   earningsCalendar: publicProcedure.query(async () => {
-    const CACHE_KEY = "earnings_calendar_7d_v3";
+    const CACHE_KEY = "earnings_calendar_7d_v4";
     const CACHE_TTL = 60 * 60 * 1000; // 60 minutes
 
     const cached = getCached<unknown[]>(CACHE_KEY);
     if (cached) return cached;
 
     const { start: utc8Today, end: utc8End, dates } = getUtc8DateWindow(7);
+    const marketCapSymbols = await fetchMarketCapRanking();
+    const marketCapRank = new Map(marketCapSymbols.map((symbol, index) => [symbol, index]));
     let results: EarningsEvent[] = [];
 
     try {
@@ -641,7 +683,7 @@ export const calendarRouter = router({
             const symbol = normalizeEarningsSymbol(cols[symbolIdx] ?? "");
             const reportDateStr = cols[reportDateIdx]?.trim();
             if (!symbol || !reportDateStr) continue;
-            if (!TOP100_SET.has(symbol)) continue;
+            if (!marketCapRank.has(symbol)) continue;
             if (reportDateStr < utc8Today || reportDateStr > utc8End) continue;
 
             const timeOfDay = normalizeTimeOfDay(cols[timeIdx]);
@@ -654,7 +696,7 @@ export const calendarRouter = router({
               currency: cols[currencyIdx]?.trim() || "USD",
               timeOfDay,
               timeOfDayUtc8: describeUtc8Time(timeOfDay),
-              priorityRank: TOP100_RANK.get(symbol) ?? 9999,
+              priorityRank: marketCapRank.get(symbol) ?? 9999,
             });
           }
         }
@@ -667,7 +709,7 @@ export const calendarRouter = router({
       `[EarningsCalendar] AlphaVantage rows in 7d window=${results.length} window=${utc8Today}..${utc8End}`
     );
     const topResults = sortAndLimitEarnings(
-      results.length > 0 ? results : await fetchNasdaqEarningsFallback(dates)
+      results.length > 0 ? results : await fetchNasdaqEarningsFallback(dates, marketCapRank)
     );
     console.log(`[EarningsCalendar] Returning rows=${topResults.length}`);
 
