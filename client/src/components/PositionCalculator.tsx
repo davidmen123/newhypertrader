@@ -421,7 +421,7 @@ export default function PositionCalculator() {
                   <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
                     <Command>
                       <CommandInput placeholder={zh ? "搜索标的…" : "Search assets…"} />
-                      <CommandList>
+                      <CommandList className="h-[300px] max-h-[300px] overflow-y-auto overscroll-contain">
                         <CommandEmpty>{zh ? "未找到标的" : "No asset found"}</CommandEmpty>
                         <CommandGroup heading={zh ? "Hyperliquid 永续合约" : "Hyperliquid perpetuals"}>
                           {liquidationAssets.map((asset) => (
