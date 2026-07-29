@@ -9,6 +9,7 @@ import {
   getHyperliquidMarketPrices,
   getHyperliquidOpenOrders,
   getHyperliquidOrderHistory,
+  getHyperliquidPerpetualAssets,
   getActiveHyperliquidPerpStates,
   getHyperliquidPerpStates,
   getHyperliquidPositions,
@@ -254,6 +255,8 @@ async function getMarketIndicators() {
 
 export const hyperliquidRouter = router({
   configStatus: publicProcedure.query(() => getHyperliquidConfigStatus()),
+
+  perpetualAssets: publicProcedure.query(() => getHyperliquidPerpetualAssets()),
 
   marketTicker: publicProcedure.query(async () => {
     const [hyperliquidRes, btcYahooRes, ethYahooRes, goldYahooRes, vixRes, nas100FuturesRes, nas100Prev24hRes, shanghaiRes, hangSengRes, nikkeiRes, kospiRes, dxyRes] = await Promise.allSettled([

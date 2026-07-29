@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Calculator as CalculatorIcon, Info, ShieldCheck } from "lucide-react";
 import { useLang } from "@/contexts/LangContext";
+import { trpc } from "@/lib/trpc";
 import { calculatePosition } from "@/lib/position-calculator";
 import {
   Dialog,
@@ -15,13 +16,19 @@ import { Label } from "@/components/ui/label";
 
 const ACCOUNT_CAPITAL_KEY = "pnlnote-position-calculator-capital-v2";
 const RISK_OPTIONS = [0.5, 1, 2] as const;
+type LiquidationAssetOption = {
+  value: string;
+  label: string;
+  maxLeverage: number;
+  maintenanceMarginPercent: string;
+};
 const LIQUIDATION_ASSETS = [
-  { value: "BTC-PERP", label: "BTC-PERP", maintenanceMarginPercent: "1.25" },
-  { value: "ETH-PERP", label: "ETH-PERP", maintenanceMarginPercent: "2" },
-  { value: "SOL-PERP", label: "SOL-PERP", maintenanceMarginPercent: "2.5" },
-  { value: "XRP-PERP", label: "XRP-PERP", maintenanceMarginPercent: "2.5" },
-  { value: "OTHER", label: "其他标的", maintenanceMarginPercent: "5" },
-] as const;
+  { value: "BTC-PERP", label: "BTC-PERP", maxLeverage: 40, maintenanceMarginPercent: "1.25" },
+  { value: "ETH-PERP", label: "ETH-PERP", maxLeverage: 25, maintenanceMarginPercent: "2" },
+  { value: "SOL-PERP", label: "SOL-PERP", maxLeverage: 20, maintenanceMarginPercent: "2.5" },
+  { value: "XRP-PERP", label: "XRP-PERP", maxLeverage: 20, maintenanceMarginPercent: "2.5" },
+  { value: "OTHER", label: "其他标的", maxLeverage: 10, maintenanceMarginPercent: "5" },
+] satisfies readonly LiquidationAssetOption[];
 type RiskSelection = (typeof RISK_OPTIONS)[number] | "custom";
 type CalculatorMode = "position" | "liquidation";
 
@@ -49,6 +56,9 @@ function formatNumber(value: number, maximumFractionDigits = 2): string {
 export default function PositionCalculator() {
   const { lang } = useLang();
   const zh = lang === "zh";
+  const { data: hyperliquidAssets } = trpc.hyperliquid.perpetualAssets.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000,
+  });
   const [accountCapital, setAccountCapital] = useState(initialAccountCapital);
   const [riskSelection, setRiskSelection] = useState<RiskSelection>(1);
   const [customRiskPercent, setCustomRiskPercent] = useState("");
@@ -66,10 +76,11 @@ export default function PositionCalculator() {
     ? parsedCustomRisk <= 100 ? parsedCustomRisk : 0
     : riskSelection;
 
-  const selectedLiquidationAsset = LIQUIDATION_ASSETS.find((asset) => asset.value === liquidationAsset) ?? LIQUIDATION_ASSETS[0];
+  const liquidationAssets: readonly LiquidationAssetOption[] = hyperliquidAssets?.length ? hyperliquidAssets : LIQUIDATION_ASSETS;
+  const selectedLiquidationAsset = liquidationAssets.find((asset) => asset.value === liquidationAsset) ?? liquidationAssets[0];
 
   const handleLiquidationAssetChange = (value: string) => {
-    const asset = LIQUIDATION_ASSETS.find((option) => option.value === value) ?? LIQUIDATION_ASSETS[0];
+    const asset = liquidationAssets.find((option) => option.value === value) ?? liquidationAssets[0];
     setLiquidationAsset(asset.value);
     setMaintenanceMarginPercent(asset.maintenanceMarginPercent);
   };
@@ -397,7 +408,7 @@ export default function PositionCalculator() {
                   onChange={(event) => handleLiquidationAssetChange(event.target.value)}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  {LIQUIDATION_ASSETS.map((asset) => (
+                  {liquidationAssets.map((asset) => (
                     <option key={asset.value} value={asset.value}>{asset.label}</option>
                   ))}
                 </select>

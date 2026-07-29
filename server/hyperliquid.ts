@@ -557,6 +557,40 @@ export async function getHyperliquidMids() {
   return callInfo<Record<string, string>>({ type: "allMids" });
 }
 
+interface HyperliquidMetaAsset {
+  name?: string;
+  maxLeverage?: number;
+  isDelisted?: boolean;
+}
+
+export interface HyperliquidPerpetualAsset {
+  value: string;
+  label: string;
+  maxLeverage: number;
+  maintenanceMarginPercent: string;
+}
+
+export async function getHyperliquidPerpetualAssets(): Promise<HyperliquidPerpetualAsset[]> {
+  try {
+    const meta = await callInfo<{ universe?: HyperliquidMetaAsset[] }>({ type: "meta" });
+    return (meta.universe ?? [])
+      .filter((asset) => asset.name && !asset.isDelisted && Number(asset.maxLeverage) > 0)
+      .map((asset) => {
+        const maxLeverage = Number(asset.maxLeverage);
+        return {
+          value: `${asset.name}-PERP`,
+          label: `${asset.name}-PERP`,
+          maxLeverage,
+          maintenanceMarginPercent: (50 / maxLeverage).toFixed(2),
+        };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
+  } catch (error) {
+    console.warn("[Hyperliquid] Failed to read perpetual asset metadata:", error);
+    return [];
+  }
+}
+
 function pickMid(mids: Record<string, string>, keys: string[]) {
   for (const key of keys) {
     const value = toNumber(mids[key]);
