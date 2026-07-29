@@ -1,6 +1,7 @@
 import { trpc } from "@/lib/trpc";
 import { useLang } from "@/contexts/LangContext";
 import { RefreshCw } from "lucide-react";
+import { useState } from "react";
 
 function TimeOfDayBadge({ time, lang }: { time: string | null; lang: string }) {
   if (!time) return <span style={{ color: "oklch(45% 0.01 200)" }}>—</span>;
@@ -69,6 +70,7 @@ function formatDate(dateStr: string, lang: string) {
 
 export default function EarningsCalendar() {
   const { lang } = useLang();
+  const [marketCapLimit, setMarketCapLimit] = useState<10 | 50 | 100>(50);
 
   const { data, isLoading, error, refetch, isFetching } =
     trpc.calendar.earningsCalendar.useQuery(undefined, {
@@ -83,8 +85,10 @@ export default function EarningsCalendar() {
     currency: string;
     timeOfDay: string | null;
     timeOfDayUtc8: string | null;
+    priorityRank?: number;
   }>;
-  const grouped = groupByDate(earnings);
+  const filteredEarnings = earnings.filter((item) => (item.priorityRank ?? 9999) < marketCapLimit);
+  const grouped = groupByDate(filteredEarnings);
 
   return (
     <div className="glass-card px-8 py-7 fade-in">
@@ -105,14 +109,28 @@ export default function EarningsCalendar() {
               background: "oklch(58% 0.015 200 / 60%)",
             }}
           />
-          <p
-            className="text-muted-foreground mt-2"
-            style={{ fontSize: "0.68rem", letterSpacing: "0.06em" }}
-          >
-            {lang === "zh"
-              ? "前50大公司 · 未来 7 天 · UTC+8 时间"
-              : "Top 50 Companies · Next 7 Days · UTC+8"}
-          </p>
+          <div className="flex flex-wrap items-center gap-2 mt-3">
+            <p className="text-muted-foreground" style={{ fontSize: "0.68rem", letterSpacing: "0.06em" }}>
+              {lang === "zh" ? `市值前${marketCapLimit} · 未来 7 天 · UTC+8 时间` : `Top ${marketCapLimit} US Large Caps · Next 7 Days · UTC+8`}
+            </p>
+            <div className="flex gap-1">
+              {[10, 50, 100].map((limit) => (
+                <button
+                  key={limit}
+                  onClick={() => setMarketCapLimit(limit as 10 | 50 | 100)}
+                  className="rounded-full px-2 py-0.5 transition-colors"
+                  style={{
+                    fontSize: "0.62rem",
+                    border: `1px solid ${marketCapLimit === limit ? "rgb(92 211 184 / 62%)" : "var(--panel-border)"}`,
+                    color: marketCapLimit === limit ? "rgb(92 211 184 / 92%)" : "var(--text-soft)",
+                    background: marketCapLimit === limit ? "rgb(92 211 184 / 10%)" : "transparent",
+                  }}
+                >
+                  {lang === "zh" ? `前${limit}` : `Top ${limit}`}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
         <button
           onClick={() => refetch()}
@@ -144,8 +162,8 @@ export default function EarningsCalendar() {
             style={{ fontSize: "0.72rem" }}
           >
             {lang === "zh"
-              ? "未来 7 天前50大公司无财报发布"
-              : "No earnings from top 50 companies in the next 7 days"}
+              ? `未来 7 天暂无市值前${marketCapLimit}公司财报`
+              : `No top-${marketCapLimit} US large-cap earnings in the next 7 days`}
           </div>
         </div>
       )}
