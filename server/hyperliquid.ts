@@ -572,18 +572,27 @@ export interface HyperliquidPerpetualAsset {
 
 export async function getHyperliquidPerpetualAssets(): Promise<HyperliquidPerpetualAsset[]> {
   try {
-    const meta = await callInfo<{ universe?: HyperliquidMetaAsset[] }>({ type: "meta" });
-    return (meta.universe ?? [])
+    const readMeta = async (dex?: string) => callInfo<{ universe?: HyperliquidMetaAsset[] }>({
+      type: "meta",
+      ...(dex ? { dex } : {}),
+    });
+    const [mainMeta, xyzMeta] = await Promise.all([
+      readMeta(),
+      readMeta("xyz").catch(() => ({ universe: [] })),
+    ]);
+    const mapAssets = (universe: HyperliquidMetaAsset[] = [], dex?: string) => universe
       .filter((asset) => asset.name && !asset.isDelisted && Number(asset.maxLeverage) > 0)
       .map((asset) => {
         const maxLeverage = Number(asset.maxLeverage);
+        const prefix = dex ? `${dex}:` : "";
         return {
-          value: `${asset.name}-PERP`,
-          label: `${asset.name}-PERP`,
+          value: `${prefix}${asset.name}-PERP`,
+          label: `${prefix}${asset.name}-PERP`,
           maxLeverage,
           maintenanceMarginPercent: (50 / maxLeverage).toFixed(2),
         };
-      })
+      });
+    return [...mapAssets(mainMeta.universe), ...mapAssets(xyzMeta.universe, "xyz")]
       .sort((a, b) => a.label.localeCompare(b.label));
   } catch (error) {
     console.warn("[Hyperliquid] Failed to read perpetual asset metadata:", error);

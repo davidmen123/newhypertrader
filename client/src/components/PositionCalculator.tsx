@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Calculator as CalculatorIcon, Info, ShieldCheck } from "lucide-react";
+import { ArrowRight, Calculator as CalculatorIcon, Check, ChevronsUpDown, Info, ShieldCheck } from "lucide-react";
 import { useLang } from "@/contexts/LangContext";
 import { trpc } from "@/lib/trpc";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { calculatePosition } from "@/lib/position-calculator";
 import {
   Dialog,
@@ -66,6 +68,7 @@ export default function PositionCalculator() {
   const [stopPrice, setStopPrice] = useState("");
   const [calculatorMode, setCalculatorMode] = useState<CalculatorMode>("position");
   const [liquidationAsset, setLiquidationAsset] = useState("BTC-PERP");
+  const [assetPickerOpen, setAssetPickerOpen] = useState(false);
   const [liquidationDirection, setLiquidationDirection] = useState<"long" | "short">("long");
   const [liquidationEntryPrice, setLiquidationEntryPrice] = useState("");
   const [liquidationMargin, setLiquidationMargin] = useState("");
@@ -402,16 +405,43 @@ export default function PositionCalculator() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="liquidation-asset">{zh ? "标的" : "Asset"}</Label>
-                <select
-                  id="liquidation-asset"
-                  value={liquidationAsset}
-                  onChange={(event) => handleLiquidationAssetChange(event.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {liquidationAssets.map((asset) => (
-                    <option key={asset.value} value={asset.value}>{asset.label}</option>
-                  ))}
-                </select>
+                <Popover open={assetPickerOpen} onOpenChange={setAssetPickerOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      id="liquidation-asset"
+                      type="button"
+                      role="combobox"
+                      aria-expanded={assetPickerOpen}
+                      className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-left text-sm text-foreground shadow-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <span>{selectedLiquidationAsset.label}</span>
+                      <ChevronsUpDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder={zh ? "搜索标的…" : "Search assets…"} />
+                      <CommandList>
+                        <CommandEmpty>{zh ? "未找到标的" : "No asset found"}</CommandEmpty>
+                        <CommandGroup heading={zh ? "Hyperliquid 永续合约" : "Hyperliquid perpetuals"}>
+                          {liquidationAssets.map((asset) => (
+                            <CommandItem
+                              key={asset.value}
+                              value={asset.label}
+                              onSelect={() => {
+                                handleLiquidationAssetChange(asset.value);
+                                setAssetPickerOpen(false);
+                              }}
+                            >
+                              <Check className={`h-4 w-4 ${liquidationAsset === asset.value ? "opacity-100" : "opacity-0"}`} aria-hidden="true" />
+                              <span>{asset.label}</span>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
                 <p className="text-[0.68rem] text-muted-foreground">
                   {zh
                     ? `${selectedLiquidationAsset.label} 默认维护保证金率：${selectedLiquidationAsset.maintenanceMarginPercent}%`
