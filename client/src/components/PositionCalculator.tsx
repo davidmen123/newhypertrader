@@ -444,8 +444,8 @@ export default function PositionCalculator() {
                 </Popover>
                 <p className="text-[0.68rem] text-muted-foreground">
                   {zh
-                    ? `${selectedLiquidationAsset.label} 默认维护保证金率：${selectedLiquidationAsset.maintenanceMarginPercent}%`
-                    : `${selectedLiquidationAsset.label} default maintenance margin: ${selectedLiquidationAsset.maintenanceMarginPercent}%`}
+                    ? `${selectedLiquidationAsset.label} 默认维持保证金率：${selectedLiquidationAsset.maintenanceMarginPercent}%`
+                    : `${selectedLiquidationAsset.label} default maintenance margin rate: ${selectedLiquidationAsset.maintenanceMarginPercent}%`}
                 </p>
               </div>
 
@@ -485,7 +485,7 @@ export default function PositionCalculator() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="liquidation-maintenance-margin">{zh ? "维护保证金率（估算）" : "Maintenance margin (estimate)"}</Label>
+                  <Label htmlFor="liquidation-maintenance-margin">{zh ? "维持保证金率（估算）" : "Maintenance margin rate (estimate)"}</Label>
                   <div className="relative">
                     <Input
                       id="liquidation-maintenance-margin"
@@ -560,7 +560,7 @@ export default function PositionCalculator() {
 
               <div className="flex items-start gap-2 text-[0.68rem] leading-relaxed text-muted-foreground">
                 <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                <span>{zh ? "这是基于维护保证金率的简化估算，不含资金费、手续费、滑点、分层保证金及其他仓位影响；实际清算结果以 Hyperliquid 为准。" : "Simplified estimate based on maintenance margin; excludes funding, fees, slippage, tiered margin and other positions. Hyperliquid's actual result prevails."}</span>
+                <span>{zh ? "这是基于维持保证金率的简化估算，不含资金费、手续费、滑点、分层保证金及其他仓位影响；实际清算结果以 Hyperliquid 为准。" : "Simplified estimate based on maintenance margin rate; excludes funding, fees, slippage, tiered margin and other positions. Hyperliquid's actual result prevails."}</span>
               </div>
             </div>
           )}
