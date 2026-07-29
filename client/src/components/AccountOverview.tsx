@@ -271,7 +271,6 @@ export default function AccountOverview() {
   // Always labeled once there is any closed trade; below 10 round trips the
   // label is flagged as provisional in the sub-line rather than withheld.
   const avgHoldingHours = metricsData?.averageHoldingHours ?? null;
-  const styleProvisional = totalTrades == null || totalTrades < 10;
   const tradingStyle =
     avgHoldingHours == null
       ? "--"
@@ -577,9 +576,7 @@ export default function AccountOverview() {
               sub={
                 avgHoldingHours == null
                   ? t("暂无完整交易", "No round trips yet")
-                  : `${t(`均持 ${fmtHoldingHours(avgHoldingHours)}`, `Avg hold ${fmtHoldingHours(avgHoldingHours)}`)}${
-                      styleProvisional ? t(" · 样本不足，满 10 笔后定型", " · small sample, settles at 10") : ""
-                    }`
+                  : t(`均持 ${fmtHoldingHours(avgHoldingHours)}`, `Avg hold ${fmtHoldingHours(avgHoldingHours)}`)
               }
               tone="neutral"
               tooltip={t(
