@@ -14,6 +14,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.55.0",
+    "date": "2026-07-29",
+    "zh": "财报日历新增前10/50/100市值筛选",
+    "en": "Added top-10, top-50 and top-100 market-cap filters to earnings calendar"
+  },
+  {
     "version": "1.54.0",
     "date": "2026-07-28",
     "zh": "复盘模式新增悬停卡片及R指标与关联开仓",
