@@ -15,6 +15,13 @@ import { Label } from "@/components/ui/label";
 
 const ACCOUNT_CAPITAL_KEY = "pnlnote-position-calculator-capital-v2";
 const RISK_OPTIONS = [0.5, 1, 2] as const;
+const LIQUIDATION_ASSETS = [
+  { value: "BTC-PERP", label: "BTC-PERP", maintenanceMarginPercent: "1.25" },
+  { value: "ETH-PERP", label: "ETH-PERP", maintenanceMarginPercent: "2" },
+  { value: "SOL-PERP", label: "SOL-PERP", maintenanceMarginPercent: "2.5" },
+  { value: "XRP-PERP", label: "XRP-PERP", maintenanceMarginPercent: "2.5" },
+  { value: "OTHER", label: "其他标的", maintenanceMarginPercent: "5" },
+] as const;
 type RiskSelection = (typeof RISK_OPTIONS)[number] | "custom";
 type CalculatorMode = "position" | "liquidation";
 
@@ -48,6 +55,7 @@ export default function PositionCalculator() {
   const [entryPrice, setEntryPrice] = useState("");
   const [stopPrice, setStopPrice] = useState("");
   const [calculatorMode, setCalculatorMode] = useState<CalculatorMode>("position");
+  const [liquidationAsset, setLiquidationAsset] = useState("BTC-PERP");
   const [liquidationDirection, setLiquidationDirection] = useState<"long" | "short">("long");
   const [liquidationEntryPrice, setLiquidationEntryPrice] = useState("");
   const [liquidationMargin, setLiquidationMargin] = useState("");
@@ -57,6 +65,14 @@ export default function PositionCalculator() {
   const riskPercent = riskSelection === "custom"
     ? parsedCustomRisk <= 100 ? parsedCustomRisk : 0
     : riskSelection;
+
+  const selectedLiquidationAsset = LIQUIDATION_ASSETS.find((asset) => asset.value === liquidationAsset) ?? LIQUIDATION_ASSETS[0];
+
+  const handleLiquidationAssetChange = (value: string) => {
+    const asset = LIQUIDATION_ASSETS.find((option) => option.value === value) ?? LIQUIDATION_ASSETS[0];
+    setLiquidationAsset(asset.value);
+    setMaintenanceMarginPercent(asset.maintenanceMarginPercent);
+  };
 
   useEffect(() => {
     const capital = parsePositiveNumber(accountCapital);
@@ -373,6 +389,25 @@ export default function PositionCalculator() {
 
           {calculatorMode === "liquidation" && (
             <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="liquidation-asset">{zh ? "标的" : "Asset"}</Label>
+                <select
+                  id="liquidation-asset"
+                  value={liquidationAsset}
+                  onChange={(event) => handleLiquidationAssetChange(event.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {LIQUIDATION_ASSETS.map((asset) => (
+                    <option key={asset.value} value={asset.value}>{asset.label}</option>
+                  ))}
+                </select>
+                <p className="text-[0.68rem] text-muted-foreground">
+                  {zh
+                    ? `${selectedLiquidationAsset.label} 默认维护保证金率：${selectedLiquidationAsset.maintenanceMarginPercent}%`
+                    : `${selectedLiquidationAsset.label} default maintenance margin: ${selectedLiquidationAsset.maintenanceMarginPercent}%`}
+                </p>
+              </div>
+
               <div className="space-y-2">
                 <Label>{zh ? "方向" : "Direction"}</Label>
                 <div className="flex w-full rounded-md border border-input p-0.5" role="group" aria-label={zh ? "选择持仓方向" : "Choose position direction"}>
