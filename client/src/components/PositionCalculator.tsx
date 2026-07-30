@@ -421,27 +421,26 @@ export default function PositionCalculator() {
                   <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
                     <Command>
                       <CommandInput placeholder={zh ? "搜索标的…" : "Search assets…"} />
-                      <CommandList
-                        className="h-[300px] max-h-[300px] overscroll-contain"
-                        style={{ height: 300, maxHeight: 300, overflowY: "scroll" }}
-                      >
-                        <CommandEmpty>{zh ? "未找到标的" : "No asset found"}</CommandEmpty>
-                        <CommandGroup heading={zh ? "Hyperliquid 永续合约" : "Hyperliquid perpetuals"}>
-                          {liquidationAssets.map((asset) => (
-                            <CommandItem
-                              key={asset.value}
-                              value={asset.label}
-                              onSelect={() => {
-                                handleLiquidationAssetChange(asset.value);
-                                setAssetPickerOpen(false);
-                              }}
-                            >
-                              <Check className={`h-4 w-4 ${liquidationAsset === asset.value ? "opacity-100" : "opacity-0"}`} aria-hidden="true" />
-                              <span>{asset.label}</span>
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
+                      <div className="h-[300px] max-h-[300px] overflow-y-auto overscroll-contain" style={{ height: 300, maxHeight: 300, overflowY: "auto" }}>
+                        <CommandList className="max-h-none overflow-visible" style={{ height: "auto", maxHeight: "none", overflowY: "visible" }}>
+                          <CommandEmpty>{zh ? "未找到标的" : "No asset found"}</CommandEmpty>
+                          <CommandGroup heading={zh ? "Hyperliquid 永续合约" : "Hyperliquid perpetuals"}>
+                            {liquidationAssets.map((asset) => (
+                              <CommandItem
+                                key={asset.value}
+                                value={asset.label}
+                                onSelect={() => {
+                                  handleLiquidationAssetChange(asset.value);
+                                  setAssetPickerOpen(false);
+                                }}
+                              >
+                                <Check className={`h-4 w-4 ${liquidationAsset === asset.value ? "opacity-100" : "opacity-0"}`} aria-hidden="true" />
+                                <span>{asset.label}</span>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </div>
                     </Command>
                   </PopoverContent>
                 </Popover>
