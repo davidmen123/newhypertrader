@@ -162,22 +162,24 @@ function SectionTitle({ children }: { children: ReactNode }) {
   );
 }
 
-export default function AccountOverview() {
+// accountId selects which configured Hyperliquid account to read. Left undefined
+// (the home page) it reads the default account.
+export default function AccountOverview({ accountId }: { accountId?: string } = {}) {
   const { lang } = useLang();
   const [denomination, setDenomination] = useState<"USDC" | "BTC" | "CNY">("USDC");
 
   const { data, isLoading, isFetching, refetch } = trpc.hyperliquid.accountOverview.useQuery(
-    undefined,
+    { accountId },
     { refetchInterval: 30_000 }
   );
 
   const { data: metricsData } = trpc.hyperliquid.tradeMetrics.useQuery(
-    undefined,
+    { accountId },
     { refetchInterval: 60_000 }
   );
 
   const { data: openOrdersData } = trpc.hyperliquid.openOrders.useQuery(
-    undefined,
+    { accountId },
     { refetchInterval: 10_000 }
   );
 

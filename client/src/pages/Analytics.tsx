@@ -2,6 +2,9 @@ import { useEffect, useState, type ReactNode } from "react";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, Clock, Globe, Info, Laptop, MapPin, Monitor, RefreshCw, Smartphone } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import AccountOverview from "@/components/AccountOverview";
+import PositionsTable from "@/components/PositionsTable";
+import TradeHistory from "@/components/TradeHistory";
 
 // ─── UTC+8 date helpers ────────────────────────────────────────────────────
 // All dates on this page are UTC+8 calendar days (Asia/Shanghai).
@@ -422,6 +425,152 @@ function TradeReviewManager() {
 }
 
 // ─── Dashboard ─────────────────────────────────────────────────────────────
+// ─── Account PnL ───────────────────────────────────────────────────────────
+// Reads any of the Hyperliquid addresses configured in HYPERLIQUID_ACCOUNTS /
+// HYPERLIQUID_USER_ADDRESS. The public home page always shows the default
+// account; switching between accounts lives here.
+const ACCOUNT_STORAGE_KEY = "analytics.hyperliquidAccountId";
+
+function EquityCurve({ accountId }: { accountId?: string }) {
+  const { data, isLoading } = trpc.hyperliquid.pnlHistory.useQuery(
+    { limit: 1000, accountId },
+    { refetchInterval: 60_000 }
+  );
+
+  type EquityPoint = { time: number; equity: number };
+  const rows = (data ?? []) as Array<{ snapshotAt: number | string; equity: number | string }>;
+  const points: EquityPoint[] = rows
+    .map((row) => ({ time: Number(row.snapshotAt), equity: Number(row.equity) }))
+    .filter((point) => Number.isFinite(point.time) && Number.isFinite(point.equity));
+
+  if (isLoading) {
+    return <div className="py-10 text-center text-muted-foreground text-sm animate-pulse">加载权益曲线中…</div>;
+  }
+  if (points.length < 2) {
+    return <EmptyState />;
+  }
+
+  const width = 720;
+  const height = 160;
+  const first = points[0];
+  const last = points[points.length - 1];
+  const min = Math.min(...points.map((p) => p.equity));
+  const max = Math.max(...points.map((p) => p.equity));
+  const span = max - min || 1;
+  const startTime = first.time;
+  const timeSpan = last.time - startTime || 1;
+  const x = (time: number) => ((time - startTime) / timeSpan) * width;
+  const y = (equity: number) => height - ((equity - min) / span) * height;
+  const line = points.map((p) => `${x(p.time).toFixed(1)},${y(p.equity).toFixed(1)}`).join(" ");
+  const change = last.equity - first.equity;
+  const rising = change >= 0;
+  const color = rising ? GREEN : "oklch(62% 0.15 25)";
+  const fmtUsdc = (v: number) => v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
+        <span className="num-display" style={{ fontSize: "1.05rem" }}>{fmtUsdc(last.equity)} <span className="text-muted-foreground/60" style={{ fontSize: "0.7rem" }}>USDC</span></span>
+        <span className="num-display" style={{ fontSize: "0.78rem", color }}>
+          {rising ? "+" : "−"}{fmtUsdc(Math.abs(change))} <span style={{ fontSize: "0.66rem" }}>区间变化</span>
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="w-full" style={{ height: 160, minWidth: 280 }}>
+          <defs>
+            <linearGradient id="equityFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity="0.22" />
+              <stop offset="100%" stopColor={color} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <polygon points={`0,${height} ${line} ${width},${height}`} fill="url(#equityFill)" />
+          <polyline points={line} fill="none" stroke={color} strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
+        </svg>
+      </div>
+      <div className="flex items-center justify-between text-muted-foreground/55" style={{ fontSize: "0.62rem" }}>
+        <span>{utc8DateStr(first.time)}</span>
+        <span>区间低 {fmtUsdc(min)} · 高 {fmtUsdc(max)}</span>
+        <span>{utc8DateStr(last.time)}</span>
+      </div>
+    </div>
+  );
+}
+
+function AccountPnlManager() {
+  const { data: accounts, isLoading, error } = trpc.hyperliquid.accounts.useQuery();
+  const [storedId, setStoredId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(ACCOUNT_STORAGE_KEY);
+    } catch {
+      return null;
+    }
+  });
+
+  const list = accounts ?? [];
+  // Fall back to the first account whenever the remembered id is gone from the
+  // config, so a removed address can't leave the page reading nothing.
+  const activeId = list.some((account) => account.id === storedId) ? storedId! : list[0]?.id;
+
+  const selectAccount = (id: string) => {
+    setStoredId(id);
+    try {
+      localStorage.setItem(ACCOUNT_STORAGE_KEY, id);
+    } catch {
+      // Private-mode browsers reject writes; the in-memory choice still applies.
+    }
+  };
+
+  if (isLoading) {
+    return <Panel title="账户盈亏"><div className="py-8 text-center text-muted-foreground text-sm animate-pulse">加载账户列表中…</div></Panel>;
+  }
+
+  if (error || list.length === 0) {
+    return (
+      <Panel title="账户盈亏" sub="未配置账户">
+        <div className="py-6 text-center text-muted-foreground text-sm leading-relaxed">
+          还没有可读取的地址。在服务端环境变量里设置 <code className="num-display">HYPERLIQUID_USER_ADDRESS</code>（主账户），
+          <br />
+          再用 <code className="num-display">HYPERLIQUID_ACCOUNTS=别名:0x地址:显示名</code> 添加其他账户，逗号分隔。
+        </div>
+      </Panel>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <Panel title="账户切换" sub={`${list.length} 个只读地址 · 仅本页可切换`}>
+        <div className="flex flex-wrap items-center gap-2">
+          {list.map((account) => (
+            <button
+              key={account.id}
+              onClick={() => selectAccount(account.id)}
+              className={`pill-tab ${activeId === account.id ? "active" : ""}`}
+              title={account.address ?? undefined}
+            >
+              {account.label}
+              {/* pill-tab uppercases its text, which would mangle the hex address. */}
+              <span className="num-display ml-1.5 opacity-55" style={{ fontSize: "0.6rem", textTransform: "none" }}>
+                {account.address}
+              </span>
+            </button>
+          ))}
+        </div>
+      </Panel>
+
+      {/* Keyed on the account so a switch remounts instead of showing the
+          previous account's numbers while the new ones load. */}
+      <div key={activeId} className="space-y-5">
+        <Panel title="权益曲线" sub="来自 Hyperliquid portfolio 接口 · 60 秒刷新">
+          <EquityCurve accountId={activeId} />
+        </Panel>
+        <AccountOverview accountId={activeId} />
+        <PositionsTable accountId={activeId} />
+        <TradeHistory accountId={activeId} />
+      </div>
+    </div>
+  );
+}
+
 type Period = "today" | "week" | "month" | "custom";
 
 const PERIODS: Array<{ key: Period; label: string }> = [
@@ -433,7 +582,7 @@ const PERIODS: Array<{ key: Period; label: string }> = [
 
 function AnalyticsDashboard() {
   const [period, setPeriod] = useState<Period>("week");
-  const [view, setView] = useState<"traffic" | "reviews">("traffic");
+  const [view, setView] = useState<"traffic" | "reviews" | "accounts">("traffic");
   const [customStart, setCustomStart] = useState(() => utc8DateStr(Date.now() - 6 * DAY_MS));
   const [customEnd, setCustomEnd] = useState(() => utc8DateStr(Date.now()));
 
@@ -494,11 +643,15 @@ function AnalyticsDashboard() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className="text-xl sm:text-2xl font-light" style={{ fontFamily: "Cormorant Garamond, serif" }}>
-                {view === "traffic" ? "访问统计" : "交易复盘"}
+                {view === "traffic" ? "访问统计" : view === "reviews" ? "交易复盘" : "账户盈亏"}
               </h2>
               <div className="mt-2" style={{ width: 40, height: 1, background: "rgb(215 187 114 / 62%)" }} />
               <p className="text-muted-foreground/70 mt-2" style={{ fontSize: "0.72rem" }}>
-                {view === "traffic" ? "网站访问数据 · 时间均为 UTC+8 · 不含本页访问" : "编辑交易复盘内容 · 保存后前台自动呈现"}
+                {view === "traffic"
+                  ? "网站访问数据 · 时间均为 UTC+8 · 不含本页访问"
+                  : view === "reviews"
+                  ? "编辑交易复盘内容 · 保存后前台自动呈现"
+                  : "切换查看各个 Hyperliquid 只读地址 · 首页始终只展示主账户"}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -550,6 +703,7 @@ function AnalyticsDashboard() {
           {([
             ["traffic", "访问统计"],
             ["reviews", "交易复盘"],
+            ["accounts", "账户盈亏"],
           ] as const).map(([key, label]) => (
             <button
               key={key}
@@ -569,6 +723,8 @@ function AnalyticsDashboard() {
 
         {view === "reviews" ? (
           <TradeReviewManager />
+        ) : view === "accounts" ? (
+          <AccountPnlManager />
         ) : isLoading ? (
           <div className="glass-card px-8 py-16 text-center text-muted-foreground text-sm animate-pulse">加载访问数据...</div>
         ) : (

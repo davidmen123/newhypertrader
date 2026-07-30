@@ -1,9 +1,15 @@
 import http from "http";
 import https from "https";
 import tls from "tls";
+import {
+  getCurrentHyperliquidAccount,
+  isDefaultHyperliquidAccount,
+  listHyperliquidAccounts,
+  maskHyperliquidAddress,
+  requireCurrentHyperliquidAddress,
+} from "./accounts.js";
 
 const HYPERLIQUID_API_URL = process.env.HYPERLIQUID_API_URL || "https://api.hyperliquid.xyz";
-const USER_ADDRESS = process.env.HYPERLIQUID_USER_ADDRESS || process.env.HYPERLIQUID_ADDRESS || "";
 const MANUAL_INITIAL_CAPITAL_USDC = process.env.HYPERLIQUID_INITIAL_CAPITAL_USDC || "";
 const DEFAULT_PERP_DEXS = ["", "xyz"];
 
@@ -18,23 +24,21 @@ function getProxyUrl() {
   return proxy ? new URL(proxy) : null;
 }
 
-function normalizeAddress(address: string) {
-  return address.trim().toLowerCase();
-}
-
+// Reads the address of the account scoped to the current request. See
+// server/accounts.ts — every Hyperliquid read below goes through here, which is
+// what keeps a response from ever mixing two accounts' data.
 function assertAddress() {
-  const address = normalizeAddress(USER_ADDRESS);
-  if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
-    throw new Error("Hyperliquid account address is not configured. Please set HYPERLIQUID_USER_ADDRESS=0x...");
-  }
-  return address;
+  return requireCurrentHyperliquidAddress();
 }
 
 export function getHyperliquidConfigStatus() {
+  const account = getCurrentHyperliquidAccount();
   return {
-    configured: /^0x[a-fA-F0-9]{40}$/.test(normalizeAddress(USER_ADDRESS)),
-    missing: USER_ADDRESS ? [] : ["HYPERLIQUID_USER_ADDRESS"],
-    address: USER_ADDRESS ? `${USER_ADDRESS.slice(0, 6)}...${USER_ADDRESS.slice(-4)}` : null,
+    configured: account != null,
+    missing: account ? [] : ["HYPERLIQUID_USER_ADDRESS"],
+    address: account ? maskHyperliquidAddress(account.address) : null,
+    accountId: account?.id ?? null,
+    accountCount: listHyperliquidAccounts().length,
   };
 }
 
@@ -258,6 +262,15 @@ export interface HyperliquidFill {
   };
 }
 
+interface HyperliquidSpotPair {
+  name?: string;
+  index?: number | string;
+}
+
+interface HyperliquidSpotMeta {
+  universe?: HyperliquidSpotPair[];
+}
+
 export interface HyperliquidPortfolioWindow {
   accountValueHistory?: Array<[number, string]>;
   pnlHistory?: Array<[number, string]>;
@@ -405,6 +418,15 @@ export async function getHyperliquidFills(startTime?: number, endTime?: number) 
   return callInfo<HyperliquidFill[]>({ type: "userFills", user });
 }
 
+async function getHyperliquidSpotPairMap() {
+  const meta = await callInfo<HyperliquidSpotMeta>({ type: "spotMeta" });
+  return new Map(
+    (meta.universe ?? [])
+      .filter((pair) => pair.name && pair.index != null)
+      .map((pair) => [`@${pair.index}`, pair.name as string])
+  );
+}
+
 async function getHyperliquidOpenOrdersForDex(dex = "") {
   const user = assertAddress();
   return callInfo<HyperliquidOpenOrder[]>({
@@ -531,7 +553,10 @@ function getLedgerUsdcAmount(update: HyperliquidLedgerUpdate) {
 }
 
 export async function getHyperliquidInitialCapitalUsdc() {
-  const manual = toNumber(MANUAL_INITIAL_CAPITAL_USDC);
+  // The manual override is a figure for the default account only; other accounts
+  // must derive their own initial capital from their own ledger, otherwise their
+  // return figures would be measured against the wrong denominator.
+  const manual = isDefaultHyperliquidAccount() ? toNumber(MANUAL_INITIAL_CAPITAL_USDC) : 0;
   if (manual > 0) return manual;
 
   const updates = await getHyperliquidLedgerUpdates();
@@ -1200,11 +1225,13 @@ export async function getHyperliquidTradeHistory(params: {
   startTime?: number;
   endTime?: number;
   limit?: number;
+  category?: "ALL" | "PERP" | "SPOT";
 }) {
-  const [fills, fundingUpdates, orderHistory] = await Promise.all([
+  const [fills, fundingUpdates, orderHistory, spotPairMap] = await Promise.all([
     getHyperliquidFills(params.startTime, params.endTime),
     getHyperliquidFundingHistory(params.startTime ?? 0, params.endTime ?? Date.now()).catch(() => []),
     getHyperliquidOrderHistory(1000).catch(() => []),
+    getHyperliquidSpotPairMap().catch(() => new Map<string, string>()),
   ]);
   const ordersById = new Map(orderHistory.map((order) => [order.orderId, order]));
   const grouped = new Map<string, {
@@ -1252,12 +1279,15 @@ export async function getHyperliquidTradeHistory(params: {
   }
 
   const mapped = Array.from(grouped.values())
-    .sort((a, b) => b.latestTime - a.latestTime)
-    .slice(0, params.limit ?? 100)
     .map((group) => {
       const fill = group.fill;
       const side = fill.side === "B" ? "buy" : "sell";
       const price = group.qty > 0 ? group.value / group.qty : toNumber(fill.px);
+      const isSpot = fill.coin.includes("/") || /^@\d+$/.test(fill.coin);
+      const category = isSpot ? "SPOT" : "PERP";
+      const symbol = isSpot
+        ? (fill.coin.includes("/") ? fill.coin : spotPairMap.get(fill.coin) ?? fill.coin)
+        : `${fill.coin}-PERP`;
       const orderId = String(fill.oid ?? "");
       const historicalOrder = ordersById.get(orderId);
       const historicalType = String(historicalOrder?.orderType ?? "").toLowerCase();
@@ -1286,8 +1316,8 @@ export async function getHyperliquidTradeHistory(params: {
       return {
         execId: fill.hash ? `${fill.hash}-${orderId}-${group.latestTime}` : `${fill.coin}-${orderId}-${group.latestTime}`,
         orderId,
-        category: "PERP",
-        symbol: `${fill.coin}-PERP`,
+        category,
+        symbol,
         orderType: fill.crossed ? "Market" : "Limit",
         side,
         execPrice: String(price),
@@ -1305,10 +1335,17 @@ export async function getHyperliquidTradeHistory(params: {
       };
     });
 
+  const categoryFiltered = params.category && params.category !== "ALL"
+    ? mapped.filter((trade) => trade.category === params.category)
+    : mapped;
+  const trades = categoryFiltered
+    .sort((a, b) => Number(b.createdTime) - Number(a.createdTime))
+    .slice(0, params.limit ?? 100);
+
   const totalFundingUsdc = fundingUpdates.reduce(
     (sum, update) => sum + toNumber(update.delta?.usdc),
     0
   );
 
-  return { trades: mapped, total: mapped.length, cursor: null, totalFundingUsdc };
+  return { trades, total: categoryFiltered.length, cursor: null, totalFundingUsdc };
 }

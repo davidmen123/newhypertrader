@@ -21,6 +21,29 @@ import {
 } from "../hyperliquid.js";
 import { getPnlSnapshots, getTradeReview, getTradeReviews, upsertPnlSnapshot, upsertTradeReview } from "../db.js";
 import { seriesIndicators } from "../indicators.js";
+import {
+  isDefaultHyperliquidAccount,
+  listHyperliquidAccounts,
+  maskHyperliquidAddress,
+  runWithHyperliquidAccount,
+} from "../accounts.js";
+
+// Every account-scoped procedure takes an optional accountId. Omitting it keeps
+// the default account, so the public home page needs no changes; /analytics sends
+// an id to switch. Only ids are accepted — addresses stay server-side.
+const accountInput = z.object({ accountId: z.string().max(32).optional() });
+
+/** Resolves the account for this call and runs the reads inside its scope. */
+function withAccount<T>(input: { accountId?: string } | undefined, fn: () => Promise<T>) {
+  try {
+    return runWithHyperliquidAccount(input?.accountId, fn);
+  } catch (error) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: error instanceof Error ? error.message : "Unknown Hyperliquid account",
+    });
+  }
+}
 
 const yahooUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
@@ -254,7 +277,18 @@ async function getMarketIndicators() {
 }
 
 export const hyperliquidRouter = router({
-  configStatus: publicProcedure.query(() => getHyperliquidConfigStatus()),
+  configStatus: publicProcedure
+    .input(accountInput.optional())
+    .query(({ input }) => withAccount(input, async () => getHyperliquidConfigStatus())),
+
+  // The switchable accounts, default first. Labels and masked addresses only.
+  accounts: publicProcedure.query(() =>
+    listHyperliquidAccounts().map((account) => ({
+      id: account.id,
+      label: account.label,
+      address: maskHyperliquidAddress(account.address),
+    }))
+  ),
 
   perpetualAssets: publicProcedure.query(() => getHyperliquidPerpetualAssets()),
 
@@ -317,55 +351,66 @@ export const hyperliquidRouter = router({
     return getMarketIndicators();
   }),
 
-  accountOverview: publicProcedure.query(async () => {
-    const [overview, cnyQuote] = await Promise.all([
-      getHyperliquidAccountOverview(),
-      fetchYahooQuote("CNY=X"),
-    ]);
-    const usdCnyRate = cnyQuote.current;
-    return {
-      ...overview,
-      usdCnyRate,
-      totalEquityCny: usdCnyRate ? overview.totalEquityUsdc * usdCnyRate : null,
-      totalPnlCny: usdCnyRate && overview.totalPnlUsdc != null ? overview.totalPnlUsdc * usdCnyRate : null,
-    };
-  }),
+  accountOverview: publicProcedure
+    .input(accountInput.optional())
+    .query(async ({ input }) =>
+      withAccount(input, async () => {
+        const [overview, cnyQuote] = await Promise.all([
+          getHyperliquidAccountOverview(),
+          fetchYahooQuote("CNY=X"),
+        ]);
+        const usdCnyRate = cnyQuote.current;
+        return {
+          ...overview,
+          usdCnyRate,
+          totalEquityCny: usdCnyRate ? overview.totalEquityUsdc * usdCnyRate : null,
+          totalPnlCny: usdCnyRate && overview.totalPnlUsdc != null ? overview.totalPnlUsdc * usdCnyRate : null,
+        };
+      })
+    ),
 
-  tradeMetrics: publicProcedure.query(async () => {
-    const account = await getHyperliquidAccountOverview();
-    return account.metrics;
-  }),
+  tradeMetrics: publicProcedure
+    .input(accountInput.optional())
+    .query(async ({ input }) =>
+      withAccount(input, async () => {
+        const account = await getHyperliquidAccountOverview();
+        return account.metrics;
+      })
+    ),
 
-  positions: publicProcedure.query(async () => {
-    return getHyperliquidPositions();
-  }),
+  positions: publicProcedure
+    .input(accountInput.optional())
+    .query(async ({ input }) => withAccount(input, () => getHyperliquidPositions())),
 
-  openOrders: publicProcedure.query(async () => {
-    return getHyperliquidOpenOrders();
-  }),
+  openOrders: publicProcedure
+    .input(accountInput.optional())
+    .query(async ({ input }) => withAccount(input, () => getHyperliquidOpenOrders())),
 
-  orderHistory: publicProcedure.query(async () => {
-    return getHyperliquidOrderHistory();
-  }),
+  orderHistory: publicProcedure
+    .input(accountInput.optional())
+    .query(async ({ input }) => withAccount(input, () => getHyperliquidOrderHistory())),
 
   tradeHistory: publicProcedure
     .input(
       z.object({
-        category: z.string().default("ALL"),
+        category: z.enum(["ALL", "PERP", "SPOT"]).default("ALL"),
         startDate: z.string().optional(),
         endDate: z.string().optional(),
         limit: z.number().min(1).max(1000).default(100),
+        accountId: z.string().max(32).optional(),
       })
     )
-    .query(async ({ input }) => {
-      const startTime = input.startDate
-        ? new Date(`${input.startDate}T00:00:00`).getTime()
-        : Date.now() - 30 * 24 * 60 * 60 * 1000;
-      const endTime = input.endDate
-        ? new Date(`${input.endDate}T23:59:59`).getTime()
-        : Date.now();
-      return getHyperliquidTradeHistory({ startTime, endTime, limit: input.limit });
-    }),
+    .query(async ({ input }) =>
+      withAccount(input, () => {
+        const startTime = input.startDate
+          ? new Date(`${input.startDate}T00:00:00`).getTime()
+          : Date.now() - 30 * 24 * 60 * 60 * 1000;
+        const endTime = input.endDate
+          ? new Date(`${input.endDate}T23:59:59`).getTime()
+          : Date.now();
+        return getHyperliquidTradeHistory({ startTime, endTime, limit: input.limit, category: input.category });
+      })
+    ),
 
   candles: publicProcedure
     .input(
@@ -450,29 +495,39 @@ export const hyperliquidRouter = router({
         startDate: z.string().optional(),
         endDate: z.string().optional(),
         limit: z.number().default(1000),
+        accountId: z.string().max(32).optional(),
       })
     )
-    .query(async ({ input }) => {
-      try {
-        const portfolioRows = await getHyperliquidPortfolioSnapshots({
-          startDate: input.startDate,
+    .query(async ({ input }) =>
+      withAccount(input, async () => {
+        try {
+          const portfolioRows = await getHyperliquidPortfolioSnapshots({
+            startDate: input.startDate,
+            endDate: input.endDate,
+            limit: input.limit,
+          });
+          if (portfolioRows.length > 0) return portfolioRows;
+        } catch (error) {
+          console.warn("[Hyperliquid] Failed to read portfolio history, falling back to local snapshots:", error);
+        }
+
+        // The local pnl_snapshots table is not account-scoped — it only ever
+        // recorded the default account, so other accounts must return empty
+        // rather than borrow someone else's equity curve.
+        if (!isDefaultHyperliquidAccount()) return [];
+
+        const rows = await getPnlSnapshots({
+          currency: "USDC",
+          startDate: input.startDate ?? "2026-03-09",
           endDate: input.endDate,
           limit: input.limit,
         });
-        if (portfolioRows.length > 0) return portfolioRows;
-      } catch (error) {
-        console.warn("[Hyperliquid] Failed to read portfolio history, falling back to local snapshots:", error);
-      }
+        return rows.reverse();
+      })
+    ),
 
-      const rows = await getPnlSnapshots({
-        currency: "USDC",
-        startDate: input.startDate ?? "2026-03-09",
-        endDate: input.endDate,
-        limit: input.limit,
-      });
-      return rows.reverse();
-    }),
-
+  // Writes to the pnl_snapshots table, which is keyed by (currency, date) with no
+  // account column, so this stays on the default account only.
   snapshotPnl: publicProcedure.mutation(async () => {
     const now = Date.now();
     const date = new Date(now + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);

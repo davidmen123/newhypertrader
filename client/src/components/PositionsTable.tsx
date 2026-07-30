@@ -48,11 +48,11 @@ function pnlColor(value: string | number | null | undefined) {
   return "text-muted-foreground";
 }
 
-export default function PositionsTable() {
+export default function PositionsTable({ accountId }: { accountId?: string } = {}) {
   const { tr, lang } = useLang();
   const t = (zh: string, en: string) => (lang === "zh" ? zh : en);
   const { data, isLoading, error, refetch, isFetching } = trpc.hyperliquid.positions.useQuery(
-    undefined,
+    { accountId },
     { refetchInterval: 15_000 }
   );
 

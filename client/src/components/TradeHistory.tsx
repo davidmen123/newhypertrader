@@ -4,7 +4,7 @@ import { useLang } from "@/contexts/LangContext";
 import { RefreshCw, Search, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-type Category = "ALL" | "PERP";
+type Category = "ALL" | "PERP" | "SPOT";
 
 type HyperliquidFill = {
   execId: string;
@@ -72,7 +72,7 @@ function closeMethodColor(method: string | null | undefined) {
 
 const PAGE_SIZE = 20;
 
-export default function TradeHistory() {
+export default function TradeHistory({ accountId }: { accountId?: string } = {}) {
   const { lang } = useLang();
   const t = (zh: string, en: string) => (lang === "zh" ? zh : en);
   const [category, setCategory] = useState<Category>("ALL");
@@ -87,6 +87,7 @@ export default function TradeHistory() {
       startDate: startDate || undefined,
       endDate: endDate || undefined,
       limit: 100,
+      accountId,
     },
     { refetchInterval: 120_000 }
   );
@@ -152,13 +153,13 @@ export default function TradeHistory() {
 
       <div className="flex flex-wrap gap-3 mb-5">
         <div className="flex gap-1">
-          {(["ALL", "PERP"] as Category[]).map((item) => (
+          {(["ALL", "PERP", "SPOT"] as Category[]).map((item) => (
             <button
               key={item}
               onClick={() => changeCategory(item)}
               className={`pill-tab ${category === item ? "active" : ""}`}
             >
-              {item === "ALL" ? t("全部", "All") : item}
+              {item === "ALL" ? t("全部", "All") : item === "PERP" ? t("合约", "Perp") : t("现货", "Spot")}
             </button>
           ))}
         </div>
