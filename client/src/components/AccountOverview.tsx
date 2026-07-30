@@ -401,7 +401,7 @@ export default function AccountOverview({ accountId }: { accountId?: string } = 
                   {isBtc || isCny ? `≈ $${fmt(data.totalEquityUsdc, 2)} USDC` : `≈ ${fmt(data.totalEquityBtc, 4)} BTC`}
                 </span>
                 <span className="text-muted-foreground/55" style={{ fontSize: "0.66rem" }}>
-                  {t("初始资金", "Initial")} {data.initialEquityUsdc != null ? `${fmt(data.initialEquityUsdc, 2)} USDC` : "--"}
+                  {t("净入金", "Net Deposits")} {data.netDepositsUsdc != null ? `${fmt(data.netDepositsUsdc, 2)} USDC` : "--"}
                 </span>
                 {data.runningDays != null && (
                   <span className="text-muted-foreground/55" style={{ fontSize: "0.66rem" }}>
@@ -422,8 +422,8 @@ export default function AccountOverview({ accountId }: { accountId?: string } = 
                 sub={data.totalPnlPct != null ? `${data.totalPnlPct >= 0 ? "+" : ""}${data.totalPnlPct.toFixed(2)}%` : undefined}
                 tone={pnlTone}
                 tooltip={t(
-                  "总盈亏 = 当前账户净值 − 初始资金，包含未实现盈亏；百分比按初始资金计算。",
-                  "Total PnL = current account equity − initial capital, including unrealized PnL; the percentage is based on initial capital."
+                  "金额取自 Hyperliquid 的累计盈亏，含未实现盈亏，充值与提现不计入。百分比为时间加权收益率：按每段区间的盈亏除以该段期初净值后连乘，中途加减本金只改变后续区间的基数。",
+                  "The amount is Hyperliquid's own cumulative PnL, including unrealized PnL, with deposits and withdrawals excluded. The percentage is a time-weighted return: each period's PnL over the equity at its start, chain-linked, so adding or removing capital only changes the base for later periods."
                 )}
               />
               <MetricTile

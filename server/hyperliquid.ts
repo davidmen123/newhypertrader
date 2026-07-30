@@ -569,35 +569,65 @@ export async function getHyperliquidLedgerUpdates(startTime = 0, endTime = Date.
   });
 }
 
+// Overview is polled every 30s, so each ledger type is reported once per process
+// instead of on every request.
+const reportedLedgerTypes = new Set<string>();
+
+function reportUncountedLedgerTypes(types: Set<string>) {
+  const fresh = Array.from(types).filter((type) => !reportedLedgerTypes.has(type));
+  if (fresh.length === 0) return;
+  for (const type of fresh) reportedLedgerTypes.add(type);
+  console.warn(
+    "[Hyperliquid] ledger types seen but not counted as external capital:",
+    JSON.stringify(fresh)
+  );
+}
+
 function getLedgerUsdcAmount(update: HyperliquidLedgerUpdate) {
   const delta = update.delta ?? {};
   return toNumber(delta.usdc ?? delta.amount ?? delta.ntl ?? delta.value);
 }
 
-export async function getHyperliquidInitialCapitalUsdc() {
-  // The manual override is a figure for the default account only; other accounts
-  // must derive their own initial capital from their own ledger, otherwise their
-  // return figures would be measured against the wrong denominator.
+/**
+ * Capital put into the account from outside it: deposits minus withdrawals.
+ *
+ * This is a reference line only — total PnL and the return figures come from
+ * Hyperliquid's own PnL series, so a ledger type classified imperfectly here can
+ * no longer distort them. Unknown types are logged rather than guessed at, so a
+ * ledger entry the site has not seen before shows up in the server log instead of
+ * silently moving the number.
+ */
+export async function getHyperliquidNetDepositsUsdc() {
+  // The manual override describes the default account only; other accounts derive
+  // their own figure from their own ledger.
   const manual = isDefaultHyperliquidAccount() ? toNumber(MANUAL_INITIAL_CAPITAL_USDC) : 0;
   if (manual > 0) return manual;
 
   const updates = await getHyperliquidLedgerUpdates();
-  let deposits = 0;
-  let withdrawals = 0;
+  let netDeposits = 0;
+  let counted = 0;
+  const unknownTypes = new Set<string>();
 
   for (const update of updates) {
     const type = String(update.delta?.type ?? "").toLowerCase();
-    const amount = getLedgerUsdcAmount(update);
+    const amount = Math.abs(getLedgerUsdcAmount(update));
     if (amount <= 0) continue;
     if (type.includes("deposit")) {
-      deposits += amount;
+      netDeposits += amount;
+      counted += 1;
     } else if (type.includes("withdraw")) {
-      withdrawals += amount;
+      netDeposits -= amount;
+      counted += 1;
+    } else if (type) {
+      unknownTypes.add(type);
     }
   }
 
-  const netDeposits = deposits - withdrawals;
-  return netDeposits > 0 ? netDeposits : null;
+  reportUncountedLedgerTypes(unknownTypes);
+
+  // A withdrawal-heavy account can legitimately land at or below zero; returning
+  // the real figure beats collapsing the whole panel to "--".
+  return counted > 0 ? netDeposits : null;
 }
 
 export async function getHyperliquidMids() {
@@ -708,6 +738,80 @@ export function getHyperliquidPortfolioEquitySummary(portfolio: HyperliquidPortf
   };
 }
 
+export interface HyperliquidPortfolioPoint {
+  time: number;
+  equity: number;
+  /** Hyperliquid's own cumulative PnL since the window start. */
+  pnl: number;
+}
+
+/**
+ * Pairs the account value and PnL series of the all-time window into one list.
+ *
+ * Hyperliquid returns both on the same sampling grid; when a PnL sample is
+ * missing the previous value carries forward, which reads as "no PnL change at
+ * this point" rather than inventing one.
+ */
+export function getHyperliquidPortfolioSeries(portfolio: HyperliquidPortfolio): HyperliquidPortfolioPoint[] {
+  const windowData =
+    findPortfolioWindow(portfolio, "allTime") ??
+    portfolio.find(([, data]) => data.accountValueHistory?.length)?.[1];
+  const equityHistory = windowData?.accountValueHistory ?? [];
+  const pnlHistory = windowData?.pnlHistory ?? [];
+  if (equityHistory.length === 0) return [];
+
+  const pnlByTime = new Map(pnlHistory.map(([time, value]) => [time, toNumber(value)]));
+  let lastPnl = pnlHistory.length > 0 ? toNumber(pnlHistory[0][1]) : 0;
+  return equityHistory.map(([time, equity]) => {
+    const pnl = pnlByTime.get(time);
+    if (pnl != null) lastPnl = pnl;
+    return { time, equity: toNumber(equity), pnl: lastPnl };
+  });
+}
+
+/**
+ * Hyperliquid's own cumulative PnL for the account, in USDC.
+ *
+ * Preferred over "current equity − net deposits": Hyperliquid derives it from the
+ * account's trade and funding ledger, so deposits, withdrawals and transfers can
+ * never leak into it. The two agree while the ledger is simple; this one stays
+ * right when it isn't.
+ */
+export function getHyperliquidCumulativePnlUsdc(portfolio: HyperliquidPortfolio) {
+  const series = getHyperliquidPortfolioSeries(portfolio);
+  const latest = series.at(-1);
+  return latest ? latest.pnl : null;
+}
+
+/**
+ * Time-weighted return over the whole account history, in percent.
+ *
+ * Each interval contributes Hyperliquid's PnL change divided by the equity at the
+ * start of that interval, and the intervals are chain-linked. Because the
+ * numerator is PnL rather than equity change, a deposit or withdrawal only moves
+ * the base for later intervals — it never registers as a gain or a loss the way
+ * "current equity ÷ net deposits" does.
+ */
+export function getHyperliquidTimeWeightedReturnPct(portfolio: HyperliquidPortfolio) {
+  const series = getHyperliquidPortfolioSeries(portfolio);
+  if (series.length < 2) return null;
+
+  let growth = 1;
+  let counted = 0;
+  for (let i = 1; i < series.length; i += 1) {
+    const previous = series[i - 1];
+    // Samples taken before the account was funded have no base to return on.
+    if (previous.equity <= 0) continue;
+    const intervalReturn = (series[i].pnl - previous.pnl) / previous.equity;
+    if (!Number.isFinite(intervalReturn)) continue;
+    growth *= 1 + intervalReturn;
+    counted += 1;
+    if (growth <= 0) return -100;
+  }
+
+  return counted > 0 ? (growth - 1) * 100 : null;
+}
+
 export function getHyperliquidMaxDrawdown(portfolio: HyperliquidPortfolio) {
   const windowData =
     findPortfolioWindow(portfolio, "allTime") ??
@@ -746,11 +850,13 @@ function getUtc8DateKey(time: number) {
   return new Date(time + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
-function calculateAnnualizedReturnPct(initialEquity: number | null | undefined, latestEquity: number | null | undefined, runningDays: number | null | undefined) {
-  if (!initialEquity || !latestEquity || !runningDays || initialEquity <= 0 || latestEquity <= 0 || runningDays <= 0) {
-    return null;
-  }
-  return (Math.pow(latestEquity / initialEquity, 365 / runningDays) - 1) * 100;
+/** Compounds a total return over `runningDays` up to a yearly rate. */
+function annualizeReturnPct(totalReturnPct: number | null | undefined, runningDays: number | null | undefined) {
+  if (totalReturnPct == null || !Number.isFinite(totalReturnPct)) return null;
+  if (!runningDays || runningDays <= 0) return null;
+  const growth = 1 + totalReturnPct / 100;
+  if (growth <= 0) return -100;
+  return (Math.pow(growth, 365 / runningDays) - 1) * 100;
 }
 
 function calculateCalmarRatio(annualizedReturnPct: number | null | undefined, maxDrawdownPct: number | null | undefined) {
@@ -773,12 +879,9 @@ function calculateRunningDaysFromFirstFill(fills: HyperliquidFill[]) {
 }
 
 export function getHyperliquidPerformanceStats(portfolio: HyperliquidPortfolio) {
-  const windowData =
-    findPortfolioWindow(portfolio, "allTime") ??
-    portfolio.find(([, data]) => data.accountValueHistory?.length)?.[1];
-  const history = windowData?.accountValueHistory ?? [];
+  const series = getHyperliquidPortfolioSeries(portfolio);
 
-  if (history.length < 2) {
+  if (series.length < 2) {
     return {
       sharpeRatio: null,
       annualizedReturnPct: null,
@@ -786,26 +889,26 @@ export function getHyperliquidPerformanceStats(portfolio: HyperliquidPortfolio) 
     };
   }
 
-  const firstTime = history[0][0];
-  const firstEquity = toNumber(history[0][1]);
-  const latestEquity = toNumber(history[history.length - 1][1]);
-  const runningDays = Math.max(1, Math.ceil((Date.now() - firstTime) / (24 * 60 * 60 * 1000)));
-  const annualizedReturnPct = calculateAnnualizedReturnPct(firstEquity, latestEquity, runningDays);
+  const runningDays = Math.max(1, Math.ceil((Date.now() - series[0].time) / (24 * 60 * 60 * 1000)));
+  const annualizedReturnPct = annualizeReturnPct(getHyperliquidTimeWeightedReturnPct(portfolio), runningDays);
 
-  const dailyClose = new Map<string, number>();
-  for (const [time, equity] of history) {
-    dailyClose.set(getUtc8DateKey(time), toNumber(equity));
+  // Daily returns drive volatility, so they are PnL over the prior day's equity
+  // rather than the change in equity — otherwise the day of a deposit reads as a
+  // huge "return" and inflates the volatility that Sharpe divides by.
+  const dailyClose = new Map<string, HyperliquidPortfolioPoint>();
+  for (const point of series) {
+    dailyClose.set(getUtc8DateKey(point.time), point);
   }
 
-  const dailyEquities = Array.from(dailyClose.entries())
+  const dailyPoints = Array.from(dailyClose.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([, equity]) => equity)
-    .filter((equity) => Number.isFinite(equity) && equity > 0);
+    .map(([, point]) => point);
   const dailyReturns: number[] = [];
-  for (let i = 1; i < dailyEquities.length; i += 1) {
-    const prev = dailyEquities[i - 1];
-    const current = dailyEquities[i];
-    if (prev > 0) dailyReturns.push((current - prev) / prev);
+  for (let i = 1; i < dailyPoints.length; i += 1) {
+    const previous = dailyPoints[i - 1];
+    if (previous.equity <= 0) continue;
+    const dailyReturn = (dailyPoints[i].pnl - previous.pnl) / previous.equity;
+    if (Number.isFinite(dailyReturn)) dailyReturns.push(dailyReturn);
   }
 
   if (dailyReturns.length < 2) {
@@ -1116,7 +1219,7 @@ export async function getHyperliquidAccountOverview() {
     btcPrice,
     allTimeFills,
     portfolio,
-    initialCapitalUsdc,
+    ledgerNetDepositsUsdc,
   ] = await Promise.all([
     getHyperliquidPerpStates(),
     getHyperliquidSpotState().catch(() => ({ balances: [] })),
@@ -1124,7 +1227,7 @@ export async function getHyperliquidAccountOverview() {
     getHyperliquidBtcPrice().catch(() => 0),
     getHyperliquidFills(0).catch(() => []),
     getHyperliquidPortfolio().catch(() => null),
-    getHyperliquidInitialCapitalUsdc().catch(() => null),
+    getHyperliquidNetDepositsUsdc().catch(() => null),
   ]);
   const portfolioEquity = portfolio
     ? getHyperliquidPortfolioEquitySummary(portfolio)
@@ -1165,13 +1268,23 @@ export async function getHyperliquidAccountOverview() {
     (sum, item) => sum + toNumber(item.position.unrealizedPnl),
     0
   );
-  const initialEquityUsdc = initialCapitalUsdc ?? portfolioEquity.initial;
-  const totalPnlUsdc = initialEquityUsdc && initialEquityUsdc > 0
-    ? totalEquityUsdc - initialEquityUsdc
+  const netDepositsUsdc = ledgerNetDepositsUsdc ?? portfolioEquity.initial;
+  // Total PnL comes from Hyperliquid's own cumulative figure so the site always
+  // agrees with what the exchange shows. "Equity − net deposits" is only a
+  // fallback for when the portfolio endpoint is unavailable; it drifts whenever
+  // the ledger contains anything beyond plain deposits and withdrawals.
+  const cumulativePnlUsdc = portfolio ? getHyperliquidCumulativePnlUsdc(portfolio) : null;
+  const fallbackPnlUsdc = netDepositsUsdc && netDepositsUsdc > 0
+    ? totalEquityUsdc - netDepositsUsdc
     : null;
-  const totalPnlPct = totalPnlUsdc != null && initialEquityUsdc && initialEquityUsdc > 0
-    ? (totalPnlUsdc / initialEquityUsdc) * 100
+  const totalPnlUsdc = cumulativePnlUsdc ?? fallbackPnlUsdc;
+  // Time-weighted, so mid-way deposits and withdrawals change the base for later
+  // periods without counting as performance.
+  const timeWeightedReturnPct = portfolio ? getHyperliquidTimeWeightedReturnPct(portfolio) : null;
+  const fallbackPnlPct = fallbackPnlUsdc != null && netDepositsUsdc && netDepositsUsdc > 0
+    ? (fallbackPnlUsdc / netDepositsUsdc) * 100
     : null;
+  const totalPnlPct = timeWeightedReturnPct ?? fallbackPnlPct;
   const totalEquityBtc = btcPrice > 0 ? totalEquityUsdc / btcPrice : 0;
   // Trade metrics run on the full fill history so their scope matches running
   // days and the metric tooltips; a trailing window would silently drop trades
@@ -1179,12 +1292,8 @@ export async function getHyperliquidAccountOverview() {
   const tradeMetrics = calculateRoundTripTradeMetrics(allTimeFills);
   const tradeRunningDays = calculateRunningDaysFromFirstFill(allTimeFills);
   const runningDays = tradeRunningDays ?? performance.runningDays;
-  const accountAnnualizedReturnPct = calculateAnnualizedReturnPct(
-    initialEquityUsdc,
-    totalEquityUsdc,
-    runningDays
-  );
-  const annualizedReturnPct = accountAnnualizedReturnPct ?? performance.annualizedReturnPct;
+  const annualizedReturnPct =
+    annualizeReturnPct(timeWeightedReturnPct, runningDays) ?? performance.annualizedReturnPct;
   const calmarRatio = calculateCalmarRatio(annualizedReturnPct, drawdown.maxDrawdownPct);
 
   return {
@@ -1196,7 +1305,7 @@ export async function getHyperliquidAccountOverview() {
     spotUsdcBalance,
     spotBalances: spotState.balances ?? [],
     totalEquityUsdc,
-    initialEquityUsdc,
+    netDepositsUsdc,
     totalEquityBtc,
     btcBalance: totalEquityBtc,
     btcEquity: totalEquityBtc,
