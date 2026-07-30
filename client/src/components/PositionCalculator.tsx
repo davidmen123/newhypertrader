@@ -444,23 +444,32 @@ export default function PositionCalculator() {
                       {filteredLiquidationAssets.length === 0 ? (
                         <div className="py-6 text-center text-sm text-muted-foreground">{zh ? "未找到标的" : "No asset found"}</div>
                       ) : (
-                        <select
-                          size={10}
-                          value={liquidationAsset}
-                          onChange={(event) => {
-                            handleLiquidationAssetChange(event.target.value);
-                            setAssetPickerOpen(false);
-                            setAssetSearch("");
-                          }}
+                        <div
+                          role="listbox"
                           aria-label={zh ? "选择清算估算标的" : "Select liquidation estimate asset"}
-                          className="h-[300px] w-full cursor-pointer overflow-y-auto rounded-sm border-0 bg-background px-2 py-1 text-sm text-foreground outline-none"
+                          className="h-[300px] w-full overflow-y-auto rounded-sm bg-background py-1"
+                          onWheel={(event) => {
+                            event.currentTarget.scrollTop += event.deltaY;
+                            event.preventDefault();
+                          }}
                         >
                           {filteredLiquidationAssets.map((asset) => (
-                            <option key={asset.value} value={asset.value} className="cursor-pointer rounded-sm px-2 py-2">
+                            <button
+                              key={asset.value}
+                              type="button"
+                              role="option"
+                              aria-selected={liquidationAsset === asset.value}
+                              onClick={() => {
+                                handleLiquidationAssetChange(asset.value);
+                                setAssetPickerOpen(false);
+                                setAssetSearch("");
+                              }}
+                              className={`flex w-full items-center px-2 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground ${liquidationAsset === asset.value ? "bg-muted" : ""}`}
+                            >
                               {asset.label}
-                            </option>
+                            </button>
                           ))}
-                        </select>
+                        </div>
                       )}
                     </div>
                   </PopoverContent>
