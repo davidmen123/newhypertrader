@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Calculator as CalculatorIcon, Check, ChevronsUpDown, Info, ShieldCheck } from "lucide-react";
+import { ArrowRight, Calculator as CalculatorIcon, Check, ChevronsUpDown, Info, Search, ShieldCheck } from "lucide-react";
 import { useLang } from "@/contexts/LangContext";
 import { trpc } from "@/lib/trpc";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { calculatePosition } from "@/lib/position-calculator";
 import {
@@ -69,6 +68,7 @@ export default function PositionCalculator() {
   const [calculatorMode, setCalculatorMode] = useState<CalculatorMode>("position");
   const [liquidationAsset, setLiquidationAsset] = useState("BTC-PERP");
   const [assetPickerOpen, setAssetPickerOpen] = useState(false);
+  const [assetSearch, setAssetSearch] = useState("");
   const [liquidationDirection, setLiquidationDirection] = useState<"long" | "short">("long");
   const [liquidationEntryPrice, setLiquidationEntryPrice] = useState("");
   const [liquidationMargin, setLiquidationMargin] = useState("");
@@ -81,6 +81,10 @@ export default function PositionCalculator() {
 
   const liquidationAssets: readonly LiquidationAssetOption[] = hyperliquidAssets?.length ? hyperliquidAssets : LIQUIDATION_ASSETS;
   const selectedLiquidationAsset = liquidationAssets.find((asset) => asset.value === liquidationAsset) ?? liquidationAssets[0];
+  const filteredLiquidationAssets = liquidationAssets.filter((asset) => {
+    const query = assetSearch.trim().toLowerCase();
+    return !query || asset.label.toLowerCase().includes(query);
+  });
 
   const handleLiquidationAssetChange = (value: string) => {
     const asset = liquidationAssets.find((option) => option.value === value) ?? liquidationAssets[0];
@@ -405,7 +409,13 @@ export default function PositionCalculator() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="liquidation-asset">{zh ? "标的" : "Asset"}</Label>
-                <Popover open={assetPickerOpen} onOpenChange={setAssetPickerOpen}>
+                <Popover
+                  open={assetPickerOpen}
+                  onOpenChange={(open) => {
+                    setAssetPickerOpen(open);
+                    if (!open) setAssetSearch("");
+                  }}
+                >
                   <PopoverTrigger asChild>
                     <button
                       id="liquidation-asset"
@@ -419,29 +429,38 @@ export default function PositionCalculator() {
                     </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-                    <Command>
-                      <CommandInput placeholder={zh ? "搜索标的…" : "Search assets…"} />
-                      <div className="h-[300px] max-h-[300px] overflow-y-auto overscroll-contain" style={{ height: 300, maxHeight: 300, overflowY: "auto" }}>
-                        <CommandList className="max-h-none overflow-visible" style={{ height: "auto", maxHeight: "none", overflowY: "visible" }}>
-                          <CommandEmpty>{zh ? "未找到标的" : "No asset found"}</CommandEmpty>
-                          <CommandGroup heading={zh ? "Hyperliquid 永续合约" : "Hyperliquid perpetuals"}>
-                            {liquidationAssets.map((asset) => (
-                              <CommandItem
-                                key={asset.value}
-                                value={asset.label}
-                                onSelect={() => {
-                                  handleLiquidationAssetChange(asset.value);
-                                  setAssetPickerOpen(false);
-                                }}
-                              >
-                                <Check className={`h-4 w-4 ${liquidationAsset === asset.value ? "opacity-100" : "opacity-0"}`} aria-hidden="true" />
-                                <span>{asset.label}</span>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </div>
-                    </Command>
+                    <div className="flex h-11 items-center gap-2 border-b border-border px-3">
+                      <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      <input
+                        value={assetSearch}
+                        onChange={(event) => setAssetSearch(event.target.value)}
+                        placeholder={zh ? "搜索标的…" : "Search assets…"}
+                        className="h-full w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="h-[300px] max-h-[300px] overflow-y-scroll overscroll-contain p-1" style={{ height: 300, maxHeight: 300, overflowY: "scroll" }}>
+                      <div className="px-2 py-1.5 text-xs text-muted-foreground">{zh ? "Hyperliquid 永续合约" : "Hyperliquid perpetuals"}</div>
+                      {filteredLiquidationAssets.length === 0 ? (
+                        <div className="py-6 text-center text-sm text-muted-foreground">{zh ? "未找到标的" : "No asset found"}</div>
+                      ) : (
+                        filteredLiquidationAssets.map((asset) => (
+                          <button
+                            key={asset.value}
+                            type="button"
+                            onClick={() => {
+                              handleLiquidationAssetChange(asset.value);
+                              setAssetPickerOpen(false);
+                              setAssetSearch("");
+                            }}
+                            className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                          >
+                            <Check className={`h-4 w-4 ${liquidationAsset === asset.value ? "opacity-100" : "opacity-0"}`} aria-hidden="true" />
+                            <span>{asset.label}</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
                   </PopoverContent>
                 </Popover>
                 <p className="text-[0.68rem] text-muted-foreground">
