@@ -441,7 +441,9 @@ function SeriesToggle({
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function PnlChart() {
+// accountId selects which configured Hyperliquid account to chart. Left undefined
+// (the home page) it charts the default account.
+export default function PnlChart({ accountId }: { accountId?: string } = {}) {
   const { lang } = useLang();
   const { theme } = useTheme();
   type TimeRange = "7D" | "30D" | "90D" | "MAX";
@@ -462,26 +464,44 @@ export default function PnlChart() {
   const [hoveredTradePreview, setHoveredTradePreview] = useState<{ marker: TradeMarker; x: number; y: number } | null>(null);
   const hoverPreviewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Account metadata for the inception date below. On the home page there is no
+  // accountId and the constant applies, so this stays idle; elsewhere it shares a
+  // cache entry with the other accountOverview queries on the page.
+  const { data: accountMeta } = trpc.hyperliquid.accountOverview.useQuery(
+    { accountId },
+    { enabled: accountId != null }
+  );
+
+  // The default account charts from the site's own start date. Any other account
+  // has a history that predates it, so it charts from the day capital first
+  // reached that account instead of showing a long empty stretch before it.
+  const inceptionDate = useMemo(() => {
+    if (accountId == null || accountMeta?.isDefaultAccount !== false) return PNL_START_DATE;
+    return accountMeta.fundedSinceMs != null
+      ? formatUtc8Date(new Date(accountMeta.fundedSinceMs))
+      : PNL_START_DATE;
+  }, [accountId, accountMeta?.isDefaultAccount, accountMeta?.fundedSinceMs]);
+
   // Compute startDate from timeRange
   // 7D  = past 7 calendar days
   // 30D = past 30 calendar days
   // 90D = past 90 calendar days
   // MAX = all available PnL data, capped by the account curve start date.
   const startDate = useMemo(() => {
-    if (timeRange == null || timeRange === "MAX") return PNL_START_DATE;
+    if (timeRange == null || timeRange === "MAX") return inceptionDate;
     const now = new Date();
     const days = timeRange === "7D" ? 7 : timeRange === "30D" ? 30 : 90;
     const d = new Date(now);
     d.setDate(d.getDate() - days);
     const rangeStart = formatUtc8Date(d);
-    return rangeStart > PNL_START_DATE ? rangeStart : PNL_START_DATE;
-  }, [timeRange]);
+    return rangeStart > inceptionDate ? rangeStart : inceptionDate;
+  }, [timeRange, inceptionDate]);
 
   // Generous limit — actual filtering is done server-side by startDate
   const queryLimit = 1000;
 
   const { data, isLoading, error, refetch, isFetching } = trpc.hyperliquid.pnlHistory.useQuery(
-    { startDate, limit: queryLimit },
+    { startDate, limit: queryLimit, accountId },
     { refetchInterval: 60_000 }
   );
 
@@ -510,7 +530,7 @@ export default function PnlChart() {
     setShowReviewDetail(true);
   };
   const { data: tradeHistory } = trpc.hyperliquid.tradeHistory.useQuery(
-    { startDate, limit: 100 },
+    { startDate, limit: 100, accountId },
     { refetchInterval: 120_000 }
   );
   const trades = (tradeHistory?.trades ?? []) as TradeFill[];
@@ -546,11 +566,11 @@ export default function PnlChart() {
     { enabled: selectedTrade != null }
   );
   const { data: accountOverview } = trpc.hyperliquid.accountOverview.useQuery(
-    undefined,
+    { accountId },
     { enabled: selectedTrade != null && !selectedTrade.trade.closeMethod, refetchInterval: 60_000 }
   );
   const { data: openOrders } = trpc.hyperliquid.openOrders.useQuery(
-    undefined,
+    { accountId },
     { enabled: selectedTrade != null && !selectedTrade.trade.closeMethod, refetchInterval: 10_000 }
   );
   const visibleReview = review?.status === "published" ? review : null;
