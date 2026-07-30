@@ -928,13 +928,15 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
         <div className="w-full min-w-0 flex-1">
           {snapshots.length > 0 && (
             <div
-              className="relative w-full min-w-0 h-[360px] sm:h-[430px] -mx-1 sm:-mx-2"
-          style={{
-            filter: "drop-shadow(0 18px 30px rgb(0 0 0 / 22%))",
-          }}
+              className={`relative min-w-0 h-[360px] sm:h-[430px] ${
+                reviewMode ? "w-[calc(100%+2rem)] -mx-4 sm:w-full sm:mx-0" : "w-full -mx-1 sm:-mx-2"
+              }`}
+              style={{
+                filter: "drop-shadow(0 18px 30px rgb(0 0 0 / 22%))",
+              }}
             >
-              <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={reviewMode ? reviewChartData : chartData} margin={{ top: 14, right: isMobileViewport ? 40 : 14, left: 8, bottom: 10 }}>
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+            <ComposedChart data={reviewMode ? reviewChartData : chartData} margin={{ top: 14, right: isMobileViewport ? 8 : 14, left: isMobileViewport ? 2 : 8, bottom: 10 }}>
               <defs>
                 <linearGradient id="accountPerformanceGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="oklch(68% 0.15 145)" stopOpacity={0.28} />
