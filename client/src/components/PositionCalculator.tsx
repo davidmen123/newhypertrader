@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Calculator as CalculatorIcon, Check, ChevronsUpDown, Info, Search, ShieldCheck } from "lucide-react";
+import { ArrowRight, Calculator as CalculatorIcon, ChevronsUpDown, Info, Search, ShieldCheck } from "lucide-react";
 import { useLang } from "@/contexts/LangContext";
 import { trpc } from "@/lib/trpc";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -439,26 +439,28 @@ export default function PositionCalculator() {
                         autoFocus
                       />
                     </div>
-                    <div className="h-[300px] max-h-[300px] overflow-y-scroll overscroll-contain p-1" style={{ height: 300, maxHeight: 300, overflowY: "scroll" }}>
+                    <div className="p-1">
                       <div className="px-2 py-1.5 text-xs text-muted-foreground">{zh ? "Hyperliquid 永续合约" : "Hyperliquid perpetuals"}</div>
                       {filteredLiquidationAssets.length === 0 ? (
                         <div className="py-6 text-center text-sm text-muted-foreground">{zh ? "未找到标的" : "No asset found"}</div>
                       ) : (
-                        filteredLiquidationAssets.map((asset) => (
-                          <button
-                            key={asset.value}
-                            type="button"
-                            onClick={() => {
-                              handleLiquidationAssetChange(asset.value);
-                              setAssetPickerOpen(false);
-                              setAssetSearch("");
-                            }}
-                            className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-                          >
-                            <Check className={`h-4 w-4 ${liquidationAsset === asset.value ? "opacity-100" : "opacity-0"}`} aria-hidden="true" />
-                            <span>{asset.label}</span>
-                          </button>
-                        ))
+                        <select
+                          size={10}
+                          value={liquidationAsset}
+                          onChange={(event) => {
+                            handleLiquidationAssetChange(event.target.value);
+                            setAssetPickerOpen(false);
+                            setAssetSearch("");
+                          }}
+                          aria-label={zh ? "选择清算估算标的" : "Select liquidation estimate asset"}
+                          className="h-[300px] w-full cursor-pointer overflow-y-auto rounded-sm border-0 bg-background px-2 py-1 text-sm text-foreground outline-none"
+                        >
+                          {filteredLiquidationAssets.map((asset) => (
+                            <option key={asset.value} value={asset.value} className="cursor-pointer rounded-sm px-2 py-2">
+                              {asset.label}
+                            </option>
+                          ))}
+                        </select>
                       )}
                     </div>
                   </PopoverContent>
