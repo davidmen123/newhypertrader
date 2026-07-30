@@ -232,14 +232,16 @@ export default function TradeHistory({ accountId }: { accountId?: string } = {})
             </span>
             <div className="num-display" style={{ fontSize: "0.78rem" }}>{fmt(totalFees, 2)}</div>
           </div>
-          <div>
-            <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.6rem" }}>
-              {t("累积资金费", "Net Funding")}
-            </span>
-            <div className="num-display" style={{ fontSize: "0.78rem", color: pnlColor(totalFunding) }}>
-              {signed(totalFunding, 2)}
+          {category !== "SPOT" && (
+            <div>
+              <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.6rem" }}>
+                {t("累积资金费", "Net Funding")}
+              </span>
+              <div className="num-display" style={{ fontSize: "0.78rem", color: pnlColor(totalFunding) }}>
+                {signed(totalFunding, 2)}
+              </div>
             </div>
-          </div>
+          )}
           <div>
             <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.6rem" }}>
               {t("已平仓盈亏", "Closed PnL")}
