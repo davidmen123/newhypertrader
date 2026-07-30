@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   classifyHyperliquidLedgerFlow,
+  trimLeadingUnfundedSamples,
   getHyperliquidCumulativePnlUsdc,
   getHyperliquidPerformanceStats,
   getHyperliquidPortfolioSeries,
@@ -125,6 +126,36 @@ describe("getHyperliquidTimeWeightedReturnPct", () => {
 
   it("returns null when there is only one sample", () => {
     expect(getHyperliquidTimeWeightedReturnPct(portfolio([[1, 100, 0]]))).toBeNull();
+  });
+});
+
+describe("trimLeadingUnfundedSamples", () => {
+  it("drops the zero-equity samples an account had before it was funded", () => {
+    const history: Array<[number, string]> = [[1, "0"], [2, "0"], [3, "1000"], [4, "1100"]];
+
+    expect(trimLeadingUnfundedSamples(history)).toEqual([[3, "1000"], [4, "1100"]]);
+  });
+
+  it("leaves a series that is funded from its first sample alone", () => {
+    const history: Array<[number, string]> = [[1, "1000"], [2, "0"], [3, "500"]];
+
+    expect(trimLeadingUnfundedSamples(history)).toEqual(history);
+  });
+
+  it("keeps a zero reached later, which is a wiped-out account rather than an empty one", () => {
+    const history: Array<[number, string]> = [[1, "0"], [2, "1000"], [3, "0"]];
+
+    expect(trimLeadingUnfundedSamples(history)).toEqual([[2, "1000"], [3, "0"]]);
+  });
+
+  it("returns an all-zero series untouched instead of emptying the chart", () => {
+    const history: Array<[number, string]> = [[1, "0"], [2, "0"]];
+
+    expect(trimLeadingUnfundedSamples(history)).toEqual(history);
+  });
+
+  it("handles an empty series", () => {
+    expect(trimLeadingUnfundedSamples([])).toEqual([]);
   });
 });
 

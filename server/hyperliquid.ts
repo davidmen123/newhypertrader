@@ -1146,6 +1146,21 @@ function nearestHistoryValue(history: Array<[number, string]>, time: number) {
   return best[1];
 }
 
+/**
+ * Drops the zero-equity samples at the front of an account value series.
+ *
+ * Hyperliquid samples an account from before it held anything, so a series can
+ * open with points worth nothing. They are not a flat start to the curve, they
+ * are an empty account: a chart measuring returns against its first sample would
+ * divide by zero and flatten the whole account line, and rebasing PnL onto that
+ * point anchors the curve to a moment with no capital behind it. A zero reached
+ * later — a wiped-out account — is real history and stays.
+ */
+export function trimLeadingUnfundedSamples(history: Array<[number, string]>) {
+  const fundedIndex = history.findIndex(([, equity]) => toNumber(equity) > 0);
+  return fundedIndex > 0 ? history.slice(fundedIndex) : history;
+}
+
 export async function getHyperliquidPortfolioSnapshots(params: {
   startDate?: string;
   endDate?: string;
@@ -1162,9 +1177,11 @@ export async function getHyperliquidPortfolioSnapshots(params: {
   const pnlHistory = windowData.pnlHistory ?? [];
   const accountValueHistory = windowData.accountValueHistory ?? [];
   const baseEquity = accountValueHistory.length > 0 ? toNumber(accountValueHistory[0][1]) : 0;
-  const filteredHistory = accountValueHistory
+  const rangeHistory = accountValueHistory
     .filter(([time]) => time >= startMs && time <= endMs)
     .slice(-(params.limit ?? 1000));
+
+  const filteredHistory = trimLeadingUnfundedSamples(rangeHistory);
 
   const firstTime = filteredHistory[0]?.[0] ?? startMs;
   const lastTime = filteredHistory[filteredHistory.length - 1]?.[0] ?? Math.min(endMs, Date.now());
