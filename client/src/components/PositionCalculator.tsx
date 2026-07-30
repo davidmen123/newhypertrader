@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Calculator as CalculatorIcon, ChevronsUpDown, Info, Search, ShieldCheck } from "lucide-react";
 import { useLang } from "@/contexts/LangContext";
 import { trpc } from "@/lib/trpc";
@@ -69,6 +69,7 @@ export default function PositionCalculator() {
   const [liquidationAsset, setLiquidationAsset] = useState("BTC-PERP");
   const [assetPickerOpen, setAssetPickerOpen] = useState(false);
   const [assetSearch, setAssetSearch] = useState("");
+  const assetTouchY = useRef<number | null>(null);
   const [liquidationDirection, setLiquidationDirection] = useState<"long" | "short">("long");
   const [liquidationEntryPrice, setLiquidationEntryPrice] = useState("");
   const [liquidationMargin, setLiquidationMargin] = useState("");
@@ -447,10 +448,24 @@ export default function PositionCalculator() {
                         <div
                           role="listbox"
                           aria-label={zh ? "选择清算估算标的" : "Select liquidation estimate asset"}
-                          className="h-[300px] w-full overflow-y-auto rounded-sm bg-background py-1"
+                          className="h-[300px] w-full overflow-y-auto overscroll-contain rounded-sm bg-background py-1"
+                          style={{ touchAction: "none", WebkitOverflowScrolling: "touch" }}
                           onWheel={(event) => {
                             event.currentTarget.scrollTop += event.deltaY;
                             event.preventDefault();
+                          }}
+                          onTouchStart={(event) => {
+                            assetTouchY.current = event.touches[0]?.clientY ?? null;
+                          }}
+                          onTouchMove={(event) => {
+                            const currentY = event.touches[0]?.clientY;
+                            if (currentY == null || assetTouchY.current == null) return;
+                            event.currentTarget.scrollTop += assetTouchY.current - currentY;
+                            assetTouchY.current = currentY;
+                            event.preventDefault();
+                          }}
+                          onTouchEnd={() => {
+                            assetTouchY.current = null;
                           }}
                         >
                           {filteredLiquidationAssets.map((asset) => (
