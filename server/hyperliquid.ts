@@ -305,10 +305,16 @@ export interface HyperliquidLedgerUpdate {
   delta?: {
     type?: string;
     usdc?: string;
+    /** USD value of a `send`, whose `amount` is denominated in the sent token. */
+    usdcValue?: string;
     amount?: string;
     ntl?: string;
     value?: string;
     token?: string;
+    /** Sender of a `send`. */
+    user?: string;
+    /** Recipient of a `send`. */
+    destination?: string;
     [key: string]: unknown;
   };
 }
@@ -585,17 +591,55 @@ function reportUncountedLedgerTypes(types: Set<string>) {
 
 function getLedgerUsdcAmount(update: HyperliquidLedgerUpdate) {
   const delta = update.delta ?? {};
-  return toNumber(delta.usdc ?? delta.amount ?? delta.ntl ?? delta.value);
+  // usdcValue before amount: a `send` reports `amount` in the token being sent,
+  // so a non-USDC send would otherwise be read as that many dollars.
+  return toNumber(delta.usdc ?? delta.usdcValue ?? delta.amount ?? delta.ntl ?? delta.value);
+}
+
+/** 1 = capital in, -1 = capital out, 0 = moves inside the account, null = unrecognised. */
+type LedgerFlowDirection = 1 | -1 | 0 | null;
+
+export function classifyHyperliquidLedgerFlow(
+  update: HyperliquidLedgerUpdate,
+  address: string
+): LedgerFlowDirection {
+  const delta = update.delta ?? {};
+  const self = address.trim().toLowerCase();
+  const isSelf = (value: unknown) => String(value ?? "").trim().toLowerCase() === self;
+
+  switch (delta.type) {
+    case "deposit":
+      return 1;
+    case "withdraw":
+      return -1;
+    // `send` covers both a transfer between two addresses and an address moving
+    // its own USDC between perp dexes. In the latter the sender and the recipient
+    // are the same address and nothing enters or leaves the account.
+    case "send":
+      if (isSelf(delta.user) && isSelf(delta.destination)) return 0;
+      if (isSelf(delta.destination)) return 1;
+      if (isSelf(delta.user)) return -1;
+      return 0;
+    // Spot ↔ perp within one account; the equity figure already spans both sides.
+    case "accountClassTransfer":
+      return 0;
+    default:
+      return null;
+  }
 }
 
 /**
- * Capital put into the account from outside it: deposits minus withdrawals.
+ * Capital put into the account from outside it, in USDC.
  *
- * This is a reference line only — total PnL and the return figures come from
- * Hyperliquid's own PnL series, so a ledger type classified imperfectly here can
- * no longer distort them. Unknown types are logged rather than guessed at, so a
- * ledger entry the site has not seen before shows up in the server log instead of
- * silently moving the number.
+ * Counts on-chain deposits and withdrawals plus transfers from or to a different
+ * address, and excludes the moves that only shuffle money inside the account
+ * (spot ↔ perp, and one address sending USDC to itself across perp dexes). A type
+ * that is not recognised is logged rather than guessed at, so a ledger entry the
+ * site has not seen before surfaces in the server log instead of silently shifting
+ * the figure.
+ *
+ * This is a reference line: total PnL and the return figures come from
+ * Hyperliquid's own PnL series and do not depend on it.
  */
 export async function getHyperliquidNetDepositsUsdc() {
   // The manual override describes the default account only; other accounts derive
@@ -603,24 +647,24 @@ export async function getHyperliquidNetDepositsUsdc() {
   const manual = isDefaultHyperliquidAccount() ? toNumber(MANUAL_INITIAL_CAPITAL_USDC) : 0;
   if (manual > 0) return manual;
 
+  const address = assertAddress();
   const updates = await getHyperliquidLedgerUpdates();
   let netDeposits = 0;
   let counted = 0;
   const unknownTypes = new Set<string>();
 
   for (const update of updates) {
-    const type = String(update.delta?.type ?? "").toLowerCase();
     const amount = Math.abs(getLedgerUsdcAmount(update));
     if (amount <= 0) continue;
-    if (type.includes("deposit")) {
-      netDeposits += amount;
-      counted += 1;
-    } else if (type.includes("withdraw")) {
-      netDeposits -= amount;
-      counted += 1;
-    } else if (type) {
-      unknownTypes.add(type);
+    const direction = classifyHyperliquidLedgerFlow(update, address);
+    if (direction == null) {
+      const type = String(update.delta?.type ?? "");
+      if (type) unknownTypes.add(type);
+      continue;
     }
+    if (direction === 0) continue;
+    netDeposits += direction * amount;
+    counted += 1;
   }
 
   reportUncountedLedgerTypes(unknownTypes);

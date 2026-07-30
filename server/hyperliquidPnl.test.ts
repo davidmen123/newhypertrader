@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  classifyHyperliquidLedgerFlow,
   getHyperliquidCumulativePnlUsdc,
   getHyperliquidPerformanceStats,
   getHyperliquidPortfolioSeries,
@@ -124,6 +125,70 @@ describe("getHyperliquidTimeWeightedReturnPct", () => {
 
   it("returns null when there is only one sample", () => {
     expect(getHyperliquidTimeWeightedReturnPct(portfolio([[1, 100, 0]]))).toBeNull();
+  });
+});
+
+describe("classifyHyperliquidLedgerFlow", () => {
+  // The shapes below are taken verbatim from a real account's ledger.
+  const address = "0x7a1a9907922dde40b03dfa59b864a78c0ec5a3e8";
+  const other = "0x6b9e773128f453f5c2c60935ee2de2cbc5390a24";
+
+  it("counts an on-chain deposit as capital in", () => {
+    expect(classifyHyperliquidLedgerFlow({ delta: { type: "deposit", usdc: "1000.56" } }, address)).toBe(1);
+  });
+
+  it("counts a withdrawal as capital out", () => {
+    expect(classifyHyperliquidLedgerFlow({ delta: { type: "withdraw", usdc: "500" } }, address)).toBe(-1);
+  });
+
+  it("counts a send from another address as capital in", () => {
+    const update = {
+      delta: { type: "send", user: other, destination: address, token: "USDC", amount: "336.77", usdcValue: "336.77" },
+    };
+
+    expect(classifyHyperliquidLedgerFlow(update, address)).toBe(1);
+  });
+
+  it("counts a send to another address as capital out", () => {
+    const update = {
+      delta: { type: "send", user: address, destination: other, token: "USDC", amount: "100", usdcValue: "100" },
+    };
+
+    expect(classifyHyperliquidLedgerFlow(update, address)).toBe(-1);
+  });
+
+  it("ignores an address sending USDC to itself across perp dexes", () => {
+    const update = {
+      delta: {
+        type: "send",
+        user: address,
+        destination: address,
+        sourceDex: "",
+        destinationDex: "xyz",
+        token: "USDC",
+        amount: "170.26",
+        usdcValue: "170.26",
+      },
+    };
+
+    expect(classifyHyperliquidLedgerFlow(update, address)).toBe(0);
+  });
+
+  it("ignores a spot ↔ perp transfer inside the account", () => {
+    const update = { delta: { type: "accountClassTransfer", usdc: "240.41", toPerp: false } };
+
+    expect(classifyHyperliquidLedgerFlow(update, address)).toBe(0);
+  });
+
+  it("matches the address regardless of case", () => {
+    const update = { delta: { type: "send", user: other, destination: address.toUpperCase(), usdcValue: "10" } };
+
+    expect(classifyHyperliquidLedgerFlow(update, address)).toBe(1);
+  });
+
+  it("reports an unrecognised type instead of guessing at it", () => {
+    expect(classifyHyperliquidLedgerFlow({ delta: { type: "vaultDeposit", usdc: "50" } }, address)).toBeNull();
+    expect(classifyHyperliquidLedgerFlow({ delta: {} }, address)).toBeNull();
   });
 });
 
