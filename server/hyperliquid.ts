@@ -265,9 +265,16 @@ export interface HyperliquidFill {
 interface HyperliquidSpotPair {
   name?: string;
   index?: number | string;
+  tokens?: Array<number | string>;
+}
+
+interface HyperliquidSpotToken {
+  name?: string;
+  index?: number | string;
 }
 
 interface HyperliquidSpotMeta {
+  tokens?: HyperliquidSpotToken[];
   universe?: HyperliquidSpotPair[];
 }
 
@@ -420,10 +427,25 @@ export async function getHyperliquidFills(startTime?: number, endTime?: number) 
 
 async function getHyperliquidSpotPairMap() {
   const meta = await callInfo<HyperliquidSpotMeta>({ type: "spotMeta" });
+  const tokenNames = new Map(
+    (meta.tokens ?? [])
+      .filter((token) => token.name && token.index != null)
+      .map((token) => [String(token.index), token.name as string])
+  );
   return new Map(
     (meta.universe ?? [])
-      .filter((pair) => pair.name && pair.index != null)
-      .map((pair) => [`@${pair.index}`, pair.name as string])
+      .filter((pair) => pair.index != null)
+      .map((pair) => {
+        const pairName = String(pair.name ?? "");
+        if (pairName && !/^@\d+$/.test(pairName)) {
+          return [`@${pair.index}`, pairName];
+        }
+        const [baseToken, quoteToken] = pair.tokens ?? [];
+        const baseName = tokenNames.get(String(baseToken));
+        const quoteName = tokenNames.get(String(quoteToken));
+        const resolvedName = baseName && quoteName ? `${baseName}/${quoteName}` : pairName;
+        return [`@${pair.index}`, resolvedName || `@${pair.index}`];
+      })
   );
 }
 
