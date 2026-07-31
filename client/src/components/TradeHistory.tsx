@@ -80,13 +80,15 @@ export default function TradeHistory({ accountId }: { accountId?: string } = {})
   const [endDate, setEndDate] = useState("");
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
+  const [loadAllHistory, setLoadAllHistory] = useState(false);
 
   const { data, isLoading, isFetching, refetch, error } = trpc.hyperliquid.tradeHistory.useQuery(
     {
       category,
       startDate: startDate || undefined,
       endDate: endDate || undefined,
-      limit: 10000,
+      limit: loadAllHistory ? 10000 : 100,
+      allHistory: loadAllHistory,
       accountId,
     },
     { refetchInterval: 120_000 }
@@ -213,6 +215,18 @@ export default function TradeHistory({ accountId }: { accountId?: string } = {})
             style={{ fontSize: "0.72rem", width: 140 }}
           />
         </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            setLoadAllHistory(true);
+            setPage(0);
+          }}
+          disabled={loadAllHistory || isFetching}
+          className="text-muted-foreground hover:text-foreground text-xs px-2 py-0.5 border border-border/30 rounded disabled:opacity-50"
+        >
+          {loadAllHistory ? t("已加载全部", "All loaded") : t("加载全部历史", "Load all history")}
+        </button>
       </div>
 
       {filtered.length > 0 && (

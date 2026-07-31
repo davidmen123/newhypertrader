@@ -419,17 +419,19 @@ export const hyperliquidRouter = router({
         startDate: z.string().optional(),
         endDate: z.string().optional(),
         limit: z.number().min(1).max(10000).default(10000),
+        allHistory: z.boolean().default(false),
         accountId: z.string().max(32).optional(),
       })
     )
     .query(async ({ ctx, input }) =>
       withAccount(ctx, input, () => {
-        const startTime = input.startDate
-          ? new Date(`${input.startDate}T00:00:00`).getTime()
-          : 0;
-        const endTime = input.endDate
-          ? new Date(`${input.endDate}T23:59:59`).getTime()
-          : Date.now();
+        const hasDateFilter = Boolean(input.startDate || input.endDate);
+        const startTime = hasDateFilter
+          ? (input.startDate ? new Date(`${input.startDate}T00:00:00`).getTime() : 0)
+          : input.allHistory ? 0 : undefined;
+        const endTime = hasDateFilter
+          ? (input.endDate ? new Date(`${input.endDate}T23:59:59`).getTime() : Date.now())
+          : input.allHistory ? Date.now() : undefined;
         return getHyperliquidTradeHistory({ startTime, endTime, limit: input.limit, category: input.category });
       })
     ),
