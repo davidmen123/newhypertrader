@@ -27,6 +27,25 @@ const requireUser = t.middleware(async opts => {
 
 export const protectedProcedure = t.procedure.use(requireUser);
 
+/**
+ * Back-office access, gated by the shared owner key rather than a user session.
+ *
+ * Everything the public site renders stays on publicProcedure; this covers the
+ * data and the writes behind /analytics. The message is deliberately the same
+ * whether the key is wrong or absent.
+ */
+export const ownerProcedure = t.procedure.use(
+  t.middleware(async opts => {
+    const { ctx, next } = opts;
+
+    if (!ctx.isAdmin) {
+      throw new TRPCError({ code: "UNAUTHORIZED", message: "需要管理口令" });
+    }
+
+    return next({ ctx });
+  }),
+);
+
 export const adminProcedure = t.procedure.use(
   t.middleware(async opts => {
     const { ctx, next } = opts;

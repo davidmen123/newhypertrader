@@ -1,11 +1,14 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema.js";
+import { isAdminRequest } from "./adminKey.js";
 import { sdk } from "./sdk.js";
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
   res: CreateExpressContextOptions["res"];
   user: User | null;
+  /** The request carries the owner key — see server/_core/adminKey.ts. */
+  isAdmin: boolean;
 };
 
 export async function createContext(
@@ -33,5 +36,6 @@ export async function createContext(
     req: opts.req,
     res: opts.res,
     user,
+    isAdmin: isAdminRequest(headers),
   };
 }

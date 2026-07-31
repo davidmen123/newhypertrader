@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { trpc } from "@/lib/trpc";
+import { writeAdminKey } from "@/lib/adminKey";
 import { ArrowLeft, Clock, Globe, Info, Laptop, MapPin, Monitor, RefreshCw, Smartphone } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import AccountOverview from "@/components/AccountOverview";
@@ -965,4 +966,144 @@ function AnalyticsDashboard() {
   );
 }
 
-export default AnalyticsDashboard;
+// ─── Owner gate ────────────────────────────────────────────────────────────
+// The page is a static file on a CDN, so nothing here can keep anyone out — the
+// server refuses the data without the key. This only decides what to render, and
+// stops the dashboard's queries from firing (and failing) before there is a key.
+function AdminGate({ children }: { children: ReactNode }) {
+  const [keyInput, setKeyInput] = useState("");
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const utils = trpc.useUtils();
+
+  const { data: status, isLoading, refetch } = trpc.auth.adminStatus.useQuery(undefined, {
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const { data: config } = trpc.auth.adminKeyConfigured.useQuery(undefined, {
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+
+  const signIn = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const key = keyInput.trim();
+    if (!key || submitting) return;
+    setMessage("");
+    setSubmitting(true);
+    writeAdminKey(key);
+    const result = await refetch();
+    setSubmitting(false);
+    if (result.data?.ok) {
+      setKeyInput("");
+      // Everything else on the page was fetched (or refused) without the key.
+      await utils.invalidate();
+      return;
+    }
+    writeAdminKey("");
+    setMessage("口令错误");
+  };
+
+  const signOut = async () => {
+    writeAdminKey("");
+    // Invalidating alone would refetch and fail while React Query keeps serving the
+    // last successful result, leaving the gate open. Reset drops that result so the
+    // form comes back.
+    await utils.auth.adminStatus.reset();
+    await utils.invalidate();
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--background)" }}>
+        <div className="text-muted-foreground text-sm animate-pulse">校验中…</div>
+      </div>
+    );
+  }
+
+  if (!status?.ok) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center px-4"
+        style={{ background: "var(--background)", color: "var(--foreground)" }}
+      >
+        <div className="glass-card w-full max-w-sm px-6 py-8">
+          <h2 className="text-xl font-light" style={{ fontFamily: "Cormorant Garamond, serif" }}>
+            后台
+          </h2>
+          <div className="mt-2" style={{ width: 40, height: 1, background: "rgb(215 187 114 / 62%)" }} />
+
+          {config && !config.configured ? (
+            <p className="text-muted-foreground/70 mt-5 leading-relaxed" style={{ fontSize: "0.72rem" }}>
+              服务端还没有设置管理口令。在部署环境变量里加上{" "}
+              <code className="num-display">ADMIN_KEY</code>，重新部署后再来。
+            </p>
+          ) : (
+            <form onSubmit={signIn} className="mt-5 space-y-3">
+              <input
+                type="password"
+                value={keyInput}
+                onChange={(event) => setKeyInput(event.target.value)}
+                placeholder="管理口令"
+                autoFocus
+                autoComplete="current-password"
+                className="w-full px-3 py-2 rounded-lg bg-transparent focus:outline-none"
+                style={{ border: "1px solid var(--panel-border)", color: "var(--foreground)", fontSize: "0.82rem" }}
+              />
+              <button
+                type="submit"
+                disabled={submitting || keyInput.trim() === ""}
+                className="w-full rounded-lg px-4 py-2 transition-colors disabled:opacity-40"
+                style={{
+                  fontSize: "0.75rem",
+                  background: "var(--surface-subtle)",
+                  border: "1px solid var(--panel-border)",
+                  color: "var(--foreground)",
+                }}
+              >
+                {submitting ? "校验中…" : "进入"}
+              </button>
+              {message && (
+                <p style={{ fontSize: "0.7rem", color: "oklch(62% 0.15 25)" }}>{message}</p>
+              )}
+            </form>
+          )}
+
+          <a
+            href="/"
+            className="mt-6 inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+            style={{ fontSize: "0.7rem" }}
+          >
+            <ArrowLeft size={12} />
+            返回主页
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {children}
+      <div className="flex justify-center pb-8" style={{ background: "var(--background)" }}>
+        <button
+          onClick={signOut}
+          className="text-muted-foreground/60 hover:text-foreground transition-colors"
+          style={{ fontSize: "0.66rem" }}
+        >
+          退出后台
+        </button>
+      </div>
+    </>
+  );
+}
+
+function AnalyticsPage() {
+  return (
+    <AdminGate>
+      <AnalyticsDashboard />
+    </AdminGate>
+  );
+}
+
+export default AnalyticsPage;

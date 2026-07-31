@@ -2,7 +2,8 @@ import { z } from "zod";
 import { COOKIE_NAME } from "../shared/const.js";
 import { getSessionCookieOptions } from "./_core/cookies.js";
 import { systemRouter } from "./_core/systemRouter.js";
-import { publicProcedure, router } from "./_core/trpc.js";
+import { ownerProcedure, publicProcedure, router } from "./_core/trpc.js";
+import { isAdminKeyConfigured } from "./_core/adminKey.js";
 import { deribitRouter } from "./routers/deribit.js";
 import { calendarRouter } from "./routers/calendar.js";
 import { bitgetRouter } from "./routers/bitget.js";
@@ -47,6 +48,13 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
+    // Lets the back office check a key before it starts rendering. Succeeding is
+    // the whole answer, so there is nothing to return.
+    adminStatus: ownerProcedure.query(() => ({ ok: true as const })),
+    // Tells the login form whether the deployment has a key set at all, so a
+    // missing ADMIN_KEY reads as "not configured" instead of "wrong password"
+    // forever. Deliberately says nothing about what the key is.
+    adminKeyConfigured: publicProcedure.query(() => ({ configured: isAdminKeyConfigured() })),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       const res = ctx.res as typeof ctx.res & {
@@ -152,7 +160,8 @@ export const appRouter = router({
     // One aggregate round trip for the whole dashboard: all stat slices run in
     // parallel server-side and come back in a single payload. The 5s/10s per-widget
     // polling of the old per-section endpoints is replaced by one 30s refetch.
-    overview: publicProcedure
+    // Owner-only: visitor rows carry approximate location and device details.
+    overview: ownerProcedure
       .input(
         z.object({
           startDate: z.string().optional(),

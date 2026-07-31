@@ -1,3 +1,4 @@
+import { adminKeyHeaders } from "@/lib/adminKey";
 import { trpc } from "@/lib/trpc";
 import { UNAUTHED_ERR_MSG } from '@shared/const';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -42,6 +43,9 @@ const trpcClient = trpc.createClient({
     httpBatchLink({
       url: "/api/trpc",
       transformer: superjson,
+      // Read on every request rather than captured once, so signing in or out
+      // takes effect without a reload.
+      headers: () => adminKeyHeaders(),
       fetch(input, init) {
         return globalThis.fetch(input, {
           ...(init ?? {}),
