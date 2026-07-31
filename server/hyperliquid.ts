@@ -421,12 +421,33 @@ export function getHyperliquidSpotAvailableUsdc(spotState: HyperliquidSpotCleari
 export async function getHyperliquidFills(startTime?: number, endTime?: number) {
   const user = assertAddress();
   if (startTime || endTime) {
-    return callInfo<HyperliquidFill[]>({
-      type: "userFillsByTime",
-      user,
-      startTime: startTime ?? 0,
-      endTime: endTime ?? Date.now(),
+    const finalTime = endTime ?? Date.now();
+    let cursor = startTime ?? 0;
+    const fills: HyperliquidFill[] = [];
+
+    // userFillsByTime returns at most 500 records/blocks per response. Advance
+    // the cursor so long histories are not silently truncated at the first page.
+    for (let page = 0; page < 25 && cursor <= finalTime; page += 1) {
+      const batch = await callInfo<HyperliquidFill[]>({
+        type: "userFillsByTime",
+        user,
+        startTime: cursor,
+        endTime: finalTime,
+      });
+      if (batch.length === 0) break;
+      fills.push(...batch);
+      if (batch.length < 500) break;
+      const latestTime = Math.max(...batch.map((fill) => fill.time));
+      if (!Number.isFinite(latestTime) || latestTime < cursor) break;
+      cursor = latestTime + 1;
+    }
+
+    const unique = new Map<string, HyperliquidFill>();
+    fills.forEach((fill) => {
+      const key = `${fill.hash ?? ""}-${fill.oid ?? ""}-${fill.time}-${fill.coin}-${fill.px}-${fill.sz}`;
+      unique.set(key, fill);
     });
+    return Array.from(unique.values());
   }
   return callInfo<HyperliquidFill[]>({ type: "userFills", user });
 }

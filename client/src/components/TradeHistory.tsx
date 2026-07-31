@@ -70,7 +70,7 @@ function closeMethodColor(method: string | null | undefined) {
   return "var(--text-soft)";
 }
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 export default function TradeHistory({ accountId }: { accountId?: string } = {}) {
   const { lang } = useLang();
@@ -86,7 +86,7 @@ export default function TradeHistory({ accountId }: { accountId?: string } = {})
       category,
       startDate: startDate || undefined,
       endDate: endDate || undefined,
-      limit: 100,
+      limit: 10000,
       accountId,
     },
     { refetchInterval: 120_000 }

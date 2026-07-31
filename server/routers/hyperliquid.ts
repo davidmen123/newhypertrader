@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { publicProcedure, router } from "../_core/trpc.js";
+import { ownerProcedure, publicProcedure, router } from "../_core/trpc.js";
 import {
   getHyperliquidAccountOverview,
   getHyperliquidBtcPrice,
@@ -22,6 +22,7 @@ import {
 import { getPnlSnapshots, getTradeReview, getTradeReviews, upsertPnlSnapshot, upsertTradeReview } from "../db.js";
 import { seriesIndicators } from "../indicators.js";
 import {
+  DEFAULT_HYPERLIQUID_ACCOUNT_ID,
   isDefaultHyperliquidAccount,
   listHyperliquidAccounts,
   maskHyperliquidAddress,
@@ -33,8 +34,25 @@ import {
 // an id to switch. Only ids are accepted — addresses stay server-side.
 const accountInput = z.object({ accountId: z.string().max(32).optional() });
 
-/** Resolves the account for this call and runs the reads inside its scope. */
-function withAccount<T>(input: { accountId?: string } | undefined, fn: () => Promise<T>) {
+function isDefaultAccountId(accountId: string | undefined) {
+  return accountId == null || accountId.trim().toLowerCase() === DEFAULT_HYPERLIQUID_ACCOUNT_ID;
+}
+
+/**
+ * Resolves the account for this call and runs the reads inside its scope.
+ *
+ * The default account is what the public site shows, so it stays open. Every
+ * other configured account is back-office data and needs the owner key — the
+ * check lives here because this wraps every account-scoped read.
+ */
+function withAccount<T>(
+  ctx: { isAdmin: boolean },
+  input: { accountId?: string } | undefined,
+  fn: () => Promise<T>
+) {
+  if (!isDefaultAccountId(input?.accountId) && !ctx.isAdmin) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "需要管理口令" });
+  }
   try {
     return runWithHyperliquidAccount(input?.accountId, fn);
   } catch (error) {
@@ -279,15 +297,19 @@ async function getMarketIndicators() {
 export const hyperliquidRouter = router({
   configStatus: publicProcedure
     .input(accountInput.optional())
-    .query(({ input }) => withAccount(input, async () => getHyperliquidConfigStatus())),
+    .query(({ ctx, input }) => withAccount(ctx, input, async () => getHyperliquidConfigStatus())),
 
   // The switchable accounts, default first. Labels and masked addresses only.
-  accounts: publicProcedure.query(() =>
-    listHyperliquidAccounts().map((account) => ({
-      id: account.id,
-      label: account.label,
-      address: maskHyperliquidAddress(account.address),
-    }))
+  // Without the owner key this lists just the default account, so the existence of
+  // the others is not public either.
+  accounts: publicProcedure.query(({ ctx }) =>
+    listHyperliquidAccounts()
+      .filter((account) => ctx.isAdmin || account.id === DEFAULT_HYPERLIQUID_ACCOUNT_ID)
+      .map((account) => ({
+        id: account.id,
+        label: account.label,
+        address: maskHyperliquidAddress(account.address),
+      }))
   ),
 
   perpetualAssets: publicProcedure.query(() => getHyperliquidPerpetualAssets()),
@@ -353,8 +375,8 @@ export const hyperliquidRouter = router({
 
   accountOverview: publicProcedure
     .input(accountInput.optional())
-    .query(async ({ input }) =>
-      withAccount(input, async () => {
+    .query(async ({ ctx, input }) =>
+      withAccount(ctx, input, async () => {
         const [overview, cnyQuote] = await Promise.all([
           getHyperliquidAccountOverview(),
           fetchYahooQuote("CNY=X"),
@@ -371,8 +393,8 @@ export const hyperliquidRouter = router({
 
   tradeMetrics: publicProcedure
     .input(accountInput.optional())
-    .query(async ({ input }) =>
-      withAccount(input, async () => {
+    .query(async ({ ctx, input }) =>
+      withAccount(ctx, input, async () => {
         const account = await getHyperliquidAccountOverview();
         return account.metrics;
       })
@@ -380,15 +402,15 @@ export const hyperliquidRouter = router({
 
   positions: publicProcedure
     .input(accountInput.optional())
-    .query(async ({ input }) => withAccount(input, () => getHyperliquidPositions())),
+    .query(async ({ ctx, input }) => withAccount(ctx, input, () => getHyperliquidPositions())),
 
   openOrders: publicProcedure
     .input(accountInput.optional())
-    .query(async ({ input }) => withAccount(input, () => getHyperliquidOpenOrders())),
+    .query(async ({ ctx, input }) => withAccount(ctx, input, () => getHyperliquidOpenOrders())),
 
   orderHistory: publicProcedure
     .input(accountInput.optional())
-    .query(async ({ input }) => withAccount(input, () => getHyperliquidOrderHistory())),
+    .query(async ({ ctx, input }) => withAccount(ctx, input, () => getHyperliquidOrderHistory())),
 
   tradeHistory: publicProcedure
     .input(
@@ -396,15 +418,15 @@ export const hyperliquidRouter = router({
         category: z.enum(["ALL", "PERP", "SPOT"]).default("ALL"),
         startDate: z.string().optional(),
         endDate: z.string().optional(),
-        limit: z.number().min(1).max(1000).default(100),
+        limit: z.number().min(1).max(10000).default(10000),
         accountId: z.string().max(32).optional(),
       })
     )
-    .query(async ({ input }) =>
-      withAccount(input, () => {
+    .query(async ({ ctx, input }) =>
+      withAccount(ctx, input, () => {
         const startTime = input.startDate
           ? new Date(`${input.startDate}T00:00:00`).getTime()
-          : Date.now() - 30 * 24 * 60 * 60 * 1000;
+          : 0;
         const endTime = input.endDate
           ? new Date(`${input.endDate}T23:59:59`).getTime()
           : Date.now();
@@ -439,15 +461,23 @@ export const hyperliquidRouter = router({
       }));
     }),
 
+  // The public chart reads this to show a published review beside a trade. Drafts
+  // are unfinished writing and stay with the owner — the front end used to filter
+  // them out itself, which meant they still travelled to every visitor.
   tradeReview: publicProcedure
     .input(z.object({ tradeExecId: z.string().min(1).max(160) }))
-    .query(async ({ input }) => getTradeReview(input.tradeExecId) ?? null),
+    .query(async ({ ctx, input }) => {
+      const review = (await getTradeReview(input.tradeExecId)) ?? null;
+      if (ctx.isAdmin) return review;
+      return review?.status === "published" ? review : null;
+    }),
 
   tradeReviews: publicProcedure
     .input(z.object({ tradeExecIds: z.array(z.string().min(1).max(160)).min(1).max(100) }))
     .query(async ({ input }) => getTradeReviews(input.tradeExecIds)),
 
-  saveTradeReview: publicProcedure
+  // Writes review content that the public chart renders, so it must be the owner.
+  saveTradeReview: ownerProcedure
     .input(z.object({
       tradeExecId: z.string().min(1).max(160),
       symbol: z.string().min(1).max(64),
@@ -501,8 +531,8 @@ export const hyperliquidRouter = router({
         rebase: z.boolean().optional(),
       })
     )
-    .query(async ({ input }) =>
-      withAccount(input, async () => {
+    .query(async ({ ctx, input }) =>
+      withAccount(ctx, input, async () => {
         try {
           const portfolioRows = await getHyperliquidPortfolioSnapshots({
             startDate: input.startDate,
@@ -532,7 +562,7 @@ export const hyperliquidRouter = router({
 
   // Writes to the pnl_snapshots table, which is keyed by (currency, date) with no
   // account column, so this stays on the default account only.
-  snapshotPnl: publicProcedure.mutation(async () => {
+  snapshotPnl: ownerProcedure.mutation(async () => {
     const now = Date.now();
     const date = new Date(now + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const [perpStates, spotState, btcPrice, officialBalanceUsdc] = await Promise.all([
