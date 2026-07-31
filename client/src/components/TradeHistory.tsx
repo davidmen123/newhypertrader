@@ -70,7 +70,7 @@ function closeMethodColor(method: string | null | undefined) {
   return "var(--text-soft)";
 }
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 15;
 
 export default function TradeHistory({ accountId }: { accountId?: string } = {}) {
   const { lang } = useLang();
