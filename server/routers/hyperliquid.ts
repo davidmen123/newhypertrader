@@ -496,6 +496,9 @@ export const hyperliquidRouter = router({
         endDate: z.string().optional(),
         limit: z.number().default(1000),
         accountId: z.string().max(32).optional(),
+        // False for a full-history range, so the curve keeps Hyperliquid's own
+        // cumulative PnL and agrees with the total shown in the account overview.
+        rebase: z.boolean().optional(),
       })
     )
     .query(async ({ input }) =>
@@ -505,6 +508,7 @@ export const hyperliquidRouter = router({
             startDate: input.startDate,
             endDate: input.endDate,
             limit: input.limit,
+            rebase: input.rebase,
           });
           if (portfolioRows.length > 0) return portfolioRows;
         } catch (error) {

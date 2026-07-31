@@ -641,12 +641,16 @@ export function classifyHyperliquidLedgerFlow(
  * This is a reference line: total PnL and the return figures come from
  * Hyperliquid's own PnL series and do not depend on it.
  */
-export async function getHyperliquidCapitalFlowSummary() {
+export async function getHyperliquidNetDepositsUsdc() {
+  // The manual override describes the default account only; other accounts derive
+  // their own figure from their own ledger.
+  const manual = isDefaultHyperliquidAccount() ? toNumber(MANUAL_INITIAL_CAPITAL_USDC) : 0;
+  if (manual > 0) return manual;
+
   const address = assertAddress();
   const updates = await getHyperliquidLedgerUpdates();
   let netDeposits = 0;
   let counted = 0;
-  let fundedSinceMs: number | null = null;
   const unknownTypes = new Set<string>();
 
   for (const update of updates) {
@@ -661,23 +665,13 @@ export async function getHyperliquidCapitalFlowSummary() {
     if (direction === 0) continue;
     netDeposits += direction * amount;
     counted += 1;
-    // When the account was first funded — the point before which its PnL curve is
-    // an empty account rather than a flat one.
-    if (direction === 1 && update.time != null) {
-      fundedSinceMs = fundedSinceMs == null ? update.time : Math.min(fundedSinceMs, update.time);
-    }
   }
 
   reportUncountedLedgerTypes(unknownTypes);
 
-  // The manual override restates the amount for the default account; the funding
-  // date still comes from the ledger.
-  const manual = isDefaultHyperliquidAccount() ? toNumber(MANUAL_INITIAL_CAPITAL_USDC) : 0;
   // A withdrawal-heavy account can legitimately land at or below zero; returning
   // the real figure beats collapsing the whole panel to "--".
-  const netDepositsUsdc = manual > 0 ? manual : counted > 0 ? netDeposits : null;
-
-  return { netDepositsUsdc, fundedSinceMs };
+  return counted > 0 ? netDeposits : null;
 }
 
 export async function getHyperliquidMids() {
@@ -1165,6 +1159,8 @@ export async function getHyperliquidPortfolioSnapshots(params: {
   startDate?: string;
   endDate?: string;
   limit?: number;
+  /** Zero the PnL at the first visible point. False for a full-history range. */
+  rebase?: boolean;
 }) {
   const portfolio = await getHyperliquidPortfolio();
   const startMs = params.startDate ? new Date(`${params.startDate}T00:00:00Z`).getTime() : 0;
@@ -1211,15 +1207,37 @@ export async function getHyperliquidPortfolioSnapshots(params: {
     return best?.c ?? null;
   };
 
-  // Rebase PnL to the first visible point so every range starts at 0 and only
-  // reflects performance within that range. The window's pnlHistory is
-  // cumulative since the window start (inception for allTime), which drifts
-  // from the range start once the account outlives the requested range.
   const rawPnlAt = (time: number, equity: string) =>
     toNumber(nearestHistoryValue(pnlHistory, time) ?? toNumber(equity) - baseEquity);
-  const pnlBase = filteredHistory.length > 0
-    ? rawPnlAt(filteredHistory[0][0], filteredHistory[0][1])
-    : 0;
+
+  // A bounded range (7D/30D/90D) rebases PnL to its first visible point, so the
+  // curve answers "how did the account do over these days". A full-history range
+  // must not: rebasing would subtract whatever Hyperliquid had already booked at
+  // the first sample it happens to provide, and the chart would disagree with the
+  // total PnL shown elsewhere on the page.
+  const pnlBase = params.rebase === false || filteredHistory.length === 0
+    ? 0
+    : rawPnlAt(filteredHistory[0][0], filteredHistory[0][1]);
+
+  // Return percentage is time-weighted over the visible range: each step is the
+  // PnL change divided by the equity entering it, chain-linked. Dividing the
+  // cumulative PnL by the first sample's equity instead would read a deposit as
+  // performance, and would not agree with the account overview's own figure.
+  let growth = 1;
+  const returnPctAt = new Map<number, number>();
+  for (let i = 0; i < filteredHistory.length; i += 1) {
+    if (i > 0) {
+      const previousEquity = toNumber(filteredHistory[i - 1][1]);
+      if (previousEquity > 0) {
+        const step =
+          (rawPnlAt(filteredHistory[i][0], filteredHistory[i][1]) -
+            rawPnlAt(filteredHistory[i - 1][0], filteredHistory[i - 1][1])) /
+          previousEquity;
+        if (Number.isFinite(step)) growth = Math.max(0, growth * (1 + step));
+      }
+    }
+    returnPctAt.set(filteredHistory[i][0], (growth - 1) * 100);
+  }
 
   return filteredHistory
     .map(([time, equity]) => {
@@ -1232,6 +1250,7 @@ export async function getHyperliquidPortfolioSnapshots(params: {
         unrealizedPnl: totalPnl,
         sessionPnl: totalPnl,
         totalPnl,
+        returnPct: returnPctAt.get(time) ?? 0,
         btcPrice: btcPriceForTime(time),
         deltaTotal: "0",
         optionsTheta: "0",
@@ -1286,7 +1305,7 @@ export async function getHyperliquidAccountOverview() {
     btcPrice,
     allTimeFills,
     portfolio,
-    capitalFlow,
+    ledgerNetDepositsUsdc,
   ] = await Promise.all([
     getHyperliquidPerpStates(),
     getHyperliquidSpotState().catch(() => ({ balances: [] })),
@@ -1294,7 +1313,7 @@ export async function getHyperliquidAccountOverview() {
     getHyperliquidBtcPrice().catch(() => 0),
     getHyperliquidFills(0).catch(() => []),
     getHyperliquidPortfolio().catch(() => null),
-    getHyperliquidCapitalFlowSummary().catch(() => ({ netDepositsUsdc: null, fundedSinceMs: null })),
+    getHyperliquidNetDepositsUsdc().catch(() => null),
   ]);
   const portfolioEquity = portfolio
     ? getHyperliquidPortfolioEquitySummary(portfolio)
@@ -1335,7 +1354,7 @@ export async function getHyperliquidAccountOverview() {
     (sum, item) => sum + toNumber(item.position.unrealizedPnl),
     0
   );
-  const netDepositsUsdc = capitalFlow.netDepositsUsdc ?? portfolioEquity.initial;
+  const netDepositsUsdc = ledgerNetDepositsUsdc ?? portfolioEquity.initial;
   // Total PnL comes from Hyperliquid's own cumulative figure so the site always
   // agrees with what the exchange shows. "Equity − net deposits" is only a
   // fallback for when the portfolio endpoint is unavailable; it drifts whenever
@@ -1373,10 +1392,6 @@ export async function getHyperliquidAccountOverview() {
     spotBalances: spotState.balances ?? [],
     totalEquityUsdc,
     netDepositsUsdc,
-    // When capital first reached this account. The PnL chart starts here for
-    // non-default accounts, whose history predates the site's own start date.
-    fundedSinceMs: capitalFlow.fundedSinceMs,
-    isDefaultAccount: isDefaultHyperliquidAccount(),
     totalEquityBtc,
     btcBalance: totalEquityBtc,
     btcEquity: totalEquityBtc,

@@ -32,7 +32,10 @@ const SERIES = [
 ] as const;
 
 type SeriesKey = (typeof SERIES)[number]["key"];
-const PNL_START_DATE = "2026-06-27";
+// Hyperliquid launched in 2023, so this reaches back past any account's first
+// trade. Only the trade query needs a date spelled out: an absent start date means
+// "everything" to the PnL query but "the last 30 days" to the trade query.
+const FULL_HISTORY_START_DATE = "2023-01-01";
 
 // ─── Tooltip ─────────────────────────────────────────────────────────────────
 interface TooltipProps {
@@ -76,7 +79,14 @@ type TradeMarker = ChartPoint & {
 };
 
 type Candle = { time: number; open: number; high: number; low: number; close: number };
-type PnlSnapshot = { date: string; equity: string; totalPnl?: string | null; btcPrice?: string | number | null };
+type PnlSnapshot = {
+  date: string;
+  equity: string;
+  totalPnl?: string | null;
+  /** Time-weighted return over the visible range; absent on local snapshot rows. */
+  returnPct?: number | null;
+  btcPrice?: string | number | null;
+};
 type CandleInterval = "1h" | "4h" | "1d" | "1w";
 const REVIEW_AUTO_READ_FROM = Date.parse("2026-07-25T16:00:00.000Z");
 
@@ -464,44 +474,33 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
   const [hoveredTradePreview, setHoveredTradePreview] = useState<{ marker: TradeMarker; x: number; y: number } | null>(null);
   const hoverPreviewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Account metadata for the inception date below. On the home page there is no
-  // accountId and the constant applies, so this stays idle; elsewhere it shares a
-  // cache entry with the other accountOverview queries on the page.
-  const { data: accountMeta } = trpc.hyperliquid.accountOverview.useQuery(
-    { accountId },
-    { enabled: accountId != null }
-  );
-
-  // The default account charts from the site's own start date. Any other account
-  // has a history that predates it, so it charts from the day capital first
-  // reached that account instead of showing a long empty stretch before it.
-  const inceptionDate = useMemo(() => {
-    if (accountId == null || accountMeta?.isDefaultAccount !== false) return PNL_START_DATE;
-    return accountMeta.fundedSinceMs != null
-      ? formatUtc8Date(new Date(accountMeta.fundedSinceMs))
-      : PNL_START_DATE;
-  }, [accountId, accountMeta?.isDefaultAccount, accountMeta?.fundedSinceMs]);
-
   // Compute startDate from timeRange
   // 7D  = past 7 calendar days
   // 30D = past 30 calendar days
   // 90D = past 90 calendar days
-  // MAX = all available PnL data, capped by the account curve start date.
+  // MAX = the account's whole history, requested with no start date at all. The
+  //       server returns every sample and trims the stretch before the account was
+  //       funded, so the curve begins where the money did and the chart never has
+  //       to be told when that was.
   const startDate = useMemo(() => {
-    if (timeRange == null || timeRange === "MAX") return inceptionDate;
+    if (timeRange == null || timeRange === "MAX") return undefined;
     const now = new Date();
     const days = timeRange === "7D" ? 7 : timeRange === "30D" ? 30 : 90;
     const d = new Date(now);
     d.setDate(d.getDate() - days);
-    const rangeStart = formatUtc8Date(d);
-    return rangeStart > inceptionDate ? rangeStart : inceptionDate;
-  }, [timeRange, inceptionDate]);
+    return formatUtc8Date(d);
+  }, [timeRange]);
 
   // Generous limit — actual filtering is done server-side by startDate
   const queryLimit = 1000;
 
+  // MAX covers the account's whole history, so it keeps Hyperliquid's cumulative
+  // PnL rather than zeroing at the first sample — that is what makes the figure in
+  // the tooltip agree with the total PnL in the account overview.
+  const isFullHistory = timeRange == null || timeRange === "MAX";
+
   const { data, isLoading, error, refetch, isFetching } = trpc.hyperliquid.pnlHistory.useQuery(
-    { startDate, limit: queryLimit, accountId },
+    { startDate, limit: queryLimit, accountId, rebase: !isFullHistory },
     { refetchInterval: 60_000 }
   );
 
@@ -530,7 +529,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
     setShowReviewDetail(true);
   };
   const { data: tradeHistory } = trpc.hyperliquid.tradeHistory.useQuery(
-    { startDate, limit: 100, accountId },
+    { startDate: startDate ?? FULL_HISTORY_START_DATE, limit: 100, accountId },
     { refetchInterval: 120_000 }
   );
   const trades = (tradeHistory?.trades ?? []) as TradeFill[];
@@ -653,7 +652,12 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
       ? ((btcPrice - baseBtcPrice) / baseBtcPrice) * 100
       : null;
     const pnl = s.totalPnl ? parseFloat(s.totalPnl) : 0;
-    const accountPerformance = baseEquity && baseEquity !== 0 && isFinite(pnl)
+    // The server sends a time-weighted return per point, which is what makes the
+    // last point agree with the account overview. Dividing PnL by the first
+    // sample's equity is the fallback for snapshot rows that carry no such field.
+    const accountPerformance = Number.isFinite(Number(s.returnPct))
+      ? Number(s.returnPct)
+      : baseEquity && baseEquity !== 0 && isFinite(pnl)
       ? (pnl / baseEquity) * 100
       : 0;
     return {
