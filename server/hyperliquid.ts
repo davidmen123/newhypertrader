@@ -1491,6 +1491,12 @@ export async function getHyperliquidTradeHistory(params: {
   }>();
 
   for (const fill of fills) {
+    // Hyperliquid reports automatic dust cleanup as a fill-like event. It is
+    // not a user order and must not appear in trade history or review nodes.
+    const fillDirection = String(fill.dir ?? "").toLowerCase();
+    if (fillDirection.includes("spot dust conversion") || fillDirection.includes("dust conversion")) {
+      continue;
+    }
     const side = fill.side === "B" ? "buy" : "sell";
     const timeBucket = Math.floor(fill.time / 1000);
     const orderKey = fill.oid != null && fill.oid !== ""
