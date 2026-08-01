@@ -234,6 +234,12 @@ export interface HyperliquidSpotClearinghouseState {
   balances?: HyperliquidSpotBalance[];
 }
 
+/** Hide exchange-internal token aliases from the public UI. */
+export function normalizeHyperliquidDisplayToken(token: string | null | undefined) {
+  const normalized = String(token ?? "").trim();
+  return normalized.toUpperCase() === "USDT0" ? "USDT" : normalized;
+}
+
 export type HyperliquidAccountAbstraction =
   | "unifiedAccount"
   | "portfolioMargin"
@@ -1410,7 +1416,10 @@ export async function getHyperliquidAccountOverview() {
     perpEquityUsdc,
     spotEquityUsdc,
     spotUsdcBalance,
-    spotBalances: spotState.balances ?? [],
+    spotBalances: (spotState.balances ?? []).map((balance) => ({
+      ...balance,
+      coin: normalizeHyperliquidDisplayToken(balance.coin),
+    })),
     totalEquityUsdc,
     netDepositsUsdc,
     totalEquityBtc,
@@ -1563,7 +1572,7 @@ export async function getHyperliquidTradeHistory(params: {
         execValue: String(group.value),
         tradeScope: "Hyperliquid",
         tradeSide: fill.dir ?? "",
-        feeDetail: [{ feeCoin: fill.feeToken || "USDC", fee: String(group.fee) }],
+        feeDetail: [{ feeCoin: normalizeHyperliquidDisplayToken(fill.feeToken || "USDC"), fee: String(group.fee) }],
         createdTime: String(group.latestTime),
         updatedTime: String(group.latestTime),
         execPnl: String(group.pnl),
