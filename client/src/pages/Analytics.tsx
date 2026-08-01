@@ -376,8 +376,9 @@ function TradeReviewManager() {
                       placeholder="可留空，按后台填写为准"
                     />
                   </label>
+                  <div className="grid gap-3 sm:grid-cols-2">
                   <label className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
-                    进场模型标签
+                    进场标签
                     <div className="grid gap-2 sm:grid-cols-3">
                       <select
                         value={draft.entryIntent}
@@ -429,6 +430,7 @@ function TradeReviewManager() {
                       placeholder={`填写${selectedTrade.side === "buy" || selectedTrade.side === "B" ? "买入/做多理由" : "卖出/做空理由"}…`}
                     />
                   </label>
+                  </div>
                 </>
               ) : (
                 <>

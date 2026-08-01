@@ -647,7 +647,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
             value: visibleReview?.[selectedTrade.action === "买入" ? "entryReason" : "exitReason"] ?? "",
           },
           {
-            label: "进场模型",
+            label: "进场标签",
             value: [
               visibleReview?.entryIntent ? ENTRY_INTENT_LABELS[visibleReview.entryIntent] : "",
               visibleReview?.entryTimeframe ? ENTRY_TIMEFRAME_LABELS[visibleReview.entryTimeframe] : "",
@@ -1434,12 +1434,12 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
                   </div>
                 ))}
               </div>
-              <div className="grid gap-3 mt-3">
+              <div className="grid gap-3 mt-3 sm:grid-cols-2">
                 {reviewDetailFields.slice(4).map(({ label, value }) => (
                   <div key={label} className="grid gap-1 text-muted-foreground" style={{ fontSize: "0.66rem" }}>
                     <span>{label}</span>
                     <div className="min-h-8 rounded-lg px-2 py-1.5 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
-                      {label === "进场模型" && value ? (
+                      {label === "进场标签" && value ? (
                         <div className="flex flex-wrap gap-1.5">
                           {value.split(" · ").map((tag: string) => (
                             <span key={tag} className="rounded-full px-2 py-0.5 text-[0.62rem]" style={{ color: "var(--accent)", border: "1px solid color-mix(in oklab, var(--accent) 38%, transparent)", background: "color-mix(in oklab, var(--accent) 8%, transparent)" }}>
