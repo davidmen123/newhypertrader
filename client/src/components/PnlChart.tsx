@@ -645,7 +645,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
     .map((s) => parseFloat(String(s.btcPrice ?? "")))
     .filter((price) => Number.isFinite(price) && price > 0);
   const baseBtcPrice = validBtcPrices.length > 0 ? validBtcPrices[0] : null;
-  const chartData = snapshots.map((s) => {
+  const baseChartData = snapshots.map((s) => {
     const eq = parseFloat(s.equity);
     const btcPrice = parseFloat(String(s.btcPrice ?? ""));
     const btcBenchmark = baseBtcPrice && baseBtcPrice !== 0 && Number.isFinite(btcPrice) && btcPrice > 0
@@ -671,6 +671,28 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
       assetTrend: eq,
     };
   });
+  const chartData = useMemo(() => {
+    if (!reviewMode || baseChartData.length === 0) return baseChartData;
+    const firstDate = getDateKey(baseChartData[0].date);
+    const earlyTradeDays = Array.from(new Set(
+      trades
+        .map((trade) => Number(trade.createdTime))
+        .filter((timestamp) => Number.isFinite(timestamp))
+        .map((timestamp) => formatUtc8Date(new Date(timestamp)))
+        .filter((day) => day < firstDate)
+    )).sort();
+    if (earlyTradeDays.length === 0) return baseChartData;
+
+    // Portfolio history may begin after the first trade. These anchor points
+    // keep earlier trade nodes visible without inventing an equity curve.
+    const firstPoint = baseChartData[0];
+    const anchorPoints = earlyTradeDays.map((day) => ({
+      ...firstPoint,
+      date: `${day}T00:00:00+08:00`,
+      timestamp: parseUtc8Timestamp(`${day}T00:00:00+08:00`),
+    }));
+    return [...anchorPoints, ...baseChartData];
+  }, [baseChartData, reviewMode, trades]);
   const tradeMarkers = useMemo<TradeMarker[]>(() => {
     if (chartData.length === 0) return [];
     const tradesByDay = new Map<string, TradeFill[]>();
