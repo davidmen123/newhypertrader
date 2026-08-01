@@ -541,8 +541,15 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
   // Review nodes currently describe perpetual open/close decisions. Exclude
   // only fills explicitly identified as spot: older API responses may omit
   // category even though the symbol is a perpetual contract.
-  const trades = ((tradeHistory?.trades ?? []) as TradeFill[])
+  const allTrades = ((tradeHistory?.trades ?? []) as TradeFill[])
     .filter((trade) => trade.category !== "SPOT");
+  const reviewStartTimestamp = startDate
+    ? parseUtc8Timestamp(`${startDate}T00:00:00+08:00`)
+    : 0;
+  const trades = allTrades.filter((trade) => {
+    const timestamp = Number(trade.createdTime);
+    return Number.isFinite(timestamp) && timestamp >= reviewStartTimestamp;
+  });
   const selectedCoin = selectedTrade?.trade.symbol?.replace(/-PERP$/i, "") || "BTC";
   const selectedTime = Number(selectedTrade?.trade.createdTime);
   const candleWindowMs: Record<CandleInterval, number> = {
@@ -566,8 +573,8 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
     { enabled: selectedTrade != null }
   );
   const selectedOpeningTrades = useMemo(
-    () => selectedTrade ? getRelatedOpeningTrades(trades, selectedTrade.trade) : [],
-    [selectedTrade, trades]
+    () => selectedTrade ? getRelatedOpeningTrades(allTrades, selectedTrade.trade) : [],
+    [selectedTrade, allTrades]
   );
   const selectedOpeningExecIds = selectedOpeningTrades.map((trade) => trade.execId);
   const { data: openingReviews = [] } = trpc.hyperliquid.tradeReviews.useQuery(
@@ -644,7 +651,13 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
   // regular curve query is intentionally range-scoped for normal analytics,
   // but reusing it here makes older nodes disappear or forces flat synthetic
   // anchors when switching between 7D, 90D and MAX.
-  const snapshots = (reviewMode ? (reviewPnlHistory ?? data) : data || []) as PnlSnapshot[];
+  const allSnapshots = (reviewMode ? (reviewPnlHistory ?? data) : data || []) as PnlSnapshot[];
+  const snapshots = reviewMode
+    ? allSnapshots.filter((snapshot) => {
+        if (!reviewStartTimestamp) return true;
+        return parseUtc8Timestamp(snapshot.date) >= reviewStartTimestamp;
+      })
+    : allSnapshots;
   // Labels per language
   const labels: Record<SeriesKey, string> = {
     accountPerformance: lang === "zh" ? "账户盈亏 (%)" : "Account PnL (%)",
