@@ -528,7 +528,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
     setExpandedReviewSummary(false);
     setShowReviewDetail(true);
   };
-  const reviewTradeStartDate = reviewMode ? FULL_HISTORY_START_DATE : (startDate ?? FULL_HISTORY_START_DATE);
+  const reviewTradeStartDate = reviewMode ? undefined : (startDate ?? FULL_HISTORY_START_DATE);
   const { data: tradeHistory } = trpc.hyperliquid.tradeHistory.useQuery(
     { startDate: reviewTradeStartDate, limit: 10000, allHistory: true, accountId },
     { refetchInterval: 120_000 }

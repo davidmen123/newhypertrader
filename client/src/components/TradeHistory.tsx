@@ -29,6 +29,10 @@ function num(value: string | number | null | undefined) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function displayToken(value: string | null | undefined) {
+  return String(value ?? "").trim().toUpperCase() === "USDT0" ? "USDT" : (value ?? "");
+}
+
 function fmt(value: string | number | null | undefined, decimals = 2) {
   const n = num(value);
   return n.toLocaleString("en-US", {
@@ -340,7 +344,7 @@ export default function TradeHistory({ accountId }: { accountId?: string } = {})
                       <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execQty, 2)}</td>
                       <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execPrice, 2)}</td>
                       <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execValue, 2)}</td>
-                      <td className="py-2 pr-4 num-display" style={{ fontSize: "0.68rem", color: "var(--text-soft)" }}>{fee ? `${fmt(fee.fee, 2)} ${fee.feeCoin}` : "—"}</td>
+                      <td className="py-2 pr-4 num-display" style={{ fontSize: "0.68rem", color: "var(--text-soft)" }}>{fee ? `${fmt(fee.fee, 2)} ${displayToken(fee.feeCoin)}` : "—"}</td>
                       <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem", color: pnlColor(pnl) }}>{pnl !== 0 ? signed(pnl, 2) : "—"}</td>
                     </tr>
                   );
