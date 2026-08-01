@@ -533,6 +533,10 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
     { startDate: reviewTradeStartDate, limit: 10000, allHistory: true, accountId },
     { refetchInterval: 120_000 }
   );
+  const { data: reviewPnlHistory } = trpc.hyperliquid.pnlHistory.useQuery(
+    { startDate: FULL_HISTORY_START_DATE, limit: 10000, accountId, rebase: false },
+    { enabled: reviewMode, refetchInterval: 60_000 }
+  );
   const trades = (tradeHistory?.trades ?? []) as TradeFill[];
   const selectedCoin = selectedTrade?.trade.symbol?.replace(/-PERP$/i, "") || "BTC";
   const selectedTime = Number(selectedTrade?.trade.createdTime);
@@ -631,7 +635,11 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
     : [];
 
   // Backend already returns data in ascending date order (earliest → latest)
-  const snapshots = (data || []) as PnlSnapshot[];
+  // Review mode must use the same full-history window as its trade nodes. The
+  // regular curve query is intentionally range-scoped for normal analytics,
+  // but reusing it here makes older nodes disappear or forces flat synthetic
+  // anchors when switching between 7D, 90D and MAX.
+  const snapshots = (reviewMode ? (reviewPnlHistory ?? data) : data || []) as PnlSnapshot[];
   // Labels per language
   const labels: Record<SeriesKey, string> = {
     accountPerformance: lang === "zh" ? "账户盈亏 (%)" : "Account PnL (%)",
