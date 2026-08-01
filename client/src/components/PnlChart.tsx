@@ -538,11 +538,11 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
     { startDate: FULL_HISTORY_START_DATE, limit: 10000, accountId, rebase: false },
     { enabled: reviewMode, refetchInterval: 60_000 }
   );
-  // Review nodes currently describe perpetual open/close decisions. Spot
-  // fills remain available in trade history but are intentionally excluded
-  // here until spot review semantics are designed separately.
+  // Review nodes currently describe perpetual open/close decisions. Exclude
+  // only fills explicitly identified as spot: older API responses may omit
+  // category even though the symbol is a perpetual contract.
   const trades = ((tradeHistory?.trades ?? []) as TradeFill[])
-    .filter((trade) => trade.category === "PERP");
+    .filter((trade) => trade.category !== "SPOT");
   const selectedCoin = selectedTrade?.trade.symbol?.replace(/-PERP$/i, "") || "BTC";
   const selectedTime = Number(selectedTrade?.trade.createdTime);
   const candleWindowMs: Record<CandleInterval, number> = {
