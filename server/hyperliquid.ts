@@ -429,23 +429,31 @@ export async function getHyperliquidFills(startTime?: number, endTime?: number) 
   if (startTime || endTime) {
     const finalTime = endTime ?? Date.now();
     let cursor = startTime ?? 0;
+    let pageEnd = finalTime;
     const fills: HyperliquidFill[] = [];
 
-    // userFillsByTime returns at most 500 records/blocks per response. Advance
-    // the cursor so long histories are not silently truncated at the first page.
-    for (let page = 0; page < 25 && cursor <= finalTime; page += 1) {
+    // The API may return a batch in either chronological direction. Advance
+    // the appropriate boundary so older fills are not silently truncated.
+    for (let page = 0; page < 25 && cursor <= pageEnd; page += 1) {
       const batch = await callInfo<HyperliquidFill[]>({
         type: "userFillsByTime",
         user,
         startTime: cursor,
-        endTime: finalTime,
+        endTime: pageEnd,
       });
       if (batch.length === 0) break;
       fills.push(...batch);
       if (batch.length < 500) break;
-      const latestTime = Math.max(...batch.map((fill) => fill.time));
-      if (!Number.isFinite(latestTime) || latestTime < cursor) break;
-      cursor = latestTime + 1;
+      const times = batch.map((fill) => fill.time).filter(Number.isFinite);
+      const oldestTime = Math.min(...times);
+      const newestTime = Math.max(...times);
+      if (!Number.isFinite(oldestTime) || !Number.isFinite(newestTime)) break;
+      const reverseChronological = Number(batch[0]?.time) > Number(batch[batch.length - 1]?.time);
+      if (reverseChronological) {
+        pageEnd = oldestTime - 1;
+      } else {
+        cursor = newestTime + 1;
+      }
     }
 
     const unique = new Map<string, HyperliquidFill>();
@@ -469,13 +477,13 @@ async function getHyperliquidSpotPairMap() {
     (meta.universe ?? [])
       .filter((pair) => pair.index != null)
       .map((pair) => {
-        const pairName = String(pair.name ?? "");
+        const pairName = normalizeHyperliquidDisplayToken(String(pair.name ?? ""));
         if (pairName && !/^@\d+$/.test(pairName)) {
           return [`@${pair.index}`, pairName];
         }
         const [baseToken, quoteToken] = pair.tokens ?? [];
-        const baseName = tokenNames.get(String(baseToken));
-        const quoteName = tokenNames.get(String(quoteToken));
+        const baseName = normalizeHyperliquidDisplayToken(tokenNames.get(String(baseToken)));
+        const quoteName = normalizeHyperliquidDisplayToken(tokenNames.get(String(quoteToken)));
         const resolvedName = baseName && quoteName ? `${baseName}/${quoteName}` : pairName;
         return [`@${pair.index}`, resolvedName || `@${pair.index}`];
       })
