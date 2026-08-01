@@ -92,6 +92,7 @@ export const tradeReviews = pgTable("trade_reviews", {
   entryReason: text("entryreason"),
   exitReason: text("exitreason"),
   reviewSummary: text("reviewsummary"),
+  improvementPoint: text("improvementpoint"),
   status: varchar("status", { length: 16 }).notNull().default("draft"),
   createdAt: timestamp("createdat").defaultNow().notNull(),
   updatedAt: timestamp("updatedat").defaultNow().notNull(),

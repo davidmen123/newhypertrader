@@ -493,6 +493,7 @@ export const hyperliquidRouter = router({
       entryReason: z.string().max(10000).optional(),
       exitReason: z.string().max(10000).optional(),
       reviewSummary: z.string().max(20000).optional(),
+      improvementPoint: z.string().max(20000).optional(),
       status: z.enum(["draft", "published"]).default("draft"),
     }))
     .mutation(async ({ input }) => {

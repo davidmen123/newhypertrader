@@ -151,6 +151,7 @@ type ReviewDraft = {
   entryReason: string;
   exitReason: string;
   reviewSummary: string;
+  improvementPoint: string;
 };
 
 const EMPTY_REVIEW_DRAFT: ReviewDraft = {
@@ -163,6 +164,7 @@ const EMPTY_REVIEW_DRAFT: ReviewDraft = {
   entryReason: "",
   exitReason: "",
   reviewSummary: "",
+  improvementPoint: "",
 };
 
 const REVIEW_AUTO_READ_FROM = Date.parse("2026-07-25T16:00:00.000Z");
@@ -205,6 +207,7 @@ function TradeReviewManager() {
       entryReason: review?.entryReason ?? "",
       exitReason: review?.exitReason ?? "",
       reviewSummary: review?.reviewSummary ?? "",
+      improvementPoint: review?.improvementPoint ?? "",
     });
     setStatus(review?.status === "draft" ? "draft" : "published");
     setSavedMessage("");
@@ -445,17 +448,30 @@ function TradeReviewManager() {
                       placeholder={`填写${selectedTrade.side === "buy" || selectedTrade.side === "B" ? "买入/做多理由" : "卖出/做空理由"}…`}
                     />
                   </label>
-                  <label className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
-                    复盘总结
-                    <textarea
-                      rows={5}
-                      value={draft.reviewSummary}
-                      onChange={(event) => setDraft((current) => ({ ...current, reviewSummary: event.target.value }))}
-                      className="w-full rounded-lg px-3 py-2 bg-transparent text-foreground outline-none resize-y"
-                      style={{ border: "1px solid var(--panel-border)" }}
-                      placeholder="填写复盘总结…"
-                    />
-                  </label>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
+                      复盘总结
+                      <textarea
+                        rows={5}
+                        value={draft.reviewSummary}
+                        onChange={(event) => setDraft((current) => ({ ...current, reviewSummary: event.target.value }))}
+                        className="w-full rounded-lg px-3 py-2 bg-transparent text-foreground outline-none resize-y"
+                        style={{ border: "1px solid var(--panel-border)" }}
+                        placeholder="填写复盘总结…"
+                      />
+                    </label>
+                    <label className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
+                      改进点
+                      <textarea
+                        rows={5}
+                        value={draft.improvementPoint}
+                        onChange={(event) => setDraft((current) => ({ ...current, improvementPoint: event.target.value }))}
+                        className="w-full rounded-lg px-3 py-2 bg-transparent text-foreground outline-none resize-y"
+                        style={{ border: "1px solid var(--panel-border)" }}
+                        placeholder="填写下次可改进的地方…"
+                      />
+                    </label>
+                  </div>
                 </>
               )}
             </div>

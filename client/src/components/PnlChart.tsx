@@ -622,6 +622,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
             value: visibleReview?.[selectedTrade.action === "买入" ? "entryReason" : "exitReason"] ?? "",
           },
           { label: "复盘总结", value: visibleReview?.reviewSummary ?? "" },
+          { label: "改进点", value: visibleReview?.improvementPoint ?? "" },
         ]
         : [
           { label: "进场价格", value: formatReviewNumber(visibleReview?.entryPrice || (canAutoReadSelectedTrade ? selectedTrade.trade.execPrice : "")) },

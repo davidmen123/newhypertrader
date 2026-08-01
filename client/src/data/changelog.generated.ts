@@ -16,8 +16,8 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     "version": "1.57.0",
     "date": "2026-08-01",
-    "zh": "进场标签支持模型与周期",
-    "en": "Added entry model and timeframe tags"
+    "zh": "复盘模式新增进场标签及改进点等",
+    "en": "Added entry tags and improvement points to review mode"
   },
   {
     "version": "1.56.0",
