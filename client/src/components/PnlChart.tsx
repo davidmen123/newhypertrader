@@ -104,7 +104,7 @@ function formatSigned(value: number, decimals = 2) {
 
 function formatReviewNumber(value: string | number | null | undefined) {
   const number = Number(value);
-  return Number.isFinite(number) && number > 0 ? number.toLocaleString("en-US", { maximumFractionDigits: 8 }) : "—";
+  return Number.isFinite(number) && number > 0 ? number.toLocaleString("en-US", { maximumFractionDigits: 2 }) : "—";
 }
 
 function calculateRiskAmount(entryPrice: string | number | null | undefined, stopLossPrice: string | number | null | undefined, quantity: string | number | null | undefined) {
@@ -1250,7 +1250,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
                       <i className="inline-block mr-1.5 h-2 w-2 rounded-full align-middle" style={{ background: hoveredTradePreview.marker.action === "买入" ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)" }} />
                       {hoveredTradePreview.marker.action}
                     </span>
-                    <span className="text-foreground" style={{ fontSize: "0.78rem" }}>成交价：{Number(hoveredTradePreview.marker.trade.execPrice).toLocaleString("en-US", { maximumFractionDigits: 4 })}</span>
+                      <span className="text-foreground" style={{ fontSize: "0.78rem" }}>成交价：{Number(hoveredTradePreview.marker.trade.execPrice).toLocaleString("en-US", { maximumFractionDigits: 2 })}</span>
                     <span className="whitespace-nowrap text-muted-foreground" style={{ fontSize: "0.68rem" }}>成交时间：{formatTradeTime(hoveredTradePreview.marker.trade.createdTime)}</span>
                   </div>
                   <button
@@ -1388,7 +1388,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
                   </span>
                   <div className="truncate rounded-lg px-2.5 py-1.5 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
                     {selectedOpeningTrades.length > 0
-                      ? selectedOpeningTrades.map((trade) => `${formatTradeTime(trade.createdTime)} · ${Number(trade.execPrice).toLocaleString("en-US", { maximumFractionDigits: 4 })}`).join("；")
+                      ? selectedOpeningTrades.map((trade) => `${formatTradeTime(trade.createdTime)} · ${Number(trade.execPrice).toLocaleString("en-US", { maximumFractionDigits: 2 })}`).join("；")
                       : "—"}
                   </div>
                 </div>
