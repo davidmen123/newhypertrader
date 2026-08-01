@@ -88,6 +88,9 @@ type PnlSnapshot = {
   returnPct?: number | null;
   btcPrice?: string | number | null;
 };
+const ENTRY_INTENT_LABELS: Record<string, string> = { continuation: "趋势延续", reversal: "趋势反转", range: "区间交易" };
+const ENTRY_TRIGGER_LABELS: Record<string, string> = { pullback: "回踩确认", engulfing: "吞没形态", pin_bar: "Pin Bar形态", ema20: "EMA20突破/站稳", range_boundary: "区间边界反应" };
+const ENTRY_TIMEFRAME_LABELS: Record<string, string> = { "1h": "1H", "4h": "4H", "1d": "1D", "1w": "1W" };
 type CandleInterval = "1h" | "4h" | "1d" | "1w";
 const REVIEW_AUTO_READ_FROM = Date.parse("2026-07-25T16:00:00.000Z");
 
@@ -620,7 +623,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
           },
           { label: "复盘总结", value: visibleReview?.reviewSummary ?? "" },
         ]
-      : [
+        : [
           { label: "进场价格", value: formatReviewNumber(visibleReview?.entryPrice || (canAutoReadSelectedTrade ? selectedTrade.trade.execPrice : "")) },
           { label: "止损价格", value: formatReviewNumber(selectedStopLossPrice) },
           {
@@ -642,6 +645,14 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
           {
             label: selectedTrade.action === "买入" ? "买入/做多理由" : "卖出/做空理由",
             value: visibleReview?.[selectedTrade.action === "买入" ? "entryReason" : "exitReason"] ?? "",
+          },
+          {
+            label: "进场模型",
+            value: [
+              visibleReview?.entryIntent ? ENTRY_INTENT_LABELS[visibleReview.entryIntent] : "",
+              visibleReview?.entryTimeframe ? ENTRY_TIMEFRAME_LABELS[visibleReview.entryTimeframe] : "",
+              visibleReview?.entryTrigger ? ENTRY_TRIGGER_LABELS[visibleReview.entryTrigger] : "",
+            ].filter(Boolean).join(" · "),
           },
         ]
     : [];
@@ -1423,11 +1434,23 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
                   </div>
                 ))}
               </div>
-              <div className="grid gap-1 mt-3 text-muted-foreground" style={{ fontSize: "0.66rem" }}>
-                <span>{reviewDetailFields[4]?.label}</span>
-                <div className="whitespace-pre-wrap rounded-lg px-2 py-1.5 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
-                  {reviewDetailFields[4]?.value || <span className="text-muted-foreground/50">暂无内容</span>}
-                </div>
+              <div className="grid gap-3 mt-3">
+                {reviewDetailFields.slice(4).map(({ label, value }) => (
+                  <div key={label} className="grid gap-1 text-muted-foreground" style={{ fontSize: "0.66rem" }}>
+                    <span>{label}</span>
+                    <div className="min-h-8 rounded-lg px-2 py-1.5 text-foreground" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
+                      {label === "进场模型" && value ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {value.split(" · ").map((tag: string) => (
+                            <span key={tag} className="rounded-full px-2 py-0.5 text-[0.62rem]" style={{ color: "var(--accent)", border: "1px solid color-mix(in oklab, var(--accent) 38%, transparent)", background: "color-mix(in oklab, var(--accent) 8%, transparent)" }}>
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      ) : value || <span className="text-muted-foreground/50">暂无内容</span>}
+                    </div>
+                  </div>
+                ))}
               </div>
             </>
           )}

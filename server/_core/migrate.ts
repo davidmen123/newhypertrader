@@ -154,6 +154,9 @@ export async function runMigrations(): Promise<void> {
     await db.execute(sql`ALTER TABLE trade_reviews ADD COLUMN IF NOT EXISTS stoplossprice numeric(20,8)`).catch(() => {});
     await db.execute(sql`ALTER TABLE trade_reviews ADD COLUMN IF NOT EXISTS riskamount numeric(20,8)`).catch(() => {});
     await db.execute(sql`ALTER TABLE trade_reviews ADD COLUMN IF NOT EXISTS takeprofittarget numeric(20,8)`).catch(() => {});
+    await db.execute(sql`ALTER TABLE trade_reviews ADD COLUMN IF NOT EXISTS entryintent varchar(32)`).catch(() => {});
+    await db.execute(sql`ALTER TABLE trade_reviews ADD COLUMN IF NOT EXISTS entrytrigger varchar(32)`).catch(() => {});
+    await db.execute(sql`ALTER TABLE trade_reviews ADD COLUMN IF NOT EXISTS entrytimeframe varchar(8)`).catch(() => {});
 
     await db.execute(sql`ALTER TABLE visitor_logs ADD COLUMN IF NOT EXISTS city varchar(64)`).catch(() => {});
     await db.execute(sql`ALTER TABLE visitor_logs ADD COLUMN IF NOT EXISTS region varchar(64)`).catch(() => {});

@@ -145,6 +145,9 @@ type ReviewDraft = {
   entryPrice: string;
   stopLossPrice: string;
   takeProfitTarget: string;
+  entryIntent: "" | "continuation" | "reversal" | "range";
+  entryTrigger: "" | "pullback" | "engulfing" | "pin_bar" | "ema20" | "range_boundary";
+  entryTimeframe: "" | "1h" | "4h" | "1d" | "1w";
   entryReason: string;
   exitReason: string;
   reviewSummary: string;
@@ -154,6 +157,9 @@ const EMPTY_REVIEW_DRAFT: ReviewDraft = {
   entryPrice: "",
   stopLossPrice: "",
   takeProfitTarget: "",
+  entryIntent: "",
+  entryTrigger: "",
+  entryTimeframe: "",
   entryReason: "",
   exitReason: "",
   reviewSummary: "",
@@ -193,6 +199,9 @@ function TradeReviewManager() {
       entryPrice: review?.entryPrice ?? (canAutoRead ? selectedTrade?.execPrice ?? "" : ""),
       stopLossPrice: review?.stopLossPrice ?? (canAutoRead ? selectedTrade?.triggerPrice ?? "" : ""),
       takeProfitTarget: review?.takeProfitTarget ?? "",
+      entryIntent: review?.entryIntent ?? "",
+      entryTrigger: review?.entryTrigger ?? "",
+      entryTimeframe: review?.entryTimeframe ?? "",
       entryReason: review?.entryReason ?? "",
       exitReason: review?.exitReason ?? "",
       reviewSummary: review?.reviewSummary ?? "",
@@ -208,6 +217,9 @@ function TradeReviewManager() {
         tradeExecId: selectedTrade.execId,
         symbol: selectedTrade.symbol,
         ...draft,
+        entryIntent: draft.entryIntent || undefined,
+        entryTrigger: draft.entryTrigger || undefined,
+        entryTimeframe: draft.entryTimeframe || undefined,
         execQty: selectedTrade.execQty,
         status,
       });
@@ -244,6 +256,9 @@ function TradeReviewManager() {
         tradeExecId: selectedTrade.execId,
         symbol: selectedTrade.symbol,
         ...nextDraft,
+        entryIntent: nextDraft.entryIntent || undefined,
+        entryTrigger: nextDraft.entryTrigger || undefined,
+        entryTimeframe: nextDraft.entryTimeframe || undefined,
         execQty: selectedTrade.execQty,
         status,
       });
@@ -360,6 +375,47 @@ function TradeReviewManager() {
                       style={{ border: "1px solid var(--panel-border)" }}
                       placeholder="可留空，按后台填写为准"
                     />
+                  </label>
+                  <label className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
+                    进场模型标签
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      <select
+                        value={draft.entryIntent}
+                        onChange={(event) => setDraft((current) => ({ ...current, entryIntent: event.target.value as ReviewDraft["entryIntent"] }))}
+                        className="rounded-lg px-3 py-2 bg-transparent text-foreground outline-none"
+                        style={{ border: "1px solid var(--panel-border)" }}
+                      >
+                        <option value="">交易意图（可选）</option>
+                        <option value="continuation">趋势延续</option>
+                        <option value="reversal">趋势反转</option>
+                        <option value="range">区间交易</option>
+                      </select>
+                      <select
+                        value={draft.entryTrigger}
+                        onChange={(event) => setDraft((current) => ({ ...current, entryTrigger: event.target.value as ReviewDraft["entryTrigger"] }))}
+                        className="rounded-lg px-3 py-2 bg-transparent text-foreground outline-none"
+                        style={{ border: "1px solid var(--panel-border)" }}
+                      >
+                        <option value="">触发方式（可选）</option>
+                        <option value="pullback">回踩确认</option>
+                        <option value="engulfing">吞没形态</option>
+                        <option value="pin_bar">Pin Bar形态</option>
+                        <option value="ema20">EMA20突破/站稳</option>
+                        <option value="range_boundary">区间边界反应</option>
+                      </select>
+                      <select
+                        value={draft.entryTimeframe}
+                        onChange={(event) => setDraft((current) => ({ ...current, entryTimeframe: event.target.value as ReviewDraft["entryTimeframe"] }))}
+                        className="rounded-lg px-3 py-2 bg-transparent text-foreground outline-none"
+                        style={{ border: "1px solid var(--panel-border)" }}
+                      >
+                        <option value="">周期（可选）</option>
+                        <option value="1h">1H</option>
+                        <option value="4h">4H</option>
+                        <option value="1d">1D</option>
+                        <option value="1w">1W</option>
+                      </select>
+                    </div>
                   </label>
                   <label className="grid gap-1.5 text-muted-foreground" style={{ fontSize: "0.7rem" }}>
                     {selectedTrade.side === "buy" || selectedTrade.side === "B" ? "买入/做多理由" : "卖出/做空理由"}

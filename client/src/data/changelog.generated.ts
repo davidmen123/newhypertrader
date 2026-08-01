@@ -14,6 +14,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.57.0",
+    "date": "2026-08-01",
+    "zh": "进场模型标签支持周期",
+    "en": "Added entry model tags with timeframes"
+  },
+  {
     "version": "1.56.0",
     "date": "2026-07-29",
     "zh": "增加清算价估算及相关组件功能优化",

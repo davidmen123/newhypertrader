@@ -247,7 +247,10 @@ export async function upsertTradeReview(review: InsertTradeReview) {
       ADD COLUMN IF NOT EXISTS entryprice numeric(20,8),
       ADD COLUMN IF NOT EXISTS stoplossprice numeric(20,8),
       ADD COLUMN IF NOT EXISTS riskamount numeric(20,8),
-      ADD COLUMN IF NOT EXISTS takeprofittarget numeric(20,8)`);
+      ADD COLUMN IF NOT EXISTS takeprofittarget numeric(20,8),
+      ADD COLUMN IF NOT EXISTS entryintent varchar(32),
+      ADD COLUMN IF NOT EXISTS entrytrigger varchar(32),
+      ADD COLUMN IF NOT EXISTS entrytimeframe varchar(8)`);
     const now = new Date();
     const rows = await db.insert(tradeReviews).values({ ...review, updatedAt: now }).onConflictDoUpdate({
       target: tradeReviews.tradeExecId,
@@ -257,6 +260,9 @@ export async function upsertTradeReview(review: InsertTradeReview) {
         stopLossPrice: review.stopLossPrice ?? null,
         riskAmount: review.riskAmount ?? null,
         takeProfitTarget: review.takeProfitTarget ?? null,
+        entryIntent: review.entryIntent ?? null,
+        entryTrigger: review.entryTrigger ?? null,
+        entryTimeframe: review.entryTimeframe ?? null,
         entryReason: review.entryReason ?? null,
         exitReason: review.exitReason ?? null,
         reviewSummary: review.reviewSummary ?? null,
