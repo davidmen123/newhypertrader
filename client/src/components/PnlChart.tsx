@@ -529,7 +529,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
     setShowReviewDetail(true);
   };
   const { data: tradeHistory } = trpc.hyperliquid.tradeHistory.useQuery(
-    { startDate: startDate ?? FULL_HISTORY_START_DATE, limit: 100, accountId },
+    { startDate: startDate ?? FULL_HISTORY_START_DATE, limit: 10000, allHistory: true, accountId },
     { refetchInterval: 120_000 }
   );
   const trades = (tradeHistory?.trades ?? []) as TradeFill[];
