@@ -1273,7 +1273,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
               收起详情
             </button>
           </div>
-          {selectedDayTrades.length > 1 && (
+          {selectedDayTrades.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-4">
               {selectedDayTrades.map((trade) => {
                 const meta = getTradeMeta(trade);
