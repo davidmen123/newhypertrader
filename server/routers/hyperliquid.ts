@@ -487,7 +487,7 @@ export const hyperliquidRouter = router({
       stopLossPrice: z.string().max(64).optional(),
       takeProfitTarget: z.string().max(64).optional(),
       entryIntent: z.enum(["continuation", "reversal", "range"]).optional(),
-      entryTrigger: z.enum(["pullback", "engulfing", "pin_bar", "ema20", "range_boundary"]).optional(),
+      entryTrigger: z.enum(["pullback", "engulfing", "pin_bar", "ema20", "key_level_breakout", "range_boundary"]).optional(),
       entryTimeframe: z.enum(["1h", "4h", "1d", "1w"]).optional(),
       execQty: z.string().max(64).optional(),
       entryReason: z.string().max(10000).optional(),

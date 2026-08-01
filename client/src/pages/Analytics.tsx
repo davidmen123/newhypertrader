@@ -146,7 +146,7 @@ type ReviewDraft = {
   stopLossPrice: string;
   takeProfitTarget: string;
   entryIntent: "" | "continuation" | "reversal" | "range";
-  entryTrigger: "" | "pullback" | "engulfing" | "pin_bar" | "ema20" | "range_boundary";
+  entryTrigger: "" | "pullback" | "engulfing" | "pin_bar" | "ema20" | "key_level_breakout" | "range_boundary";
   entryTimeframe: "" | "1h" | "4h" | "1d" | "1w";
   entryReason: string;
   exitReason: string;
@@ -401,6 +401,7 @@ function TradeReviewManager() {
                         <option value="engulfing">吞没形态</option>
                         <option value="pin_bar">Pin Bar形态</option>
                         <option value="ema20">EMA20突破/站稳</option>
+                        <option value="key_level_breakout">关键位突破</option>
                         <option value="range_boundary">区间边界反应</option>
                       </select>
                       <select

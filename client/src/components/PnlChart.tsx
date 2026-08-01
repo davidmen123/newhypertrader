@@ -89,7 +89,7 @@ type PnlSnapshot = {
   btcPrice?: string | number | null;
 };
 const ENTRY_INTENT_LABELS: Record<string, string> = { continuation: "趋势延续", reversal: "趋势反转", range: "区间交易" };
-const ENTRY_TRIGGER_LABELS: Record<string, string> = { pullback: "回踩确认", engulfing: "吞没形态", pin_bar: "Pin Bar形态", ema20: "EMA20突破/站稳", range_boundary: "区间边界反应" };
+const ENTRY_TRIGGER_LABELS: Record<string, string> = { pullback: "回踩确认", engulfing: "吞没形态", pin_bar: "Pin Bar形态", ema20: "EMA20突破/站稳", key_level_breakout: "关键位突破", range_boundary: "区间边界反应" };
 const ENTRY_TIMEFRAME_LABELS: Record<string, string> = { "1h": "1H", "4h": "4H", "1d": "1D", "1w": "1W" };
 type CandleInterval = "1h" | "4h" | "1d" | "1w";
 const REVIEW_AUTO_READ_FROM = Date.parse("2026-07-25T16:00:00.000Z");
