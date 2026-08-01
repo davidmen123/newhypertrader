@@ -270,18 +270,14 @@ export default function AccountOverview({ accountId }: { accountId?: string } = 
     ? "oklch(72% 0.14 55)"
     : "oklch(68% 0.15 145)";
   // Trading style: single-dimension bucketing on average holding time.
-  // Always labeled once there is any closed trade; below 10 round trips the
-  // label is flagged as provisional in the sub-line rather than withheld.
   const avgHoldingHours = metricsData?.averageHoldingHours ?? null;
   const tradingStyle =
     avgHoldingHours == null
       ? "--"
       : avgHoldingHours < 24
       ? t("日内交易", "Intraday")
-      : avgHoldingHours < 24 * 7
-      ? t("波段交易", "Swing")
       : avgHoldingHours < 24 * 30
-      ? t("持仓交易", "Position")
+      ? t("波段交易", "Swing")
       : t("趋势跟踪", "Trend Following");
   const openOrders = openOrdersData ?? [];
   const hasStopLossOrder = openOrders.some((order) => {
@@ -582,8 +578,8 @@ export default function AccountOverview({ accountId }: { accountId?: string } = 
               }
               tone="neutral"
               tooltip={t(
-                "按平均持仓时长分档：<1天 日内 / 1–7天 波段 / 7–30天 持仓 / >30天 趋势跟踪。不足 10 笔完整交易时不定型。",
-                "Bucketed by average holding time: <1d intraday / 1–7d swing / 7–30d position / >30d trend following. Withheld below 10 round trips."
+                "按平均持仓时长分档：<1天 日内 / 1–30天 波段 / >30天 趋势跟踪。",
+                "Bucketed by average holding time: <1d intraday / 1–30d swing / >30d trend following."
               )}
             />
           </div>
