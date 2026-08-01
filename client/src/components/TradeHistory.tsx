@@ -299,7 +299,7 @@ export default function TradeHistory({ accountId }: { accountId?: string } = {})
                     { label: t("成交价", "Price"), key: "price" },
                     { label: t("成交额", "Value"), key: "value" },
                     { label: t("手续费", "Fee"), key: "fee" },
-                    { label: t("盈亏", "PnL"), key: "pnl" },
+                    { label: t("盈亏", "PnL"), key: "pnl", tooltip: t("按成交产生的已实现盈亏统计；资金费单独统计，不计入该笔交易的胜负判断。", "Realized PnL from fills; funding is tracked separately and is not included in the trade win/loss result.") },
                   ].map((h) => (
                     <th
                       key={h.key}
