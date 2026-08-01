@@ -1482,6 +1482,53 @@ export async function getHyperliquidFundingHistory(startTime = 0, endTime = Date
   });
 }
 
+function fundingAllocationKey(fill: HyperliquidFill) {
+  return `${fill.coin}|${String(fill.oid ?? "")}|${fill.time}`;
+}
+
+/** Assign each completed perp position's funding to its final closing fill. */
+function allocateFundingToClosingFills(fills: HyperliquidFill[], updates: HyperliquidFundingUpdate[]) {
+  const tolerance = 0.00000001;
+  const sorted = fills
+    .filter((fill) => !fill.coin.includes("/") && !/^@\d+$/.test(fill.coin))
+    .slice()
+    .sort((a, b) => a.time - b.time);
+  const fundingByCoin = new Map<string, HyperliquidFundingUpdate[]>();
+  updates.forEach((update) => {
+    const coin = String(update.delta?.coin ?? "");
+    if (!coin) return;
+    const entries = fundingByCoin.get(coin) ?? [];
+    entries.push(update);
+    fundingByCoin.set(coin, entries);
+  });
+  const openedAt = new Map<string, number>();
+  const allocations = new Map<string, number>();
+
+  for (const fill of sorted) {
+    const start = toNumber(fill.startPosition);
+    const end = start + signedFillSize(fill);
+    const startsFlat = Math.abs(start) <= tolerance;
+    const endsFlat = Math.abs(end) <= tolerance;
+    const flipsSide = Math.abs(start) > tolerance && Math.abs(end) > tolerance && Math.sign(start) !== Math.sign(end);
+    if (!openedAt.has(fill.coin) && !startsFlat) openedAt.set(fill.coin, fill.time);
+    if (startsFlat && !endsFlat && !openedAt.has(fill.coin)) openedAt.set(fill.coin, fill.time);
+
+    if (endsFlat || flipsSide) {
+      const openTime = openedAt.get(fill.coin);
+      if (openTime != null) {
+        const funding = (fundingByCoin.get(fill.coin) ?? []).reduce((sum, update) => {
+          const time = Number(update.time);
+          return time > openTime && time <= fill.time ? sum + toNumber(update.delta?.usdc) : sum;
+        }, 0);
+        allocations.set(fundingAllocationKey(fill), funding);
+      }
+      openedAt.delete(fill.coin);
+      if (flipsSide) openedAt.set(fill.coin, fill.time);
+    }
+  }
+  return allocations;
+}
+
 export async function getHyperliquidTradeHistory(params: {
   startTime?: number;
   endTime?: number;
@@ -1494,6 +1541,7 @@ export async function getHyperliquidTradeHistory(params: {
     getHyperliquidOrderHistory(1000).catch(() => []),
     getHyperliquidSpotPairMap().catch(() => new Map<string, string>()),
   ]);
+  const fundingByClose = allocateFundingToClosingFills(fills, fundingUpdates);
   const ordersById = new Map(orderHistory.map((order) => [order.orderId, order]));
   const grouped = new Map<string, {
     fill: HyperliquidFill;
@@ -1596,6 +1644,9 @@ export async function getHyperliquidTradeHistory(params: {
         createdTime: String(group.latestTime),
         updatedTime: String(group.latestTime),
         execPnl: String(group.pnl),
+        fundingFee: category === "PERP"
+          ? String(fundingByClose.get(`${fill.coin}|${orderId}|${group.latestTime}`) ?? 0)
+          : "",
         closeMethod,
         triggerPrice: toNumber(historicalOrder?.triggerPrice) > 0 ? String(historicalOrder?.triggerPrice) : "",
         isRPI: "false",

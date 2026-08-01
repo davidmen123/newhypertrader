@@ -21,6 +21,7 @@ type HyperliquidFill = {
   feeDetail?: Array<{ feeCoin: string; fee: string }>;
   createdTime: string;
   execPnl: string;
+  fundingFee?: string;
   closeMethod?: string;
 };
 
@@ -299,6 +300,7 @@ export default function TradeHistory({ accountId }: { accountId?: string } = {})
                     { label: t("成交价", "Price"), key: "price" },
                     { label: t("成交额", "Value"), key: "value" },
                     { label: t("手续费", "Fee"), key: "fee" },
+                    { label: t("资金费", "Funding"), key: "funding" },
                     { label: t("盈亏", "PnL"), key: "pnl", tooltip: t("按成交产生的已实现盈亏统计；资金费单独统计，不计入该笔交易的胜负判断。", "Realized PnL from fills; funding is tracked separately and is not included in the trade win/loss result.") },
                   ].map((h) => (
                     <th
@@ -345,6 +347,7 @@ export default function TradeHistory({ accountId }: { accountId?: string } = {})
                       <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execPrice, 2)}</td>
                       <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execValue, 2)}</td>
                       <td className="py-2 pr-4 num-display" style={{ fontSize: "0.68rem", color: "var(--text-soft)" }}>{fee ? `${fmt(fee.fee, 2)} ${displayToken(fee.feeCoin)}` : "—"}</td>
+                      <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem", color: pnlColor(trade.fundingFee) }}>{num(trade.fundingFee) !== 0 ? signed(trade.fundingFee, 2) : "—"}</td>
                       <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem", color: pnlColor(pnl) }}>{pnl !== 0 ? signed(pnl, 2) : "—"}</td>
                     </tr>
                   );
@@ -373,6 +376,7 @@ export default function TradeHistory({ accountId }: { accountId?: string } = {})
                     <span>{t("数量", "Qty")}: {fmt(trade.execQty, 2)}</span>
                     <span style={{ color: closeMethodColor(trade.closeMethod) }}>{t("平仓方式", "Close")}: {closeMethodLabel(trade.closeMethod, lang)}</span>
                     {num(trade.execPnl) !== 0 && <span style={{ color: pnlColor(trade.execPnl) }}>PnL: {signed(trade.execPnl, 2)}</span>}
+                    {num(trade.fundingFee) !== 0 && <span style={{ color: pnlColor(trade.fundingFee) }}>{t("资金费", "Funding")}: {signed(trade.fundingFee, 2)}</span>}
                   </div>
                 </div>
               );
