@@ -687,25 +687,26 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
   });
   const chartData = useMemo(() => {
     if (!reviewMode || baseChartData.length === 0) return baseChartData;
-    const firstDate = getDateKey(baseChartData[0].date);
-    const earlyTradeDays = Array.from(new Set(
+    const snapshotDays = new Set(baseChartData.map((point) => getDateKey(point.date)));
+    const missingTradeDays = Array.from(new Set(
       trades
         .map((trade) => Number(trade.createdTime))
         .filter((timestamp) => Number.isFinite(timestamp))
         .map((timestamp) => formatUtc8Date(new Date(timestamp)))
-        .filter((day) => day < firstDate)
+        .filter((day) => !snapshotDays.has(day))
     )).sort();
-    if (earlyTradeDays.length === 0) return baseChartData;
+    if (missingTradeDays.length === 0) return baseChartData;
 
-    // Portfolio history may begin after the first trade. These anchor points
-    // keep earlier trade nodes visible without inventing an equity curve.
+    // Portfolio history may not contain a point on every trade day. Add an
+    // explicit anchor for each missing day so the node is part of the x-axis
+    // even when the exchange returns sparse equity snapshots.
     const firstPoint = baseChartData[0];
-    const anchorPoints = earlyTradeDays.map((day) => ({
+    const anchorPoints = missingTradeDays.map((day) => ({
       ...firstPoint,
       date: `${day}T00:00:00+08:00`,
       timestamp: parseUtc8Timestamp(`${day}T00:00:00+08:00`),
     }));
-    return [...anchorPoints, ...baseChartData];
+    return [...anchorPoints, ...baseChartData].sort((a, b) => a.timestamp - b.timestamp);
   }, [baseChartData, reviewMode, trades]);
   const tradeMarkers = useMemo<TradeMarker[]>(() => {
     if (chartData.length === 0) return [];
