@@ -432,6 +432,12 @@ export async function getHyperliquidFills(startTime?: number, endTime?: number) 
     let pageEnd = finalTime;
     const fills: HyperliquidFill[] = [];
 
+    // Keep the exchange's recent-fill response as a fallback. For accounts
+    // with a small history this is the most reliable source and prevents a
+    // time-window response from hiding older fills due to endpoint behavior.
+    const recentFills = await callInfo<HyperliquidFill[]>({ type: "userFills", user });
+    fills.push(...recentFills.filter((fill) => fill.time >= cursor && fill.time <= finalTime));
+
     // The API may return a batch in either chronological direction. Advance
     // the appropriate boundary so older fills are not silently truncated.
     for (let page = 0; page < 25 && cursor <= pageEnd; page += 1) {
