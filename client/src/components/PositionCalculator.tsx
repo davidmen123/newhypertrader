@@ -480,14 +480,6 @@ export default function PositionCalculator() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>{zh ? "方向" : "Direction"}</Label>
-                <div className="flex w-full rounded-md border border-input p-0.5" role="group">
-                  <div className={`h-8 flex-1 rounded px-3 py-1.5 text-center text-xs ${riskCalculation?.direction === "long" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{zh ? "做多" : "Long"}</div>
-                  <div className={`h-8 flex-1 rounded px-3 py-1.5 text-center text-xs ${riskCalculation?.direction === "short" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{zh ? "做空" : "Short"}</div>
-                </div>
-              </div>
-
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="risk-notional">{zh ? "名义仓位" : "Notional position"}</Label>
