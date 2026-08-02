@@ -367,7 +367,7 @@ export default function PositionCalculator() {
                       {zh ? "标的数量" : "Asset quantity"}
                     </div>
                     <div className="num-display text-xl text-foreground sm:text-2xl">
-                      ≈ {formatNumber(result.quantity, 8)}
+                      ≈ {formatNumber(result.quantity, 2)}
                     </div>
                   </div>
                 </div>
