@@ -16,8 +16,8 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     "version": "1.58.0",
     "date": "2026-08-02",
-    "zh": "仓位计算器新增反推风险模式",
-    "en": "Added reverse risk mode to the position calculator"
+    "zh": "仓位计算器新增反推风险计算模块",
+    "en": "Added a reverse risk calculation module to the position calculator"
   },
   {
     "version": "1.57.0",

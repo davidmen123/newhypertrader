@@ -55,6 +55,7 @@ const EXCLUDED_SHAS = new Set([
 // read too much like an internal commit note. Rewritten here (keyed by SHA) so
 // the original commit messages stay untouched. Keep new zh text <= 15 chars.
 const OVERRIDES = new Map([
+  ["8bb369f", { zh: "仓位计算器新增反推风险计算模块", en: "Added a reverse risk calculation module to the position calculator" }],
   ["bd1a172", { zh: "复盘模式新增进场标签及改进点等", en: "Added entry tags and improvement points to review mode" }],
   ["56a4c18", { zh: "复盘模式新增进场标签及改进点等", en: "Added entry tags and improvement points to review mode" }],
   ["5c942dd", { zh: "复盘模式新增进场标签及改进点等", en: "Added entry tags and improvement points to review mode" }],
