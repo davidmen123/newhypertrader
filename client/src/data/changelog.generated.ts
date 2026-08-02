@@ -14,6 +14,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.58.0",
+    "date": "2026-08-02",
+    "zh": "仓位计算器新增反推风险模式",
+    "en": "Added reverse risk mode to the position calculator"
+  },
+  {
     "version": "1.57.0",
     "date": "2026-08-01",
     "zh": "复盘模式新增进场标签及改进点等",

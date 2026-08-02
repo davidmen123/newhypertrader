@@ -31,7 +31,7 @@ const LIQUIDATION_ASSETS = [
   { value: "OTHER", label: "其他标的", maxLeverage: 10, maintenanceMarginPercent: "5" },
 ] satisfies readonly LiquidationAssetOption[];
 type RiskSelection = (typeof RISK_OPTIONS)[number] | "custom";
-type CalculatorMode = "position" | "liquidation";
+type CalculatorMode = "position" | "risk" | "liquidation";
 
 function initialAccountCapital(): string {
   if (typeof window === "undefined") return "5000";
@@ -75,6 +75,9 @@ export default function PositionCalculator() {
   const [liquidationMargin, setLiquidationMargin] = useState("");
   const [liquidationNotional, setLiquidationNotional] = useState("");
   const [maintenanceMarginPercent, setMaintenanceMarginPercent] = useState("1.25");
+  const [riskNotional, setRiskNotional] = useState("");
+  const [riskQuantity, setRiskQuantity] = useState("");
+  const [riskInputSource, setRiskInputSource] = useState<"notional" | "quantity">("notional");
   const parsedCustomRisk = parsePositiveNumber(customRiskPercent);
   const riskPercent = riskSelection === "custom"
     ? parsedCustomRisk <= 100 ? parsedCustomRisk : 0
@@ -114,6 +117,39 @@ export default function PositionCalculator() {
     [accountCapital, riskPercent, entryPrice, stopPrice],
   );
   const plannedRiskAmount = parsePositiveNumber(accountCapital) * (riskPercent / 100);
+  const riskCalculation = useMemo(() => {
+    const entry = parsePositiveNumber(entryPrice);
+    const stop = parsePositiveNumber(stopPrice);
+    const notional = parsePositiveNumber(riskNotional);
+    const quantity = parsePositiveNumber(riskQuantity);
+    const distance = Math.abs(entry - stop);
+    const riskAmount = quantity * distance;
+    const riskPercentOfAccount = parsePositiveNumber(accountCapital) > 0
+      ? (riskAmount / parsePositiveNumber(accountCapital)) * 100
+      : 0;
+    if (!entry || !stop || entry === stop || (!notional && !quantity)) return null;
+    return {
+      notional,
+      quantity,
+      riskAmount,
+      riskPercent: riskPercentOfAccount,
+      stopDistance: distance,
+      stopDistancePercent: (distance / entry) * 100,
+      direction: stop < entry ? "long" : "short",
+    };
+  }, [accountCapital, entryPrice, stopPrice, riskNotional, riskQuantity]);
+
+  useEffect(() => {
+    const entry = parsePositiveNumber(entryPrice);
+    if (!entry) return;
+    if (riskInputSource === "notional") {
+      const notional = parsePositiveNumber(riskNotional);
+      if (notional) setRiskQuantity(String(notional / entry));
+    } else {
+      const quantity = parsePositiveNumber(riskQuantity);
+      if (quantity) setRiskNotional(String(quantity * entry));
+    }
+  }, [entryPrice, riskInputSource]);
   const liquidationResult = useMemo(() => {
     const entry = parsePositiveNumber(liquidationEntryPrice);
     const margin = parsePositiveNumber(liquidationMargin);
@@ -177,6 +213,10 @@ export default function PositionCalculator() {
               ? zh
                 ? "根据账户资金与止损距离，估算单笔交易的合理仓位。"
                 : "Estimate position size from account capital and stop distance."
+              : calculatorMode === "risk"
+                ? zh
+                  ? "根据仓位与止损距离，反推单笔交易实际承担的风险。"
+                  : "Estimate actual trade risk from position size and stop distance."
               : zh
                 ? "根据进场价、保证金与名义仓位，估算价格清算线。"
                 : "Estimate the liquidation line from entry price, margin, and notional value."}
@@ -184,7 +224,7 @@ export default function PositionCalculator() {
         </DialogHeader>
 
         <div className="flex rounded-md border border-border p-0.5" role="tablist" aria-label={zh ? "计算器类型" : "Calculator type"}>
-          {(["position", "liquidation"] as const).map((mode) => {
+          {(["position", "risk", "liquidation"] as const).map((mode) => {
             const selected = calculatorMode === mode;
             return (
               <button
@@ -197,7 +237,11 @@ export default function PositionCalculator() {
                   selected ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
-                {mode === "position" ? (zh ? "仓位计算" : "Position sizing") : (zh ? "清算价估算" : "Liquidation estimate")}
+                {mode === "position"
+                  ? (zh ? "仓位计算" : "Position sizing")
+                  : mode === "risk"
+                    ? (zh ? "反推风险" : "Risk from position")
+                    : (zh ? "清算价估算" : "Liquidation estimate")}
               </button>
             );
           })}
@@ -404,6 +448,107 @@ export default function PositionCalculator() {
           </div>
 
             </>
+          )}
+
+          {calculatorMode === "risk" && (
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="risk-account-capital">{zh ? "账户资金" : "Account capital"}</Label>
+                <div className="relative">
+                  <Input
+                    id="risk-account-capital"
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="any"
+                    value={accountCapital}
+                    onChange={(event) => setAccountCapital(event.target.value)}
+                    className="pr-16 num-display"
+                  />
+                  <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground">USDC</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="risk-entry-price">{zh ? "入场价" : "Entry price"}</Label>
+                  <Input id="risk-entry-price" type="number" inputMode="decimal" min="0" step="any" value={entryPrice} onChange={(event) => setEntryPrice(event.target.value)} className="num-display" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="risk-stop-price">{zh ? "止损价" : "Stop price"}</Label>
+                  <Input id="risk-stop-price" type="number" inputMode="decimal" min="0" step="any" value={stopPrice} onChange={(event) => setStopPrice(event.target.value)} className="num-display" />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{zh ? "方向" : "Direction"}</Label>
+                <div className="flex w-full rounded-md border border-input p-0.5" role="group">
+                  <div className={`h-8 flex-1 rounded px-3 py-1.5 text-center text-xs ${riskCalculation?.direction === "long" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{zh ? "做多" : "Long"}</div>
+                  <div className={`h-8 flex-1 rounded px-3 py-1.5 text-center text-xs ${riskCalculation?.direction === "short" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{zh ? "做空" : "Short"}</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="risk-notional">{zh ? "名义仓位" : "Notional position"}</Label>
+                  <div className="relative">
+                    <Input
+                      id="risk-notional"
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="any"
+                      value={riskNotional}
+                      onChange={(event) => {
+                        setRiskInputSource("notional");
+                        setRiskNotional(event.target.value);
+                        const entry = parsePositiveNumber(entryPrice);
+                        const notional = parsePositiveNumber(event.target.value);
+                        setRiskQuantity(entry && notional ? String(notional / entry) : "");
+                      }}
+                      className="pr-16 num-display"
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground">USDC</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="risk-quantity">{zh ? "标的数量" : "Asset quantity"}</Label>
+                  <Input
+                    id="risk-quantity"
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="any"
+                    value={riskQuantity}
+                    onChange={(event) => {
+                      setRiskInputSource("quantity");
+                      setRiskQuantity(event.target.value);
+                      const entry = parsePositiveNumber(entryPrice);
+                      const quantity = parsePositiveNumber(event.target.value);
+                      setRiskNotional(entry && quantity ? String(quantity * entry) : "");
+                    }}
+                    className="num-display"
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border bg-muted/35 p-4 sm:p-5" aria-live="polite">
+                {riskCalculation ? (
+                  <>
+                    <div className="mb-4 flex items-center justify-between border-b border-border/70 pb-3">
+                      <span className="text-xs text-muted-foreground">{zh ? "实际单笔风险" : "Actual risk per trade"}</span>
+                      <span className="text-xs font-medium">{riskCalculation.direction === "long" ? (zh ? "做多" : "Long") : (zh ? "做空" : "Short")}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-5">
+                      <div><div className="mb-1 text-xs leading-relaxed text-muted-foreground">{zh ? "风险金额" : "Risk amount"}</div><div className="num-display text-xl text-foreground sm:text-2xl">{formatNumber(riskCalculation.riskAmount)} <span className="text-xs text-muted-foreground">USDC</span></div></div>
+                      <div><div className="mb-1 text-xs leading-relaxed text-muted-foreground">{zh ? "风险比例" : "Risk ratio"}</div><div className="num-display text-xl text-foreground sm:text-2xl">{formatNumber(riskCalculation.riskPercent)}<span className="text-xs text-muted-foreground">%</span></div></div>
+                    </div>
+                    <div className="mt-4 border-t border-border/70 pt-3 text-xs text-muted-foreground">{zh ? "止损距离 = |入场价 − 止损价|：" : "Stop distance = |entry − stop|: "}{formatNumber(riskCalculation.stopDistance)}（{formatNumber(riskCalculation.stopDistancePercent)}%）</div>
+                  </>
+                ) : <div className="py-5 text-center text-sm text-muted-foreground">{zh ? "填入仓位、入场价与止损价后显示结果" : "Enter position, entry, and stop prices to see the result"}</div>}
+              </div>
+              <div className="flex items-start gap-2 border-t border-border pt-4 text-[0.7rem] leading-relaxed text-muted-foreground"><Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" /><span>{zh ? "实际风险 = 标的数量 × |入场价 − 止损价|；未计入手续费、滑点及资金费。" : "Actual risk = quantity × |entry − stop|; fees, slippage, and funding are excluded."}</span></div>
+            </div>
           )}
 
           {calculatorMode === "liquidation" && (
