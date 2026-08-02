@@ -329,14 +329,14 @@ export default function Home() {
             <OpenOrdersTable />
           </CollapsibleSection>
 
-          {/* 4. PnL History — default collapsed on mobile, open on desktop */}
-          <CollapsibleSection label={tr.pnlHistory} defaultOpen={true}>
-            <PnlChart />
-          </CollapsibleSection>
-
-          {/* 5. Trading tools — keep the single entry card visible */}
+          {/* 4. Trading tools — keep the single entry card visible */}
           <CollapsibleSection label={lang === "zh" ? "辅助工具" : "Trading Tools"} defaultOpen={true}>
             <PositionCalculator />
+          </CollapsibleSection>
+
+          {/* 5. PnL History — default collapsed on mobile, open on desktop */}
+          <CollapsibleSection label={tr.pnlHistory} defaultOpen={true}>
+            <PnlChart />
           </CollapsibleSection>
 
           {/* 6. Trade History — default collapsed */}
