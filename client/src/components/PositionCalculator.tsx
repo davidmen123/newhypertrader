@@ -418,7 +418,7 @@ export default function PositionCalculator() {
 
                 <div className="mt-4 border-t border-border/70 pt-3 text-xs text-muted-foreground">
                   <span>
-                    {zh ? "止损距离 = |入场价 − 止损价|：" : "Stop distance = |entry − stop|: "}
+                    {zh ? "止损距离 = |入场价 − 止损价| = " : "Stop distance = |entry − stop| = "}
                     {formatNumber(result.stopDistance, 8)}
                     {zh ? "（" : " ("}{formatNumber(result.stopDistancePercent)}%{zh ? "）" : ")"}
                   </span>
@@ -535,7 +535,7 @@ export default function PositionCalculator() {
                       <div><div className="mb-1 text-xs leading-relaxed text-muted-foreground">{zh ? "风险金额" : "Risk amount"}</div><div className="num-display text-xl text-foreground sm:text-2xl">{formatNumber(riskCalculation.riskAmount)} <span className="text-xs text-muted-foreground">USDC</span></div></div>
                       <div><div className="mb-1 text-xs leading-relaxed text-muted-foreground">{zh ? "风险比例" : "Risk ratio"}</div><div className="num-display text-xl text-foreground sm:text-2xl">{formatNumber(riskCalculation.riskPercent)}<span className="text-xs text-muted-foreground">%</span></div></div>
                     </div>
-                    <div className="mt-4 border-t border-border/70 pt-3 text-xs text-muted-foreground">{zh ? "止损距离 = |入场价 − 止损价|：" : "Stop distance = |entry − stop|: "}{formatNumber(riskCalculation.stopDistance)}（{formatNumber(riskCalculation.stopDistancePercent)}%）</div>
+                    <div className="mt-4 border-t border-border/70 pt-3 text-xs text-muted-foreground">{zh ? "止损距离 = |入场价 − 止损价| = " : "Stop distance = |entry − stop| = "}{formatNumber(riskCalculation.stopDistance)}（{formatNumber(riskCalculation.stopDistancePercent)}%）</div>
                   </>
                 ) : <div className="py-5 text-center text-sm text-muted-foreground">{zh ? "填入仓位、入场价与止损价后显示结果" : "Enter position, entry, and stop prices to see the result"}</div>}
               </div>
