@@ -13,6 +13,7 @@ import Deribit from "./pages/Deribit";
 import Analytics from "./pages/Analytics";
 import Faq from "./pages/Faq";
 import About from "./pages/About";
+import SidebarDemo from "./pages/SidebarDemo";
 import { trpc } from "@/lib/trpc";
 
 function Router() {
@@ -24,6 +25,7 @@ function Router() {
       {/* Unlisted: reachable only via direct URL, no homepage/nav link. */}
       <Route path={"/about"} component={About} />
       <Route path={"/analytics"} component={Analytics} />
+      <Route path={"/sidebar-demo"} component={SidebarDemo} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
