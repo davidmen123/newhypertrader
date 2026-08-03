@@ -4,6 +4,7 @@ import { ownerProcedure, router } from "../_core/trpc.js";
 import { ENV } from "../_core/env.js";
 import { getDb } from "../db.js";
 import { assistantWatchlist } from "../../drizzle/schema.js";
+import { invokeLLM } from "../_core/llm.js";
 
 type EarningsItem = {
   symbol: string;
@@ -13,7 +14,7 @@ type EarningsItem = {
   timeOfDayUtc8: string | null;
 };
 
-type NewsItem = { title: string; link: string; publishedAt: string | null; source: string };
+type NewsItem = { title: string; summaryZh: string; link: string; publishedAt: string | null; source: string };
 export type AssistantMonitorItem = {
   symbol: string;
   note: string | null;
@@ -91,9 +92,36 @@ async function fetchEarnings(symbol: string): Promise<EarningsItem | null> {
   return null;
 }
 
+async function summarizeNews(items: Array<Omit<NewsItem, "summaryZh">>): Promise<NewsItem[]> {
+  if (items.length === 0) return [];
+  const fallback = items.map((item) => ({ ...item, summaryZh: "中文摘要暂不可用" }));
+  if (!ENV.forgeApiKey) return fallback;
+  try {
+    const response = await invokeLLM({
+      messages: [
+        { role: "system", content: "你是财经新闻编辑。把英文新闻标题改写成准确、客观、简洁的中文摘要。每条摘要不超过50个中文字符，不添加标题中没有的事实。只输出JSON数组，格式为[{\"index\":0,\"summary\":\"中文摘要\"}]。" },
+        { role: "user", content: JSON.stringify(items.map((item, index) => ({ index, title: item.title }))) },
+      ],
+      responseFormat: { type: "json_object" },
+    });
+    const content = response.choices?.[0]?.message?.content;
+    const text = typeof content === "string" ? content.replace(/^```json\s*/i, "").replace(/\s*```$/i, "") : "";
+    const parsed = JSON.parse(text);
+    const summaries = Array.isArray(parsed) ? parsed : parsed.summaries;
+    if (!Array.isArray(summaries)) return fallback;
+    return items.map((item, index) => {
+      const summary = String(summaries.find((entry: any) => Number(entry?.index) === index)?.summary ?? "").trim();
+      return { ...item, summaryZh: summary ? Array.from(summary).slice(0, 50).join("") : "中文摘要暂不可用" };
+    });
+  } catch (error) {
+    console.warn("[Assistant] Chinese news summary unavailable:", error);
+    return fallback;
+  }
+}
+
 async function fetchNews(symbol: string): Promise<NewsItem[]> {
   const text = await fetchText(`https://feeds.finance.yahoo.com/rss/2.0/headline?s=${encodeURIComponent(symbol)}&region=US&lang=en-US`, { Accept: "application/rss+xml, application/xml, text/xml" });
-  const items: NewsItem[] = [];
+  const items: Array<Omit<NewsItem, "summaryZh">> = [];
   for (const block of text.match(/<item>[\s\S]*?<\/item>/gi) ?? []) {
     const title = cleanXml(block.match(/<title>([\s\S]*?)<\/title>/i)?.[1] ?? "");
     const link = cleanXml(block.match(/<link>([\s\S]*?)<\/link>/i)?.[1] ?? "");
@@ -102,7 +130,7 @@ async function fetchNews(symbol: string): Promise<NewsItem[]> {
     items.push({ title, link, publishedAt: pubDate || null, source: "Yahoo Finance" });
     if (items.length >= 5) break;
   }
-  return items;
+  return summarizeNews(items);
 }
 
 async function getMonitorItem(item: { symbol: string; priority: string; note: string | null }): Promise<AssistantMonitorItem> {
@@ -125,8 +153,7 @@ async function sendDigestEmail(items: AssistantMonitorItem[], subject: string): 
   if (!ENV.resendApiKey || items.length === 0) return false;
   const lines = items.flatMap((item) => {
     const earnings = item.earnings ? `财报：${item.earnings.reportDate} ${item.earnings.timeOfDayUtc8 ?? ""}` : "财报：未来 31 天未找到已发布日期";
-    const news = item.news.length > 0 ? item.news.slice(0, 3).map((entry) => `- ${entry.title}\n  ${entry.link}`).join("\n") : "暂无新闻摘要";
-    return [`【${item.symbol}】${item.note ? `（${item.note}）` : ""}`, earnings, "相关新闻：", news, ""];
+    return [`【${item.symbol}】${item.note ? `（${item.note}）` : ""}`, earnings, "相关新闻请登录网页端个人助手查看。", ""];
   });
   try {
     const response = await fetch("https://api.resend.com/emails", {
