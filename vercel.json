@@ -2,6 +2,12 @@
   "installCommand": "corepack pnpm install --no-frozen-lockfile",
   "buildCommand": "corepack pnpm exec vite build",
   "outputDirectory": "dist/public",
+  "crons": [
+    {
+      "path": "/api/assistant/digest",
+      "schedule": "0 * * * *"
+    }
+  ],
   "redirects": [
     {
       "source": "/option",
