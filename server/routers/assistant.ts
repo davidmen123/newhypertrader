@@ -103,20 +103,26 @@ async function fetchEarnings(symbol: string): Promise<EarningsItem | null> {
 async function summarizeNews(items: Array<Omit<NewsItem, "summaryZh">>): Promise<NewsItem[]> {
   if (items.length === 0) return [];
   const fallback = items.map((item) => ({ ...item, summaryZh: "中文摘要暂不可用" }));
-  if (!ENV.forgeApiKey) return fallback;
+  if (!ENV.forgeApiKey) {
+    console.warn("[Assistant] Chinese news summary unavailable: BUILT_IN_FORGE_API_KEY is not configured");
+    return fallback;
+  }
   try {
     const response = await invokeLLM({
       messages: [
-        { role: "system", content: "你是财经新闻编辑。把英文新闻标题改写成准确、客观、简洁的中文摘要。每条摘要不超过50个中文字符，不添加标题中没有的事实。只输出JSON数组，格式为[{\"index\":0,\"summary\":\"中文摘要\"}]。" },
+        { role: "system", content: "你是财经新闻编辑。把英文新闻标题改写成准确、客观、简洁的中文摘要。每条摘要不超过50个中文字符，不添加标题中没有的事实。只输出一个JSON对象，格式为{\"summaries\":[{\"index\":0,\"summary\":\"中文摘要\"}]}，不要输出Markdown代码块或其他文字。" },
         { role: "user", content: JSON.stringify(items.map((item, index) => ({ index, title: item.title }))) },
       ],
       responseFormat: { type: "json_object" },
     });
     const content = response.choices?.[0]?.message?.content;
-    const text = typeof content === "string" ? content.replace(/^```json\s*/i, "").replace(/\s*```$/i, "") : "";
-    const parsed = JSON.parse(text);
-    const summaries = Array.isArray(parsed) ? parsed : parsed.summaries;
-    if (!Array.isArray(summaries)) return fallback;
+    const text = Array.isArray(content)
+      ? content.filter((part): part is { type: "text"; text: string } => part.type === "text").map((part) => part.text).join("")
+      : content ?? "";
+    const normalizedText = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+    const parsed: unknown = JSON.parse(normalizedText);
+    const summaries = Array.isArray(parsed) ? parsed : (parsed && typeof parsed === "object" && "summaries" in parsed ? parsed.summaries : null);
+    if (!Array.isArray(summaries)) throw new Error("LLM response did not contain a summaries array");
     return items.map((item, index) => {
       const summary = String(summaries.find((entry: any) => Number(entry?.index) === index)?.summary ?? "").trim();
       return { ...item, summaryZh: summary ? Array.from(summary).slice(0, 50).join("") : "中文摘要暂不可用" };
