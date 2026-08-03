@@ -14,6 +14,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.59.0",
+    "date": "2026-08-03",
+    "zh": "新增个人助手模块及财报新闻监控",
+    "en": "Added personal assistant earnings and news monitoring"
+  },
+  {
     "version": "1.58.0",
     "date": "2026-08-02",
     "zh": "仓位计算器新增反推风险计算模块",
