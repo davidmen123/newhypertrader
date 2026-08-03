@@ -50,6 +50,8 @@ const EXCLUDED_SHAS = new Set([
   "479dbdf", // 修复访问统计重复上报
   "9b49c8b", // 精简访问统计相关版本日志
   "242844b", // 个人助手技术状态小幅补充，不单独发布版本日志
+  "659667b", // 持仓字段调整的旧 trailer，不重复发布版本日志
+  "72c0001", // 持仓字段调整的旧 trailer，不重复发布版本日志
 ]);
 
 // Entries whose committed trailer overran the 15-character Chinese limit, or
