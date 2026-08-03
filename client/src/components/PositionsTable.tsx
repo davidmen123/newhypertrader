@@ -19,6 +19,8 @@ type HyperliquidPosition = {
   unrealisedPnl: string;
   fundingFee: string;
   liquidationPrice: string;
+  takeProfitPrice: string;
+  stopLossPrice: string;
   profitRate: string;
   updatedTime: string;
 };
@@ -126,20 +128,9 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                       </TooltipContent>
                     </Tooltip>
                   </th>
-                  <th>{t("可平", "Available")}</th>
                   <th>{t("均价", "Avg Price")}</th>
                   <th>{t("标记价", "Mark")}</th>
-                  <th className="flex items-center gap-1">
-                    {t("杠杆", "Lev.")}
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="text-muted-foreground/60 cursor-help" style={{ width: "12px", height: "12px" }} />
-                      </TooltipTrigger>
-                      <TooltipContent className="text-xs" style={{ fontSize: "0.7rem" }}>
-                        {t("此为名义杠杆，核心风险看实际杠杆，即\"总杠杆率\"", "This is nominal leverage; core risk depends on actual leverage (Total Leverage)")}
-                      </TooltipContent>
-                    </Tooltip>
-                  </th>
+                  <th>{t("止盈 / 止损", "Take Profit / Stop Loss")}</th>
                   <th>{t("保证金", "Margin")}</th>
                   <th>{t("未实现盈亏", "Unrealized")}</th>
                   <th>{t("收益率", "ROI")}</th>
@@ -160,11 +151,10 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                       </td>
                       <td>{fmt(p.total, 2)}</td>
                       <td>{fmt(p.positionValue, 2)}</td>
-                      <td>{fmt(p.available, 2)}</td>
                       <td>{fmt(p.avgPrice, 2)}</td>
                       <td>{fmt(p.markPrice, 2)}</td>
-                      <td>{fmt(p.leverage, 2)}x</td>
-                      <td>{fmt(p.marginUsed, 2)}</td>
+                      <td>{p.takeProfitPrice || "—"} / {p.stopLossPrice || "—"}</td>
+                      <td>{fmt(p.marginUsed, 2)} <span className="text-muted-foreground">{p.marginMode === "isolated" ? t("逐仓", "Isolated") : t("全仓", "Cross")}</span></td>
                       <td className={pnlColor(p.unrealisedPnl)}>{signed(p.unrealisedPnl, 2)}</td>
                       <td className={pnlColor(p.profitRate)}>{signed(num(p.profitRate) * 100, 2)}%</td>
                       <td className={pnlColor(p.fundingFee)}>{signed(p.fundingFee, 2)}</td>
@@ -193,6 +183,8 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                     <span>{t("数量", "Size")}: {fmt(p.total, 2)}</span>
                     <span>{t("均价", "Avg")}: {fmt(p.avgPrice, 2)}</span>
                     <span>{t("标记价", "Mark")}: {fmt(p.markPrice, 2)}</span>
+                    <span>{t("止盈 / 止损", "TP / SL")}: {p.takeProfitPrice || "—"} / {p.stopLossPrice || "—"}</span>
+                    <span>{t("保证金", "Margin")}: {fmt(p.marginUsed, 2)} {p.marginMode === "isolated" ? t("逐仓", "Isolated") : t("全仓", "Cross")}</span>
                     <span className={pnlColor(p.unrealisedPnl)}>{t("盈亏", "PnL")}: {signed(p.unrealisedPnl, 2)}</span>
                     <span className={pnlColor(p.fundingFee)}>{t("资金费", "Funding")}: {signed(p.fundingFee, 2)}</span>
                   </div>
