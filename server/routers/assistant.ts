@@ -69,11 +69,6 @@ function addDays(dateString: string, days: number): string {
   return utc8DateString(date);
 }
 
-function cleanXml(value: string): string {
-  return value.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/<[^>]+>/g, "")
-    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').trim();
-}
-
 async function fetchText(url: string, headers: Record<string, string> = {}): Promise<string> {
   const response = await fetch(url, { headers: { "User-Agent": "PnLNote/1.0", ...headers }, signal: AbortSignal.timeout(15000) });
   if (!response.ok) throw new Error(`Upstream returned ${response.status}`);
@@ -139,15 +134,29 @@ async function summarizeNews(items: Array<Omit<NewsItem, "summaryZh">>): Promise
   }
 }
 
-async function fetchNews(symbol: string): Promise<NewsItem[]> {
-  const text = await fetchText(`https://feeds.finance.yahoo.com/rss/2.0/headline?s=${encodeURIComponent(symbol)}&region=US&lang=en-US`, { Accept: "application/rss+xml, application/xml, text/xml" });
+function newsMatchesCompany(news: any, symbol: string, companyName: string): boolean {
+  const symbolKey = symbol.split(/[.:-]/)[0].toLowerCase();
+  const companyKey = companyName.toLowerCase().replace(/[,.'’]/g, " ").replace(/\b(inc|incorporated|corp|corporation|company|co|ltd|limited|plc)\b/g, " ").replace(/\s+/g, " ").trim();
+  const title = String(news?.title ?? "").toLowerCase();
+  const relatedTickers = Array.isArray(news?.relatedTickers) ? news.relatedTickers.map((value: unknown) => String(value).toLowerCase()) : [];
+  if (relatedTickers.some((ticker: string) => ticker === symbol.toLowerCase() || ticker.split(/[.:-]/)[0] === symbolKey)) return true;
+  const companyWords = companyKey.split(" ").filter((word) => word.length >= 3);
+  return companyWords.length > 0 && companyWords.some((word) => title.includes(word));
+}
+
+async function fetchNews(item: { symbol: string; companyName: string | null }): Promise<NewsItem[]> {
+  const companyName = item.companyName?.trim() || item.symbol;
+  const query = encodeURIComponent(companyName);
+  const text = await fetchText(`https://query1.finance.yahoo.com/v1/finance/search?q=${query}&quotesCount=0&newsCount=10`, { Accept: "application/json, text/plain, */*" });
+  const news = JSON.parse(text)?.news;
   const items: Array<Omit<NewsItem, "summaryZh">> = [];
-  for (const block of text.match(/<item>[\s\S]*?<\/item>/gi) ?? []) {
-    const title = cleanXml(block.match(/<title>([\s\S]*?)<\/title>/i)?.[1] ?? "");
-    const link = cleanXml(block.match(/<link>([\s\S]*?)<\/link>/i)?.[1] ?? "");
-    const pubDate = cleanXml(block.match(/<pubDate>([\s\S]*?)<\/pubDate>/i)?.[1] ?? "");
+  for (const entry of Array.isArray(news) ? news : []) {
+    if (!newsMatchesCompany(entry, item.symbol, companyName)) continue;
+    const title = String(entry?.title ?? "").trim();
+    const link = String(entry?.link ?? "").trim();
     if (!title || !link) continue;
-    items.push({ title, link, publishedAt: pubDate || null, source: "Yahoo Finance" });
+    const publishedAt = Number(entry?.providerPublishTime);
+    items.push({ title, link, publishedAt: Number.isFinite(publishedAt) ? new Date(publishedAt * 1000).toISOString() : null, source: String(entry?.publisher ?? "Yahoo Finance") });
     if (items.length >= 5) break;
   }
   return summarizeNews(items);
@@ -156,7 +165,7 @@ async function fetchNews(symbol: string): Promise<NewsItem[]> {
 async function getMonitorItem(item: { symbol: string; companyName: string | null; exchange: string | null; priority: string; note: string | null }): Promise<AssistantMonitorItem> {
   const cached = monitorCache.get(item.symbol);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
-  const [earnings, news] = await Promise.allSettled([fetchEarnings(item.symbol), fetchNews(item.symbol)]);
+  const [earnings, news] = await Promise.allSettled([fetchEarnings(item.symbol), fetchNews(item)]);
   const value: AssistantMonitorItem = { symbol: item.symbol, companyName: item.companyName, exchange: item.exchange, priority: item.priority, note: item.note, earnings: earnings.status === "fulfilled" ? earnings.value : null, news: news.status === "fulfilled" ? news.value : [] };
   monitorCache.set(item.symbol, { expiresAt: Date.now() + CACHE_MS, value });
   return value;
