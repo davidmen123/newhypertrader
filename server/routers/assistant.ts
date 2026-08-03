@@ -282,7 +282,7 @@ export const assistantRouter = router({
     const rows = await readWatchlist();
     return Promise.all(rows.map((row: any) => getMonitorItem(row)));
   }),
-  add: ownerProcedure.input(z.object({ symbol: z.string().trim().min(1).max(32), companyName: z.string().trim().min(1).max(160), exchange: z.string().trim().min(1).max(64), assetType: z.string().trim().min(1).max(32), priority: z.enum(["高", "中", "低"]).default("中"), technicalState: z.enum(["筑底中", "趋势延续", "区间震荡", "即将突破", "等待回踩"]).optional(), observationPeriods: z.array(z.enum(["1H", "4H", "1D", "1W"])).max(4).default([]), keyCondition: z.string().trim().max(200).optional(), note: z.string().trim().max(200).optional() })).mutation(async ({ input }) => {
+  add: ownerProcedure.input(z.object({ symbol: z.string().trim().min(1).max(32), companyName: z.string().trim().min(1).max(160), exchange: z.string().trim().min(1).max(64), assetType: z.string().trim().min(1).max(32), priority: z.enum(["高", "中", "低"]).default("中"), technicalState: z.enum(["筑底中", "底部动能钝化", "趋势延续", "区间震荡", "即将突破", "等待回踩"]).optional(), observationPeriods: z.array(z.enum(["1H", "4H", "1D", "1W"])).max(4).default([]), keyCondition: z.string().trim().max(200).optional(), note: z.string().trim().max(200).optional() })).mutation(async ({ input }) => {
     await ensureAssistantSchema();
     const db = await getDb();
     if (!db) throw new Error("数据库不可用");
