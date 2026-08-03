@@ -593,7 +593,7 @@ function PersonalAssistant() {
   const [symbol, setSymbol] = useState("");
   const [selectedInstrument, setSelectedInstrument] = useState<{ symbol: string; companyName: string; exchange: string; assetType: string } | null>(null);
   const [priority, setPriority] = useState<"高" | "中" | "低">("中");
-  const [technicalState, setTechnicalState] = useState<"" | "筑底中" | "趋势延续" | "区间震荡" | "即将突破" | "等待回踩">("");
+  const [technicalState, setTechnicalState] = useState<"" | "筑底中" | "底部动能钝化" | "趋势延续" | "区间震荡" | "即将突破" | "等待回踩">("");
   const [observationPeriods, setObservationPeriods] = useState<string[]>([]);
   const [keyCondition, setKeyCondition] = useState("");
   const [note, setNote] = useState("");
@@ -661,6 +661,7 @@ function PersonalAssistant() {
             <select value={technicalState} onChange={(event) => setTechnicalState(event.target.value as typeof technicalState)} className="mt-2 w-full rounded-lg bg-transparent px-3 py-2.5 text-sm focus:outline-none" style={{ border: "1px solid var(--panel-border)", color: "var(--foreground)" }}>
               <option value="">未设置</option>
               <option value="筑底中">筑底中</option>
+              <option value="底部动能钝化">底部动能钝化</option>
               <option value="趋势延续">趋势延续</option>
               <option value="区间震荡">区间震荡</option>
               <option value="即将突破">即将突破</option>
