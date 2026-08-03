@@ -53,6 +53,8 @@ const EXCLUDED_SHAS = new Set([
   "659667b", // 持仓字段调整的旧 trailer，不重复发布版本日志
   "72c0001", // 持仓字段调整的旧 trailer，不重复发布版本日志
   "0afa46e", // 个人助手技术观察字段的小幅扩展，不单独发布版本日志
+  "2eae1cb", // 持仓字段调整的旧 trailer，不重复发布版本日志
+  "9df302a", // 持仓字段调整的旧 trailer，不重复发布版本日志
 ]);
 
 // Entries whose committed trailer overran the 15-character Chinese limit, or
