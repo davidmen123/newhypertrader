@@ -692,7 +692,7 @@ function PersonalAssistant() {
                       </div>
                       <div>
                         <div className="text-muted-foreground">最新新闻</div>
-                        {monitored?.news?.[0] ? <div className="mt-1"><div className="truncate">{monitored.news[0].summaryZh}</div><a href={monitored.news[0].link} target="_blank" rel="noreferrer" className="mt-1 inline-block text-muted-foreground underline-offset-2 hover:underline">查看原文 · {monitored.news[0].source}</a></div> : <div className="mt-1">暂无新闻摘要</div>}
+                        {monitored?.news?.[0] ? <div className="mt-1 min-w-0"><div className="leading-relaxed">{monitored.news[0].title}</div><div className="mt-1 line-clamp-3 leading-relaxed text-muted-foreground">{monitored.news[0].summaryZh}</div><a href={monitored.news[0].link} target="_blank" rel="noreferrer" className="mt-1 inline-block text-muted-foreground underline-offset-2 hover:underline">{monitored.news[0].source}{monitored.news[0].publishedAt ? ` · ${absoluteTime(monitored.news[0].publishedAt)}` : ""} · 查看原文</a></div> : <div className="mt-1">暂无相关新闻</div>}
                       </div>
                     </div>
                   );

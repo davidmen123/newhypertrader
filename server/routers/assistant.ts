@@ -110,7 +110,7 @@ async function summarizeNews(items: Array<Omit<NewsItem, "summaryZh">>): Promise
   try {
     const response = await invokeLLM({
       messages: [
-        { role: "system", content: "你是财经新闻编辑。把英文新闻标题改写成准确、客观、简洁的中文摘要。每条摘要不超过50个中文字符，不添加标题中没有的事实。只输出一个JSON对象，格式为{\"summaries\":[{\"index\":0,\"summary\":\"中文摘要\"}]}，不要输出Markdown代码块或其他文字。" },
+        { role: "system", content: "你是财经新闻编辑。把英文新闻标题改写成准确、客观、简洁的中文概况。每条概况尽量控制在50到100个中文字符；如果标题信息不足，可以少于50字，但不能为了凑字数添加标题中没有的事实。只输出一个JSON对象，格式为{\"summaries\":[{\"index\":0,\"summary\":\"中文概况\"}]}，不要输出Markdown代码块或其他文字。" },
         { role: "user", content: JSON.stringify(items.map((item, index) => ({ index, title: item.title }))) },
       ],
       responseFormat: { type: "json_object" },
@@ -126,7 +126,7 @@ async function summarizeNews(items: Array<Omit<NewsItem, "summaryZh">>): Promise
     if (!Array.isArray(summaries)) throw new Error("LLM response did not contain a summaries array");
     return items.map((item, index) => {
       const summary = String(summaries.find((entry: any) => Number(entry?.index) === index)?.summary ?? "").trim();
-      return { ...item, summaryZh: summary ? Array.from(summary).slice(0, 50).join("") : "中文摘要暂不可用" };
+      return { ...item, summaryZh: summary ? Array.from(summary).slice(0, 100).join("") : "中文摘要暂不可用" };
     });
   } catch (error) {
     console.warn("[Assistant] Chinese news summary unavailable:", error);
