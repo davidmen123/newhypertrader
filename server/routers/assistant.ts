@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { ownerProcedure, router } from "../_core/trpc.js";
 import { ENV } from "../_core/env.js";
 import { getDb } from "../db.js";
@@ -24,6 +24,31 @@ export type AssistantMonitorItem = {
 
 const monitorCache = new Map<string, { expiresAt: number; value: AssistantMonitorItem }>();
 const CACHE_MS = 30 * 60 * 1000;
+let assistantSchemaReady: Promise<void> | null = null;
+
+async function ensureAssistantSchema(): Promise<void> {
+  if (assistantSchemaReady) return assistantSchemaReady;
+  assistantSchemaReady = (async () => {
+    const db = await getDb();
+    if (!db) return;
+    await db.execute(sql.raw(`
+      CREATE TABLE IF NOT EXISTS assistant_watchlist (
+        id SERIAL PRIMARY KEY,
+        symbol varchar(32) NOT NULL UNIQUE,
+        priority varchar(8) NOT NULL DEFAULT '中',
+        note text,
+        emailenabled boolean NOT NULL DEFAULT TRUE,
+        lastdigestdate varchar(16),
+        createdat timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedat timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `));
+  })().catch((error) => {
+    assistantSchemaReady = null;
+    throw error;
+  });
+  return assistantSchemaReady;
+}
 
 function utc8DateString(date = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai" }).format(date);
@@ -90,6 +115,7 @@ async function getMonitorItem(item: { symbol: string; priority: string; note: st
 }
 
 async function readWatchlist() {
+  await ensureAssistantSchema();
   const db = await getDb();
   if (!db) return [];
   return db.select().from(assistantWatchlist).orderBy(desc(assistantWatchlist.createdAt));
@@ -144,6 +170,7 @@ export const assistantRouter = router({
     return Promise.all(rows.map((row: any) => getMonitorItem(row)));
   }),
   add: ownerProcedure.input(z.object({ symbol: z.string().trim().min(1).max(32), priority: z.enum(["高", "中", "低"]).default("中"), note: z.string().trim().max(200).optional() })).mutation(async ({ input }) => {
+    await ensureAssistantSchema();
     const db = await getDb();
     if (!db) throw new Error("数据库不可用");
     const symbol = input.symbol.toUpperCase();
@@ -152,6 +179,7 @@ export const assistantRouter = router({
     return row;
   }),
   remove: ownerProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ input }) => {
+    await ensureAssistantSchema();
     const db = await getDb();
     if (!db) throw new Error("数据库不可用");
     await db.delete(assistantWatchlist).where(eq(assistantWatchlist.id, input.id));
