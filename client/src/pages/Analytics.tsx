@@ -584,10 +584,11 @@ function AccountPnlManager() {
 function PersonalAssistant() {
   const { data: rawItems, isLoading } = trpc.assistant.list.useQuery();
   const items = (rawItems ?? []) as Array<{ id: number; symbol: string; companyName: string | null; exchange: string | null; assetType: string | null; priority: string; note: string | null }>;
-  const { data: monitorItems = [], isFetching: isMonitoring, refetch: refetchMonitor } = trpc.assistant.monitor.useQuery(undefined, { refetchInterval: 30 * 60 * 1000 });
+  const { data: monitorItems = [], isFetching: isMonitoring } = trpc.assistant.monitor.useQuery(undefined, { refetchInterval: 30 * 60 * 1000 });
   const addMutation = trpc.assistant.add.useMutation();
   const removeMutation = trpc.assistant.remove.useMutation();
   const sendNowMutation = trpc.assistant.sendNow.useMutation();
+  const refreshMutation = trpc.assistant.refresh.useMutation();
   const utils = trpc.useUtils();
   const [symbol, setSymbol] = useState("");
   const [selectedInstrument, setSelectedInstrument] = useState<{ symbol: string; companyName: string; exchange: string; assetType: string } | null>(null);
@@ -659,7 +660,7 @@ function PersonalAssistant() {
 
       <Panel title="关注清单" sub={`${items.length} 个标的 · ${isMonitoring ? "更新中" : "已更新"}`}>
         <div className="mb-4 flex justify-end gap-2">
-          <button type="button" onClick={() => refetchMonitor()} className="rounded-lg px-3 py-2 text-xs" style={{ border: "1px solid var(--panel-border)", color: "var(--muted-foreground)" }}>刷新监控</button>
+          <button type="button" onClick={async () => { const refreshed = await refreshMutation.mutateAsync(); utils.assistant.monitor.setData(undefined, refreshed); }} disabled={refreshMutation.isPending} className={`rounded-lg px-3 py-2 text-xs disabled:opacity-50 ${refreshMutation.isPending ? "animate-pulse" : ""}`} style={{ border: "1px solid var(--panel-border)", color: "var(--muted-foreground)" }}>{refreshMutation.isPending ? "更新中…" : "刷新监控"}</button>
           <button type="button" onClick={() => sendNowMutation.mutate()} disabled={sendNowMutation.isPending || items.length === 0} className="rounded-lg px-3 py-2 text-xs disabled:opacity-50" style={{ border: "1px solid var(--panel-border)", color: "var(--muted-foreground)" }}>{sendNowMutation.isPending ? "发送中" : "立即发摘要"}</button>
         </div>
         {isLoading ? (

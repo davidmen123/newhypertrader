@@ -230,6 +230,11 @@ export const assistantRouter = router({
     const rows = await readWatchlist();
     return Promise.all(rows.map((row: any) => getMonitorItem(row)));
   }),
+  refresh: ownerProcedure.mutation(async () => {
+    monitorCache.clear();
+    const rows = await readWatchlist();
+    return Promise.all(rows.map((row: any) => getMonitorItem(row)));
+  }),
   add: ownerProcedure.input(z.object({ symbol: z.string().trim().min(1).max(32), companyName: z.string().trim().min(1).max(160), exchange: z.string().trim().min(1).max(64), assetType: z.string().trim().min(1).max(32), priority: z.enum(["高", "中", "低"]).default("中"), note: z.string().trim().max(200).optional() })).mutation(async ({ input }) => {
     await ensureAssistantSchema();
     const db = await getDb();
