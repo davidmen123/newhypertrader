@@ -27,6 +27,7 @@ export type AssistantMonitorItem = {
 
 const monitorCache = new Map<string, { expiresAt: number; value: AssistantMonitorItem }>();
 const CACHE_MS = 30 * 60 * 1000;
+const NEWS_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
 let assistantSchemaReady: Promise<void> | null = null;
 
 async function ensureAssistantSchema(): Promise<void> {
@@ -73,6 +74,11 @@ async function fetchText(url: string, headers: Record<string, string> = {}): Pro
   const response = await fetch(url, { headers: { "User-Agent": "PnLNote/1.0", ...headers }, signal: AbortSignal.timeout(15000) });
   if (!response.ok) throw new Error(`Upstream returned ${response.status}`);
   return response.text();
+}
+
+function cleanXml(value: string): string {
+  return value.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').trim();
 }
 
 async function fetchEarnings(symbol: string): Promise<EarningsItem | null> {
@@ -146,20 +152,48 @@ function newsMatchesCompany(news: any, symbol: string, companyName: string): boo
 
 async function fetchNews(item: { symbol: string; companyName: string | null }): Promise<NewsItem[]> {
   const companyName = item.companyName?.trim() || item.symbol;
-  const query = encodeURIComponent(companyName);
-  const text = await fetchText(`https://query1.finance.yahoo.com/v1/finance/search?q=${query}&quotesCount=0&newsCount=10`, { Accept: "application/json, text/plain, */*" });
-  const news = JSON.parse(text)?.news;
+  const cutoff = Date.now() - NEWS_LOOKBACK_MS;
   const items: Array<Omit<NewsItem, "summaryZh">> = [];
-  for (const entry of Array.isArray(news) ? news : []) {
-    if (!newsMatchesCompany(entry, item.symbol, companyName)) continue;
-    const title = String(entry?.title ?? "").trim();
-    const link = String(entry?.link ?? "").trim();
-    if (!title || !link) continue;
-    const publishedAt = Number(entry?.providerPublishTime);
-    items.push({ title, link, publishedAt: Number.isFinite(publishedAt) ? new Date(publishedAt * 1000).toISOString() : null, source: String(entry?.publisher ?? "Yahoo Finance") });
-    if (items.length >= 5) break;
+  const seenLinks = new Set<string>();
+
+  try {
+    const query = encodeURIComponent(companyName);
+    const text = await fetchText(`https://query1.finance.yahoo.com/v1/finance/search?q=${query}&quotesCount=0&newsCount=10`, { Accept: "application/json, text/plain, */*" });
+    const news = JSON.parse(text)?.news;
+    for (const entry of Array.isArray(news) ? news : []) {
+      if (!newsMatchesCompany(entry, item.symbol, companyName)) continue;
+      const title = String(entry?.title ?? "").trim();
+      const link = String(entry?.link ?? "").trim();
+      const publishedAt = Number(entry?.providerPublishTime);
+      const publishedMs = Number.isFinite(publishedAt) ? publishedAt * 1000 : 0;
+      if (!title || !link || !publishedMs || publishedMs < cutoff || seenLinks.has(link)) continue;
+      seenLinks.add(link);
+      items.push({ title, link, publishedAt: new Date(publishedMs).toISOString(), source: String(entry?.publisher ?? "Yahoo Finance") });
+    }
+  } catch (error) {
+    console.warn(`[Assistant] Yahoo news unavailable for ${item.symbol}:`, error);
   }
-  return summarizeNews(items);
+
+  try {
+    const symbolKey = item.symbol.split(/[.:-]/)[0];
+    const companyKey = companyName.split(/\s+/)[0];
+    const query = encodeURIComponent(`"${symbolKey}" OR "${companyKey}"`);
+    const text = await fetchText(`https://news.google.com/rss/search?q=${query}&hl=zh-CN&gl=CN&ceid=CN:zh-Hans`, { Accept: "application/rss+xml, application/xml, text/xml" });
+    for (const block of text.match(/<item>[\s\S]*?<\/item>/gi) ?? []) {
+      const title = cleanXml(block.match(/<title>([\s\S]*?)<\/title>/i)?.[1] ?? "");
+      const link = cleanXml(block.match(/<link>([\s\S]*?)<\/link>/i)?.[1] ?? "");
+      const pubDate = cleanXml(block.match(/<pubDate>([\s\S]*?)<\/pubDate>/i)?.[1] ?? "");
+      const publishedMs = Date.parse(pubDate);
+      if (!title || !link || !publishedMs || publishedMs < cutoff || seenLinks.has(link)) continue;
+      seenLinks.add(link);
+      items.push({ title, link, publishedAt: new Date(publishedMs).toISOString(), source: "Google 新闻" });
+    }
+  } catch (error) {
+    console.warn(`[Assistant] Google news unavailable for ${item.symbol}:`, error);
+  }
+
+  items.sort((a, b) => new Date(b.publishedAt ?? 0).getTime() - new Date(a.publishedAt ?? 0).getTime());
+  return summarizeNews(items.slice(0, 5));
 }
 
 async function getMonitorItem(item: { symbol: string; companyName: string | null; exchange: string | null; priority: string; note: string | null }): Promise<AssistantMonitorItem> {
