@@ -103,8 +103,13 @@ async function fetchEarnings(symbol: string): Promise<EarningsItem | null> {
 async function summarizeNews(items: Array<Omit<NewsItem, "summaryZh">>): Promise<NewsItem[]> {
   if (items.length === 0) return [];
   const fallback = items.map((item) => ({ ...item, summaryZh: "中文摘要暂不可用" }));
-  if (!ENV.forgeApiKey) {
-    console.warn("[Assistant] Chinese news summary unavailable: BUILT_IN_FORGE_API_KEY is not configured");
+  const newsProvider = ENV.newsLlmApiKey && ENV.newsLlmBaseUrl ? {
+    apiKey: ENV.newsLlmApiKey,
+    baseUrl: ENV.newsLlmBaseUrl,
+    model: ENV.newsLlmModel,
+  } : undefined;
+  if (!newsProvider && !ENV.forgeApiKey) {
+    console.warn("[Assistant] Chinese news summary unavailable: neither NEWS_LLM_API_KEY nor BUILT_IN_FORGE_API_KEY is configured");
     return fallback;
   }
   try {
@@ -114,11 +119,7 @@ async function summarizeNews(items: Array<Omit<NewsItem, "summaryZh">>): Promise
         { role: "user", content: JSON.stringify(items.map((item, index) => ({ index, title: item.title }))) },
       ],
       responseFormat: { type: "json_object" },
-      provider: ENV.newsLlmApiKey && ENV.newsLlmBaseUrl ? {
-        apiKey: ENV.newsLlmApiKey,
-        baseUrl: ENV.newsLlmBaseUrl,
-        model: ENV.newsLlmModel,
-      } : undefined,
+      provider: newsProvider,
     });
     const content = response.choices?.[0]?.message?.content;
     const text = Array.isArray(content)
