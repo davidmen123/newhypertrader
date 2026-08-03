@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { trpc } from "@/lib/trpc";
 import { writeAdminKey } from "@/lib/adminKey";
-import { ArrowLeft, Clock, Globe, Info, Laptop, MapPin, Monitor, RefreshCw, Smartphone } from "lucide-react";
+import { ArrowLeft, Clock, Globe, Info, Laptop, MapPin, Monitor, Plus, RefreshCw, Smartphone, Trash2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import AccountOverview from "@/components/AccountOverview";
 import PnlChart from "@/components/PnlChart";
@@ -581,6 +581,106 @@ function AccountPnlManager() {
   );
 }
 
+type AssistantItem = {
+  id: string;
+  symbol: string;
+  priority: "高" | "中" | "低";
+  note: string;
+  createdAt: string;
+};
+
+const ASSISTANT_STORAGE_KEY = "analytics.personalAssistantItems";
+
+function PersonalAssistant() {
+  const [items, setItems] = useState<AssistantItem[]>(() => {
+    try {
+      const stored = localStorage.getItem(ASSISTANT_STORAGE_KEY);
+      return stored ? JSON.parse(stored) as AssistantItem[] : [];
+    } catch {
+      return [];
+    }
+  });
+  const [symbol, setSymbol] = useState("");
+  const [priority, setPriority] = useState<AssistantItem["priority"]>("中");
+  const [note, setNote] = useState("");
+
+  const persist = (next: AssistantItem[]) => {
+    setItems(next);
+    try {
+      localStorage.setItem(ASSISTANT_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // Keep the in-memory list usable when browser storage is unavailable.
+    }
+  };
+
+  const addItem = () => {
+    const normalized = symbol.trim().toUpperCase();
+    if (!normalized) return;
+    const next: AssistantItem = {
+      id: `${Date.now()}-${normalized}`,
+      symbol: normalized,
+      priority,
+      note: note.trim(),
+      createdAt: new Date().toISOString(),
+    };
+    persist([next, ...items.filter((item) => item.symbol !== normalized)]);
+    setSymbol("");
+    setNote("");
+    setPriority("中");
+  };
+
+  return (
+    <div className="space-y-5">
+      <Panel title="个人助手" sub="关注标的清单 · 当前仅保存在本设备">
+        <div className="mb-5 rounded-lg px-4 py-3 text-sm leading-relaxed" style={{ background: "var(--surface-subtle)", color: "var(--muted-foreground)" }}>
+          先记录你想持续关注的标的。后续可接入财报、新闻和异常波动监控，并通过邮件提醒。
+        </div>
+        <div className="grid gap-3 sm:grid-cols-[1fr_110px_1.4fr_auto] sm:items-end">
+          <label className="text-xs text-muted-foreground">
+            标的
+            <input value={symbol} onChange={(event) => setSymbol(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") addItem(); }} placeholder="例如 CBRS / BTC" className="mt-2 w-full rounded-lg bg-transparent px-3 py-2.5 text-sm focus:outline-none" style={{ border: "1px solid var(--panel-border)" }} />
+          </label>
+          <label className="text-xs text-muted-foreground">
+            优先级
+            <select value={priority} onChange={(event) => setPriority(event.target.value as AssistantItem["priority"])} className="mt-2 w-full rounded-lg bg-transparent px-3 py-2.5 text-sm focus:outline-none" style={{ border: "1px solid var(--panel-border)", color: "var(--foreground)" }}>
+              <option value="高">高</option>
+              <option value="中">中</option>
+              <option value="低">低</option>
+            </select>
+          </label>
+          <label className="text-xs text-muted-foreground">
+            备注
+            <input value={note} onChange={(event) => setNote(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") addItem(); }} placeholder="例如：等待财报验证" className="mt-2 w-full rounded-lg bg-transparent px-3 py-2.5 text-sm focus:outline-none" style={{ border: "1px solid var(--panel-border)" }} />
+          </label>
+          <button type="button" onClick={addItem} className="inline-flex items-center justify-center gap-1 rounded-lg px-4 py-2.5 text-sm" style={{ background: "var(--foreground)", color: "var(--background)" }}><Plus size={15} />添加</button>
+        </div>
+      </Panel>
+
+      <Panel title="关注清单" sub={`${items.length} 个标的`}>
+        {items.length === 0 ? (
+          <div className="py-10 text-center text-sm text-muted-foreground/60">暂无关注标的，请先添加一个。</div>
+        ) : (
+          <div className="space-y-2">
+            {items.map((item) => (
+              <div key={item.id} className="flex flex-col gap-3 rounded-lg px-4 py-3 sm:flex-row sm:items-center sm:justify-between" style={{ background: "var(--surface-subtle)" }}>
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="num-display font-medium">{item.symbol}</span>
+                  <span className="rounded-full px-2 py-0.5 text-[11px]" style={{ color: item.priority === "高" ? "var(--destructive)" : "var(--muted-foreground)", border: "1px solid var(--panel-border)" }}>{item.priority}优先</span>
+                  {item.note && <span className="truncate text-xs text-muted-foreground">{item.note}</span>}
+                </div>
+                <div className="flex items-center justify-between gap-4 sm:justify-end">
+                  <span className="text-xs text-muted-foreground/60">等待监控接入</span>
+                  <button type="button" onClick={() => persist(items.filter((candidate) => candidate.id !== item.id))} className="rounded-md p-1.5 text-muted-foreground hover:text-destructive" aria-label={`删除 ${item.symbol}`}><Trash2 size={15} /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Panel>
+    </div>
+  );
+}
+
 type Period = "today" | "week" | "month" | "custom";
 
 const PERIODS: Array<{ key: Period; label: string }> = [
@@ -592,7 +692,7 @@ const PERIODS: Array<{ key: Period; label: string }> = [
 
 function AnalyticsDashboard() {
   const [period, setPeriod] = useState<Period>("week");
-  const [view, setView] = useState<"traffic" | "reviews" | "accounts">("traffic");
+  const [view, setView] = useState<"traffic" | "reviews" | "accounts" | "assistant">("traffic");
   const [customStart, setCustomStart] = useState(() => utc8DateStr(Date.now() - 6 * DAY_MS));
   const [customEnd, setCustomEnd] = useState(() => utc8DateStr(Date.now()));
 
@@ -653,7 +753,7 @@ function AnalyticsDashboard() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className="text-xl sm:text-2xl font-light" style={{ fontFamily: "Cormorant Garamond, serif" }}>
-                {view === "traffic" ? "访问统计" : view === "reviews" ? "交易复盘" : "账户盈亏"}
+                {view === "traffic" ? "访问统计" : view === "reviews" ? "交易复盘" : view === "accounts" ? "账户盈亏" : "个人助手"}
               </h2>
               <div className="mt-2" style={{ width: 40, height: 1, background: "rgb(215 187 114 / 62%)" }} />
               <p className="text-muted-foreground/70 mt-2" style={{ fontSize: "0.72rem" }}>
@@ -661,7 +761,9 @@ function AnalyticsDashboard() {
                   ? "网站访问数据 · 时间均为 UTC+8 · 不含本页访问"
                   : view === "reviews"
                   ? "编辑交易复盘内容 · 保存后前台自动呈现"
-                  : "切换查看各个 Hyperliquid 只读地址 · 首页始终只展示主账户"}
+                  : view === "accounts"
+                  ? "切换查看各个 Hyperliquid 只读地址 · 首页始终只展示主账户"
+                  : "管理关注标的 · 后续接入财报、新闻与提醒"}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -714,6 +816,7 @@ function AnalyticsDashboard() {
             ["traffic", "访问统计"],
             ["reviews", "交易复盘"],
             ["accounts", "账户盈亏"],
+            ["assistant", "个人助手"],
           ] as const).map(([key, label]) => (
             <button
               key={key}
@@ -731,7 +834,9 @@ function AnalyticsDashboard() {
           ))}
         </div>
 
-        {view === "reviews" ? (
+        {view === "assistant" ? (
+          <PersonalAssistant />
+        ) : view === "reviews" ? (
           <TradeReviewManager />
         ) : view === "accounts" ? (
           <AccountPnlManager />
