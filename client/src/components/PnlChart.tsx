@@ -627,6 +627,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
         : [
           { label: "进场价格", value: formatReviewNumber(visibleReview?.entryPrice || (canAutoReadSelectedTrade ? selectedTrade.trade.execPrice : "")) },
           { label: "止损价格", value: formatReviewNumber(selectedStopLossPrice) },
+          { label: "实际成交数量", value: formatReviewNumber(selectedTrade.trade.execQty) },
           {
             label: "单笔风险",
             value: (() => {
