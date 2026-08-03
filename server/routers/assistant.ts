@@ -77,7 +77,7 @@ async function fetchText(url: string, headers: Record<string, string> = {}): Pro
 
 async function fetchEarnings(symbol: string): Promise<EarningsItem | null> {
   const today = utc8DateString();
-  for (let offset = 0; offset < 31; offset += 1) {
+  for (let offset = 0; offset < 7; offset += 1) {
     const date = addDays(today, offset);
     try {
       const text = await fetchText(`https://api.nasdaq.com/api/calendar/earnings?date=${date}`, { Accept: "application/json, text/plain, */*", Referer: "https://www.nasdaq.com/market-activity/earnings" });

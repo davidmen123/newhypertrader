@@ -686,7 +686,7 @@ function PersonalAssistant() {
                     <div className="mt-4 grid gap-3 border-t pt-3 text-xs sm:grid-cols-2" style={{ borderColor: "var(--panel-border)" }}>
                       <div>
                         <div className="text-muted-foreground">财报</div>
-                        <div className="mt-1">{monitored?.earnings ? `${monitored.earnings.reportDate} · ${monitored.earnings.timeOfDayUtc8 ?? "时间待确认"}${daysUntil(monitored.earnings.reportDate) <= 3 ? ` · 还有 ${Math.max(0, daysUntil(monitored.earnings.reportDate))} 天` : ""}` : "未来 31 天未找到财报安排"}</div>
+                        <div className="mt-1">{monitored?.earnings ? `${monitored.earnings.reportDate} · ${monitored.earnings.timeOfDayUtc8 ?? "时间待确认"}${daysUntil(monitored.earnings.reportDate) <= 3 ? ` · 还有 ${Math.max(0, daysUntil(monitored.earnings.reportDate))} 天` : ""}` : "未来 7 天未找到财报安排"}</div>
                       </div>
                       <div>
                         <div className="text-muted-foreground">最新新闻</div>
