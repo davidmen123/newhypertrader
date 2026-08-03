@@ -66,6 +66,11 @@ export type InvokeParams = {
   output_schema?: OutputSchema;
   responseFormat?: ResponseFormat;
   response_format?: ResponseFormat;
+  provider?: {
+    apiKey: string;
+    baseUrl: string;
+    model: string;
+  };
 };
 
 export type ToolCall = {
@@ -209,13 +214,13 @@ const normalizeToolChoice = (
   return toolChoice;
 };
 
-const resolveApiUrl = () =>
-  ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-    ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
-    : "https://forge.manus.im/v1/chat/completions";
+const resolveApiUrl = (baseUrl: string) => {
+  const base = baseUrl.replace(/\/$/, "");
+  return base.endsWith("/v1") ? `${base}/chat/completions` : `${base}/v1/chat/completions`;
+};
 
-const assertApiKey = () => {
-  if (!ENV.forgeApiKey) {
+const assertApiKey = (apiKey: string) => {
+  if (!apiKey) {
     throw new Error("OPENAI_API_KEY is not configured");
   }
 };
@@ -266,7 +271,10 @@ const normalizeResponseFormat = ({
 };
 
 export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
-  assertApiKey();
+  const provider = params.provider;
+  const apiKey = provider?.apiKey ?? ENV.forgeApiKey;
+  const baseUrl = provider?.baseUrl || ENV.forgeApiUrl || "https://forge.manus.im";
+  assertApiKey(apiKey);
 
   const {
     messages,
@@ -280,7 +288,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   } = params;
 
   const payload: Record<string, unknown> = {
-    model: "gemini-2.5-flash",
+    model: provider?.model ?? "gemini-2.5-flash",
     messages: messages.map(normalizeMessage),
   };
 
@@ -296,9 +304,9 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.tool_choice = normalizedToolChoice;
   }
 
-  payload.max_tokens = 32768
-  payload.thinking = {
-    "budget_tokens": 128
+  payload.max_tokens = 32768;
+  if (!provider) {
+    payload.thinking = { budget_tokens: 128 };
   }
 
   const normalizedResponseFormat = normalizeResponseFormat({
@@ -312,11 +320,11 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.response_format = normalizedResponseFormat;
   }
 
-  const response = await fetch(resolveApiUrl(), {
+  const response = await fetch(resolveApiUrl(baseUrl), {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
+      authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify(payload),
   });

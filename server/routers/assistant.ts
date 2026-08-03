@@ -114,6 +114,11 @@ async function summarizeNews(items: Array<Omit<NewsItem, "summaryZh">>): Promise
         { role: "user", content: JSON.stringify(items.map((item, index) => ({ index, title: item.title }))) },
       ],
       responseFormat: { type: "json_object" },
+      provider: ENV.newsLlmApiKey && ENV.newsLlmBaseUrl ? {
+        apiKey: ENV.newsLlmApiKey,
+        baseUrl: ENV.newsLlmBaseUrl,
+        model: ENV.newsLlmModel,
+      } : undefined,
     });
     const content = response.choices?.[0]?.message?.content;
     const text = Array.isArray(content)
