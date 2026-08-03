@@ -583,7 +583,7 @@ function AccountPnlManager() {
 
 function PersonalAssistant() {
   const { data: rawItems, isLoading } = trpc.assistant.list.useQuery();
-  const items = (rawItems ?? []) as Array<{ id: number; symbol: string; companyName: string | null; exchange: string | null; assetType: string | null; priority: string; note: string | null }>;
+  const items = (rawItems ?? []) as Array<{ id: number; symbol: string; companyName: string | null; exchange: string | null; assetType: string | null; priority: string; technicalState: string | null; observationPeriods: string | null; keyCondition: string | null; note: string | null }>;
   const { data: monitorItems = [], isFetching: isMonitoring } = trpc.assistant.monitor.useQuery(undefined, { refetchInterval: 30 * 60 * 1000 });
   const addMutation = trpc.assistant.add.useMutation();
   const removeMutation = trpc.assistant.remove.useMutation();
@@ -593,6 +593,9 @@ function PersonalAssistant() {
   const [symbol, setSymbol] = useState("");
   const [selectedInstrument, setSelectedInstrument] = useState<{ symbol: string; companyName: string; exchange: string; assetType: string } | null>(null);
   const [priority, setPriority] = useState<"高" | "中" | "低">("中");
+  const [technicalState, setTechnicalState] = useState<"" | "筑底中" | "趋势延续" | "区间震荡" | "即将突破" | "等待回踩">("");
+  const [observationPeriods, setObservationPeriods] = useState<string[]>([]);
+  const [keyCondition, setKeyCondition] = useState("");
   const [note, setNote] = useState("");
   const { data: rawSearchResults, isFetching: isSearching } = trpc.assistant.search.useQuery(
     { query: symbol.trim() },
@@ -602,13 +605,16 @@ function PersonalAssistant() {
 
   const addItem = async () => {
     if (!selectedInstrument || addMutation.isPending) return;
-    await addMutation.mutateAsync({ ...selectedInstrument, priority, note: note.trim() || undefined });
+    await addMutation.mutateAsync({ ...selectedInstrument, priority, technicalState: technicalState || undefined, observationPeriods: observationPeriods as Array<"1H" | "4H" | "1D" | "1W">, keyCondition: keyCondition.trim() || undefined, note: note.trim() || undefined });
     await utils.assistant.list.invalidate();
     await utils.assistant.monitor.invalidate();
     setSymbol("");
     setSelectedInstrument(null);
     setNote("");
     setPriority("中");
+    setTechnicalState("");
+    setObservationPeriods([]);
+    setKeyCondition("");
   };
 
   const daysUntil = (date: string) => Math.round((new Date(`${date}T00:00:00+08:00`).getTime() - new Date(`${utc8DateStr(Date.now())}T00:00:00+08:00`).getTime()) / DAY_MS);
@@ -619,7 +625,7 @@ function PersonalAssistant() {
         <div className="mb-5 rounded-lg px-4 py-3 text-sm leading-relaxed" style={{ background: "var(--surface-subtle)", color: "var(--muted-foreground)" }}>
           后台每天北京时间 09:00 检查关注标的，并向站点配置的收件地址发送摘要；财报在未来 3 天内时会标记为提醒。
         </div>
-        <div className="grid gap-3 sm:grid-cols-[1.4fr_110px_1.4fr_auto] sm:items-end">
+        <div className="grid gap-3 sm:grid-cols-[1.4fr_110px_150px_1.4fr_auto] sm:items-end">
           <label className="text-xs text-muted-foreground">
             搜索公司或代码
             <input value={symbol} onChange={(event) => { setSymbol(event.target.value); setSelectedInstrument(null); }} onKeyDown={(event) => { if (event.key === "Enter" && selectedInstrument) addItem(); }} placeholder="例如 CBRS / Cerebras" className="mt-2 w-full rounded-lg bg-transparent px-3 py-2.5 text-sm focus:outline-none" style={{ border: "1px solid var(--panel-border)" }} />
@@ -651,8 +657,29 @@ function PersonalAssistant() {
             </select>
           </label>
           <label className="text-xs text-muted-foreground">
+            技术状态
+            <select value={technicalState} onChange={(event) => setTechnicalState(event.target.value as typeof technicalState)} className="mt-2 w-full rounded-lg bg-transparent px-3 py-2.5 text-sm focus:outline-none" style={{ border: "1px solid var(--panel-border)", color: "var(--foreground)" }}>
+              <option value="">未设置</option>
+              <option value="筑底中">筑底中</option>
+              <option value="趋势延续">趋势延续</option>
+              <option value="区间震荡">区间震荡</option>
+              <option value="即将突破">即将突破</option>
+              <option value="等待回踩">等待回踩</option>
+            </select>
+          </label>
+          <div className="text-xs text-muted-foreground">
+            观察周期
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {["1H", "4H", "1D", "1W"].map((period) => <label key={period} className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1.5" style={{ border: "1px solid var(--panel-border)" }}><input type="checkbox" checked={observationPeriods.includes(period)} onChange={(event) => setObservationPeriods((current) => event.target.checked ? [...current, period] : current.filter((value) => value !== period))} />{period}</label>)}
+            </div>
+          </div>
+          <label className="text-xs text-muted-foreground">
             备注
             <input value={note} onChange={(event) => setNote(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") addItem(); }} placeholder="例如：等待财报验证" className="mt-2 w-full rounded-lg bg-transparent px-3 py-2.5 text-sm focus:outline-none" style={{ border: "1px solid var(--panel-border)" }} />
+          </label>
+          <label className="text-xs text-muted-foreground sm:col-span-2">
+            关键条件
+            <input value={keyCondition} onChange={(event) => setKeyCondition(event.target.value)} placeholder="例如：4H 收盘站稳 EMA20" className="mt-2 w-full rounded-lg bg-transparent px-3 py-2.5 text-sm focus:outline-none" style={{ border: "1px solid var(--panel-border)" }} />
           </label>
           <button type="button" onClick={addItem} disabled={!selectedInstrument || addMutation.isPending} className="inline-flex items-center justify-center gap-1 rounded-lg px-4 py-2.5 text-sm disabled:opacity-50" style={{ background: "var(--foreground)", color: "var(--background)" }}><Plus size={15} />{addMutation.isPending ? "保存中" : "添加"}</button>
         </div>
@@ -680,6 +707,7 @@ function PersonalAssistant() {
                   </div>
                   <button type="button" onClick={async () => { await removeMutation.mutateAsync({ id: item.id }); await utils.assistant.list.invalidate(); await utils.assistant.monitor.invalidate(); }} className="self-end rounded-md p-1.5 text-muted-foreground hover:text-destructive" aria-label={`删除 ${item.symbol}`}><Trash2 size={15} /></button>
                 </div>
+                {(item.technicalState || item.observationPeriods || item.keyCondition) && <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><span>技术观察</span>{item.technicalState && <span className="rounded-full px-2 py-0.5" style={{ border: "1px solid var(--panel-border)" }}>{item.technicalState}</span>}{(() => { try { return (JSON.parse(item.observationPeriods || "[]") as string[]).map((period) => <span key={period} className="rounded-full px-2 py-0.5" style={{ border: "1px solid var(--panel-border)" }}>{period}</span>); } catch { return null; } })()}{item.keyCondition && <span className="truncate">条件：{item.keyCondition}</span>}</div>}
                 {(() => {
                   const monitored = monitorItems.find((entry) => entry.symbol === item.symbol);
                   return (
