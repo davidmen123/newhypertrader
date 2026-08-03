@@ -215,7 +215,7 @@ async function readWatchlist() {
 async function sendDigestEmail(items: AssistantMonitorItem[], subject: string): Promise<boolean> {
   if (!ENV.resendApiKey || items.length === 0) return false;
   const lines = items.flatMap((item) => {
-    const earnings = item.earnings ? `财报：${item.earnings.reportDate} ${item.earnings.timeOfDayUtc8 ?? ""}` : "财报：未来 31 天未找到已发布日期";
+    const earnings = item.earnings ? `财报：${item.earnings.reportDate} ${item.earnings.timeOfDayUtc8 ?? ""}` : "财报：未来 7 天未找到已发布日期";
     return [`【${item.symbol}】${item.note ? `（${item.note}）` : ""}`, earnings, "相关新闻请登录网页端个人助手查看。", ""];
   });
   try {
