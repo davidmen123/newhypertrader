@@ -144,3 +144,17 @@ export const feedback = pgTable("feedback", {
 
 export type Feedback = typeof feedback.$inferSelect;
 export type InsertFeedback = typeof feedback.$inferInsert;
+
+export const assistantWatchlist = pgTable("assistant_watchlist", {
+  id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+  symbol: varchar("symbol", { length: 32 }).notNull().unique(),
+  priority: varchar("priority", { length: 8 }).notNull().default("中"),
+  note: text("note"),
+  emailEnabled: boolean("emailenabled").notNull().default(true),
+  lastDigestDate: varchar("lastdigestdate", { length: 16 }),
+  createdAt: timestamp("createdat").defaultNow().notNull(),
+  updatedAt: timestamp("updatedat").defaultNow().notNull(),
+});
+
+export type AssistantWatchlistItem = typeof assistantWatchlist.$inferSelect;
+export type InsertAssistantWatchlistItem = typeof assistantWatchlist.$inferInsert;

@@ -137,6 +137,19 @@ export async function runMigrations(): Promise<void> {
       )
     `);
 
+    await createTable("assistant_watchlist", `
+      CREATE TABLE IF NOT EXISTS assistant_watchlist (
+        id SERIAL PRIMARY KEY,
+        symbol varchar(32) NOT NULL UNIQUE,
+        priority varchar(8) NOT NULL DEFAULT '中',
+        note text,
+        emailEnabled boolean NOT NULL DEFAULT TRUE,
+        lastDigestDate varchar(16),
+        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     await createTable("trade_reviews", `
       CREATE TABLE IF NOT EXISTS trade_reviews (
         id SERIAL PRIMARY KEY,

@@ -7,6 +7,7 @@ import { appRouter } from "../routers.js";
 import { createContext } from "./context.js";
 import { serveStatic, setupVite } from "./vite.js";
 import { runMigrations } from "./migrate.js";
+import { startScheduler } from "../scheduler.js";
 
 async function startServer() {
   await runMigrations();
@@ -62,6 +63,7 @@ async function startServer() {
 
   server.listen(port, host, () => {
     console.log(`Server running on http://${host}:${port}/`);
+    startScheduler();
   });
 }
 

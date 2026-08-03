@@ -581,59 +581,36 @@ function AccountPnlManager() {
   );
 }
 
-type AssistantItem = {
-  id: string;
-  symbol: string;
-  priority: "高" | "中" | "低";
-  note: string;
-  createdAt: string;
-};
-
-const ASSISTANT_STORAGE_KEY = "analytics.personalAssistantItems";
-
 function PersonalAssistant() {
-  const [items, setItems] = useState<AssistantItem[]>(() => {
-    try {
-      const stored = localStorage.getItem(ASSISTANT_STORAGE_KEY);
-      return stored ? JSON.parse(stored) as AssistantItem[] : [];
-    } catch {
-      return [];
-    }
-  });
+  const { data: rawItems, isLoading } = trpc.assistant.list.useQuery();
+  const items = (rawItems ?? []) as Array<{ id: number; symbol: string; priority: string; note: string | null }>;
+  const { data: monitorItems = [], isFetching: isMonitoring, refetch: refetchMonitor } = trpc.assistant.monitor.useQuery(undefined, { refetchInterval: 30 * 60 * 1000 });
+  const addMutation = trpc.assistant.add.useMutation();
+  const removeMutation = trpc.assistant.remove.useMutation();
+  const sendNowMutation = trpc.assistant.sendNow.useMutation();
+  const utils = trpc.useUtils();
   const [symbol, setSymbol] = useState("");
-  const [priority, setPriority] = useState<AssistantItem["priority"]>("中");
+  const [priority, setPriority] = useState<"高" | "中" | "低">("中");
   const [note, setNote] = useState("");
 
-  const persist = (next: AssistantItem[]) => {
-    setItems(next);
-    try {
-      localStorage.setItem(ASSISTANT_STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      // Keep the in-memory list usable when browser storage is unavailable.
-    }
-  };
-
-  const addItem = () => {
+  const addItem = async () => {
     const normalized = symbol.trim().toUpperCase();
-    if (!normalized) return;
-    const next: AssistantItem = {
-      id: `${Date.now()}-${normalized}`,
-      symbol: normalized,
-      priority,
-      note: note.trim(),
-      createdAt: new Date().toISOString(),
-    };
-    persist([next, ...items.filter((item) => item.symbol !== normalized)]);
+    if (!normalized || addMutation.isPending) return;
+    await addMutation.mutateAsync({ symbol: normalized, priority, note: note.trim() || undefined });
+    await utils.assistant.list.invalidate();
+    await utils.assistant.monitor.invalidate();
     setSymbol("");
     setNote("");
     setPriority("中");
   };
 
+  const daysUntil = (date: string) => Math.round((new Date(`${date}T00:00:00+08:00`).getTime() - new Date(`${utc8DateStr(Date.now())}T00:00:00+08:00`).getTime()) / DAY_MS);
+
   return (
     <div className="space-y-5">
-      <Panel title="个人助手" sub="关注标的清单 · 当前仅保存在本设备">
+      <Panel title="个人助手" sub="关注标的 · 财报 · 新闻 · 邮件提醒">
         <div className="mb-5 rounded-lg px-4 py-3 text-sm leading-relaxed" style={{ background: "var(--surface-subtle)", color: "var(--muted-foreground)" }}>
-          先记录你想持续关注的标的。后续可接入财报、新闻和异常波动监控，并通过邮件提醒。
+          后台每天北京时间 09:00 检查关注标的，并向站点配置的收件地址发送摘要；财报在未来 3 天内时会标记为提醒。
         </div>
         <div className="grid gap-3 sm:grid-cols-[1fr_110px_1.4fr_auto] sm:items-end">
           <label className="text-xs text-muted-foreground">
@@ -642,7 +619,7 @@ function PersonalAssistant() {
           </label>
           <label className="text-xs text-muted-foreground">
             优先级
-            <select value={priority} onChange={(event) => setPriority(event.target.value as AssistantItem["priority"])} className="mt-2 w-full rounded-lg bg-transparent px-3 py-2.5 text-sm focus:outline-none" style={{ border: "1px solid var(--panel-border)", color: "var(--foreground)" }}>
+            <select value={priority} onChange={(event) => setPriority(event.target.value as "高" | "中" | "低")} className="mt-2 w-full rounded-lg bg-transparent px-3 py-2.5 text-sm focus:outline-none" style={{ border: "1px solid var(--panel-border)", color: "var(--foreground)" }}>
               <option value="高">高</option>
               <option value="中">中</option>
               <option value="低">低</option>
@@ -652,26 +629,46 @@ function PersonalAssistant() {
             备注
             <input value={note} onChange={(event) => setNote(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") addItem(); }} placeholder="例如：等待财报验证" className="mt-2 w-full rounded-lg bg-transparent px-3 py-2.5 text-sm focus:outline-none" style={{ border: "1px solid var(--panel-border)" }} />
           </label>
-          <button type="button" onClick={addItem} className="inline-flex items-center justify-center gap-1 rounded-lg px-4 py-2.5 text-sm" style={{ background: "var(--foreground)", color: "var(--background)" }}><Plus size={15} />添加</button>
+          <button type="button" onClick={addItem} disabled={addMutation.isPending} className="inline-flex items-center justify-center gap-1 rounded-lg px-4 py-2.5 text-sm disabled:opacity-50" style={{ background: "var(--foreground)", color: "var(--background)" }}><Plus size={15} />{addMutation.isPending ? "保存中" : "添加"}</button>
         </div>
       </Panel>
 
-      <Panel title="关注清单" sub={`${items.length} 个标的`}>
-        {items.length === 0 ? (
+      <Panel title="关注清单" sub={`${items.length} 个标的 · ${isMonitoring ? "更新中" : "已更新"}`}>
+        <div className="mb-4 flex justify-end gap-2">
+          <button type="button" onClick={() => refetchMonitor()} className="rounded-lg px-3 py-2 text-xs" style={{ border: "1px solid var(--panel-border)", color: "var(--muted-foreground)" }}>刷新监控</button>
+          <button type="button" onClick={() => sendNowMutation.mutate()} disabled={sendNowMutation.isPending || items.length === 0} className="rounded-lg px-3 py-2 text-xs disabled:opacity-50" style={{ border: "1px solid var(--panel-border)", color: "var(--muted-foreground)" }}>{sendNowMutation.isPending ? "发送中" : "立即发摘要"}</button>
+        </div>
+        {isLoading ? (
+          <div className="py-10 text-center text-sm text-muted-foreground/60">加载关注清单中…</div>
+        ) : items.length === 0 ? (
           <div className="py-10 text-center text-sm text-muted-foreground/60">暂无关注标的，请先添加一个。</div>
         ) : (
           <div className="space-y-2">
             {items.map((item) => (
-              <div key={item.id} className="flex flex-col gap-3 rounded-lg px-4 py-3 sm:flex-row sm:items-center sm:justify-between" style={{ background: "var(--surface-subtle)" }}>
-                <div className="flex min-w-0 items-center gap-3">
+              <div key={item.id} className="rounded-lg px-4 py-4" style={{ background: "var(--surface-subtle)" }}>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-center gap-3">
                   <span className="num-display font-medium">{item.symbol}</span>
-                  <span className="rounded-full px-2 py-0.5 text-[11px]" style={{ color: item.priority === "高" ? "var(--destructive)" : "var(--muted-foreground)", border: "1px solid var(--panel-border)" }}>{item.priority}优先</span>
-                  {item.note && <span className="truncate text-xs text-muted-foreground">{item.note}</span>}
+                    <span className="rounded-full px-2 py-0.5 text-[11px]" style={{ color: item.priority === "高" ? "var(--destructive)" : "var(--muted-foreground)", border: "1px solid var(--panel-border)" }}>{item.priority}优先</span>
+                    {item.note && <span className="truncate text-xs text-muted-foreground">{item.note}</span>}
+                  </div>
+                  <button type="button" onClick={async () => { await removeMutation.mutateAsync({ id: item.id }); await utils.assistant.list.invalidate(); await utils.assistant.monitor.invalidate(); }} className="self-end rounded-md p-1.5 text-muted-foreground hover:text-destructive" aria-label={`删除 ${item.symbol}`}><Trash2 size={15} /></button>
                 </div>
-                <div className="flex items-center justify-between gap-4 sm:justify-end">
-                  <span className="text-xs text-muted-foreground/60">等待监控接入</span>
-                  <button type="button" onClick={() => persist(items.filter((candidate) => candidate.id !== item.id))} className="rounded-md p-1.5 text-muted-foreground hover:text-destructive" aria-label={`删除 ${item.symbol}`}><Trash2 size={15} /></button>
-                </div>
+                {(() => {
+                  const monitored = monitorItems.find((entry) => entry.symbol === item.symbol);
+                  return (
+                    <div className="mt-4 grid gap-3 border-t pt-3 text-xs sm:grid-cols-2" style={{ borderColor: "var(--panel-border)" }}>
+                      <div>
+                        <div className="text-muted-foreground">财报</div>
+                        <div className="mt-1">{monitored?.earnings ? `${monitored.earnings.reportDate} · ${monitored.earnings.timeOfDayUtc8 ?? "时间待确认"}${daysUntil(monitored.earnings.reportDate) <= 3 ? ` · 还有 ${Math.max(0, daysUntil(monitored.earnings.reportDate))} 天` : ""}` : "未来 31 天未找到财报安排"}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">最新新闻</div>
+                        {monitored?.news?.[0] ? <a href={monitored.news[0].link} target="_blank" rel="noreferrer" className="mt-1 block truncate hover:underline">{monitored.news[0].title}</a> : <div className="mt-1">暂无新闻摘要</div>}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             ))}
           </div>

@@ -14,6 +14,7 @@
  */
 import { getAccountSummary } from "./deribit.js";
 import { upsertPnlSnapshot } from "./db.js";
+import { runAssistantDailyDigest } from "./routers/assistant.js";
 
 // Snapshot both BTC and USDC sub-accounts for full portfolio coverage
 const SNAPSHOT_CURRENCIES = ["BTC", "USDC"];
@@ -90,6 +91,11 @@ async function runSnapshot(): Promise<void> {
         `[Scheduler] Snapshot saved for ${currency}: equity=${equity}, balance=${balance}, sessionUpl=${sessionPnl}, totalPnl=${totalPnl}`
       );
     }
+
+    // The assistant sends at most one digest per UTC+8 day, during the 09:00 hour.
+    // It is intentionally part of the existing hourly scheduler so no browser tab
+    // needs to remain open for reminders to work.
+    await runAssistantDailyDigest(new Date(now));
 
     state.lastRunAt = now;
     state.lastRunStatus = "success";
