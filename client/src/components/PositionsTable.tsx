@@ -154,7 +154,7 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                       <td>{fmt(p.avgPrice, 2)}</td>
                       <td>{fmt(p.markPrice, 2)}</td>
                       <td>{p.takeProfitPrice || "—"} / {p.stopLossPrice || "—"}</td>
-                      <td>{fmt(p.marginUsed, 2)} <span className="text-muted-foreground">{p.marginMode === "isolated" ? t("逐仓", "Isolated") : t("全仓", "Cross")}</span></td>
+                      <td>{fmt(p.marginUsed, 2)} <span className="text-muted-foreground" style={{ fontSize: "0.62rem" }}>{p.marginMode === "isolated" ? t("逐仓", "Isolated") : t("全仓", "Cross")}</span></td>
                       <td className={pnlColor(p.unrealisedPnl)}>{signed(p.unrealisedPnl, 2)}</td>
                       <td className={pnlColor(p.profitRate)}>{signed(num(p.profitRate) * 100, 2)}%</td>
                       <td className={pnlColor(p.fundingFee)}>{signed(p.fundingFee, 2)}</td>
@@ -184,7 +184,7 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                     <span>{t("均价", "Avg")}: {fmt(p.avgPrice, 2)}</span>
                     <span>{t("标记价", "Mark")}: {fmt(p.markPrice, 2)}</span>
                     <span>{t("止盈 / 止损", "TP / SL")}: {p.takeProfitPrice || "—"} / {p.stopLossPrice || "—"}</span>
-                    <span>{t("保证金", "Margin")}: {fmt(p.marginUsed, 2)} {p.marginMode === "isolated" ? t("逐仓", "Isolated") : t("全仓", "Cross")}</span>
+                    <span>{t("保证金", "Margin")}: {fmt(p.marginUsed, 2)} <span className="text-muted-foreground" style={{ fontSize: "0.62rem" }}>{p.marginMode === "isolated" ? t("逐仓", "Isolated") : t("全仓", "Cross")}</span></span>
                     <span className={pnlColor(p.unrealisedPnl)}>{t("盈亏", "PnL")}: {signed(p.unrealisedPnl, 2)}</span>
                     <span className={pnlColor(p.fundingFee)}>{t("资金费", "Funding")}: {signed(p.fundingFee, 2)}</span>
                   </div>
