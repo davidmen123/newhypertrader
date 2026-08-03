@@ -14,10 +14,10 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    "version": "1.60.0",
+    "version": "1.59.1",
     "date": "2026-08-03",
-    "zh": "个人助手关注清单新增技术观察字段",
-    "en": "Added technical observation fields to the personal assistant watchlist"
+    "zh": "持仓明细字段显示优化",
+    "en": "Refined position protection field display"
   },
   {
     "version": "1.59.0",
