@@ -583,23 +583,29 @@ function AccountPnlManager() {
 
 function PersonalAssistant() {
   const { data: rawItems, isLoading } = trpc.assistant.list.useQuery();
-  const items = (rawItems ?? []) as Array<{ id: number; symbol: string; priority: string; note: string | null }>;
+  const items = (rawItems ?? []) as Array<{ id: number; symbol: string; companyName: string | null; exchange: string | null; assetType: string | null; priority: string; note: string | null }>;
   const { data: monitorItems = [], isFetching: isMonitoring, refetch: refetchMonitor } = trpc.assistant.monitor.useQuery(undefined, { refetchInterval: 30 * 60 * 1000 });
   const addMutation = trpc.assistant.add.useMutation();
   const removeMutation = trpc.assistant.remove.useMutation();
   const sendNowMutation = trpc.assistant.sendNow.useMutation();
   const utils = trpc.useUtils();
   const [symbol, setSymbol] = useState("");
+  const [selectedInstrument, setSelectedInstrument] = useState<{ symbol: string; companyName: string; exchange: string; assetType: string } | null>(null);
   const [priority, setPriority] = useState<"高" | "中" | "低">("中");
   const [note, setNote] = useState("");
+  const { data: rawSearchResults, isFetching: isSearching } = trpc.assistant.search.useQuery(
+    { query: symbol.trim() },
+    { enabled: symbol.trim().length > 0 && !selectedInstrument, staleTime: 60_000 },
+  );
+  const searchResults = (rawSearchResults ?? []) as Array<{ symbol: string; companyName: string; exchange: string; assetType: string }>;
 
   const addItem = async () => {
-    const normalized = symbol.trim().toUpperCase();
-    if (!normalized || addMutation.isPending) return;
-    await addMutation.mutateAsync({ symbol: normalized, priority, note: note.trim() || undefined });
+    if (!selectedInstrument || addMutation.isPending) return;
+    await addMutation.mutateAsync({ ...selectedInstrument, priority, note: note.trim() || undefined });
     await utils.assistant.list.invalidate();
     await utils.assistant.monitor.invalidate();
     setSymbol("");
+    setSelectedInstrument(null);
     setNote("");
     setPriority("中");
   };
@@ -612,10 +618,28 @@ function PersonalAssistant() {
         <div className="mb-5 rounded-lg px-4 py-3 text-sm leading-relaxed" style={{ background: "var(--surface-subtle)", color: "var(--muted-foreground)" }}>
           后台每天北京时间 09:00 检查关注标的，并向站点配置的收件地址发送摘要；财报在未来 3 天内时会标记为提醒。
         </div>
-        <div className="grid gap-3 sm:grid-cols-[1fr_110px_1.4fr_auto] sm:items-end">
+        <div className="grid gap-3 sm:grid-cols-[1.4fr_110px_1.4fr_auto] sm:items-end">
           <label className="text-xs text-muted-foreground">
-            标的
-            <input value={symbol} onChange={(event) => setSymbol(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") addItem(); }} placeholder="例如 CBRS / BTC" className="mt-2 w-full rounded-lg bg-transparent px-3 py-2.5 text-sm focus:outline-none" style={{ border: "1px solid var(--panel-border)" }} />
+            搜索公司或代码
+            <input value={symbol} onChange={(event) => { setSymbol(event.target.value); setSelectedInstrument(null); }} onKeyDown={(event) => { if (event.key === "Enter" && selectedInstrument) addItem(); }} placeholder="例如 CBRS / Cerebras" className="mt-2 w-full rounded-lg bg-transparent px-3 py-2.5 text-sm focus:outline-none" style={{ border: "1px solid var(--panel-border)" }} />
+            {!selectedInstrument && symbol.trim() && (
+              <div className="mt-2 overflow-hidden rounded-lg" style={{ border: "1px solid var(--panel-border)", background: "var(--background)" }}>
+                {isSearching ? (
+                  <div className="px-3 py-2 text-xs text-muted-foreground">正在查找公司…</div>
+                ) : searchResults.length === 0 ? (
+                  <div className="px-3 py-2 text-xs text-muted-foreground">未找到对应公司，请检查代码或名称</div>
+                ) : (
+                  <div className="max-h-56 overflow-y-auto">
+                    {searchResults.map((match) => (
+                      <button key={`${match.exchange}-${match.symbol}`} type="button" onClick={() => { setSymbol(match.symbol); setSelectedInstrument(match); }} className="block w-full px-3 py-2.5 text-left text-xs hover:bg-black/[0.04] dark:hover:bg-white/[0.05]">
+                        <span className="font-medium">{match.symbol}</span><span className="ml-2">{match.companyName}</span><span className="ml-2 text-muted-foreground">{match.exchange}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {selectedInstrument && <div className="mt-2 text-xs" style={{ color: "var(--accent)" }}>已确认：{selectedInstrument.companyName}（{selectedInstrument.symbol}） · {selectedInstrument.exchange}</div>}
           </label>
           <label className="text-xs text-muted-foreground">
             优先级
@@ -629,7 +653,7 @@ function PersonalAssistant() {
             备注
             <input value={note} onChange={(event) => setNote(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") addItem(); }} placeholder="例如：等待财报验证" className="mt-2 w-full rounded-lg bg-transparent px-3 py-2.5 text-sm focus:outline-none" style={{ border: "1px solid var(--panel-border)" }} />
           </label>
-          <button type="button" onClick={addItem} disabled={addMutation.isPending} className="inline-flex items-center justify-center gap-1 rounded-lg px-4 py-2.5 text-sm disabled:opacity-50" style={{ background: "var(--foreground)", color: "var(--background)" }}><Plus size={15} />{addMutation.isPending ? "保存中" : "添加"}</button>
+          <button type="button" onClick={addItem} disabled={!selectedInstrument || addMutation.isPending} className="inline-flex items-center justify-center gap-1 rounded-lg px-4 py-2.5 text-sm disabled:opacity-50" style={{ background: "var(--foreground)", color: "var(--background)" }}><Plus size={15} />{addMutation.isPending ? "保存中" : "添加"}</button>
         </div>
       </Panel>
 
@@ -649,6 +673,8 @@ function PersonalAssistant() {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex min-w-0 items-center gap-3">
                   <span className="num-display font-medium">{item.symbol}</span>
+                    {item.companyName && <span className="truncate text-xs text-muted-foreground">{item.companyName}</span>}
+                    {item.exchange && <span className="text-[11px] text-muted-foreground">{item.exchange}</span>}
                     <span className="rounded-full px-2 py-0.5 text-[11px]" style={{ color: item.priority === "高" ? "var(--destructive)" : "var(--muted-foreground)", border: "1px solid var(--panel-border)" }}>{item.priority}优先</span>
                     {item.note && <span className="truncate text-xs text-muted-foreground">{item.note}</span>}
                   </div>

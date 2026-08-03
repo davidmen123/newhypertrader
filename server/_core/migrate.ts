@@ -141,6 +141,9 @@ export async function runMigrations(): Promise<void> {
       CREATE TABLE IF NOT EXISTS assistant_watchlist (
         id SERIAL PRIMARY KEY,
         symbol varchar(32) NOT NULL UNIQUE,
+        companyName varchar(160),
+        exchange varchar(64),
+        assetType varchar(32),
         priority varchar(8) NOT NULL DEFAULT '中',
         note text,
         emailEnabled boolean NOT NULL DEFAULT TRUE,
@@ -149,6 +152,9 @@ export async function runMigrations(): Promise<void> {
         updatedAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    await db.execute(sql`ALTER TABLE assistant_watchlist ADD COLUMN IF NOT EXISTS companyname varchar(160)`).catch(() => {});
+    await db.execute(sql`ALTER TABLE assistant_watchlist ADD COLUMN IF NOT EXISTS exchange varchar(64)`).catch(() => {});
+    await db.execute(sql`ALTER TABLE assistant_watchlist ADD COLUMN IF NOT EXISTS assettype varchar(32)`).catch(() => {});
 
     await createTable("trade_reviews", `
       CREATE TABLE IF NOT EXISTS trade_reviews (

@@ -148,6 +148,9 @@ export type InsertFeedback = typeof feedback.$inferInsert;
 export const assistantWatchlist = pgTable("assistant_watchlist", {
   id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
   symbol: varchar("symbol", { length: 32 }).notNull().unique(),
+  companyName: varchar("companyname", { length: 160 }),
+  exchange: varchar("exchange", { length: 64 }),
+  assetType: varchar("assettype", { length: 32 }),
   priority: varchar("priority", { length: 8 }).notNull().default("中"),
   note: text("note"),
   emailEnabled: boolean("emailenabled").notNull().default(true),

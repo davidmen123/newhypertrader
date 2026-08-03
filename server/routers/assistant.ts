@@ -17,6 +17,8 @@ type EarningsItem = {
 type NewsItem = { title: string; summaryZh: string; link: string; publishedAt: string | null; source: string };
 export type AssistantMonitorItem = {
   symbol: string;
+  companyName: string | null;
+  exchange: string | null;
   note: string | null;
   priority: string;
   earnings: EarningsItem | null;
@@ -36,6 +38,9 @@ async function ensureAssistantSchema(): Promise<void> {
       CREATE TABLE IF NOT EXISTS assistant_watchlist (
         id SERIAL PRIMARY KEY,
         symbol varchar(32) NOT NULL UNIQUE,
+        companyname varchar(160),
+        exchange varchar(64),
+        assettype varchar(32),
         priority varchar(8) NOT NULL DEFAULT '中',
         note text,
         emailenabled boolean NOT NULL DEFAULT TRUE,
@@ -44,6 +49,9 @@ async function ensureAssistantSchema(): Promise<void> {
         updatedat timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `));
+    await db.execute(sql`ALTER TABLE assistant_watchlist ADD COLUMN IF NOT EXISTS companyname varchar(160)`).catch(() => {});
+    await db.execute(sql`ALTER TABLE assistant_watchlist ADD COLUMN IF NOT EXISTS exchange varchar(64)`).catch(() => {});
+    await db.execute(sql`ALTER TABLE assistant_watchlist ADD COLUMN IF NOT EXISTS assettype varchar(32)`).catch(() => {});
   })().catch((error) => {
     assistantSchemaReady = null;
     throw error;
@@ -133,11 +141,11 @@ async function fetchNews(symbol: string): Promise<NewsItem[]> {
   return summarizeNews(items);
 }
 
-async function getMonitorItem(item: { symbol: string; priority: string; note: string | null }): Promise<AssistantMonitorItem> {
+async function getMonitorItem(item: { symbol: string; companyName: string | null; exchange: string | null; priority: string; note: string | null }): Promise<AssistantMonitorItem> {
   const cached = monitorCache.get(item.symbol);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
   const [earnings, news] = await Promise.allSettled([fetchEarnings(item.symbol), fetchNews(item.symbol)]);
-  const value: AssistantMonitorItem = { symbol: item.symbol, priority: item.priority, note: item.note, earnings: earnings.status === "fulfilled" ? earnings.value : null, news: news.status === "fulfilled" ? news.value : [] };
+  const value: AssistantMonitorItem = { symbol: item.symbol, companyName: item.companyName, exchange: item.exchange, priority: item.priority, note: item.note, earnings: earnings.status === "fulfilled" ? earnings.value : null, news: news.status === "fulfilled" ? news.value : [] };
   monitorCache.set(item.symbol, { expiresAt: Date.now() + CACHE_MS, value });
   return value;
 }
@@ -191,17 +199,32 @@ export async function runAssistantDailyDigest(now = new Date()): Promise<void> {
 }
 
 export const assistantRouter = router({
+  search: ownerProcedure.input(z.object({ query: z.string().trim().min(1).max(80) })).query(async ({ input }) => {
+    const response = await fetch(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(input.query)}&quotesCount=10&newsCount=0`, { headers: { "User-Agent": "PnLNote/1.0" }, signal: AbortSignal.timeout(10000) });
+    if (!response.ok) throw new Error(`Symbol search failed: ${response.status}`);
+    const quotes = (await response.json())?.quotes;
+    if (!Array.isArray(quotes)) return [];
+    return quotes
+      .filter((quote: any) => ["EQUITY", "ETF"].includes(String(quote?.quoteType ?? "").toUpperCase()) && quote?.symbol)
+      .slice(0, 8)
+      .map((quote: any) => ({
+        symbol: String(quote.symbol).toUpperCase(),
+        companyName: String(quote.longname ?? quote.shortname ?? quote.symbol).trim(),
+        exchange: String(quote.fullExchangeName ?? quote.exchange ?? "").trim() || "未知交易所",
+        assetType: String(quote.quoteType ?? "EQUITY").toUpperCase(),
+      }));
+  }),
   list: ownerProcedure.query(() => readWatchlist()),
   monitor: ownerProcedure.query(async () => {
     const rows = await readWatchlist();
     return Promise.all(rows.map((row: any) => getMonitorItem(row)));
   }),
-  add: ownerProcedure.input(z.object({ symbol: z.string().trim().min(1).max(32), priority: z.enum(["高", "中", "低"]).default("中"), note: z.string().trim().max(200).optional() })).mutation(async ({ input }) => {
+  add: ownerProcedure.input(z.object({ symbol: z.string().trim().min(1).max(32), companyName: z.string().trim().min(1).max(160), exchange: z.string().trim().min(1).max(64), assetType: z.string().trim().min(1).max(32), priority: z.enum(["高", "中", "低"]).default("中"), note: z.string().trim().max(200).optional() })).mutation(async ({ input }) => {
     await ensureAssistantSchema();
     const db = await getDb();
     if (!db) throw new Error("数据库不可用");
     const symbol = input.symbol.toUpperCase();
-    const [row] = await db.insert(assistantWatchlist).values({ symbol, priority: input.priority, note: input.note || null }).onConflictDoUpdate({ target: assistantWatchlist.symbol, set: { priority: input.priority, note: input.note || null, updatedAt: new Date() } }).returning();
+    const [row] = await db.insert(assistantWatchlist).values({ symbol, companyName: input.companyName, exchange: input.exchange, assetType: input.assetType, priority: input.priority, note: input.note || null }).onConflictDoUpdate({ target: assistantWatchlist.symbol, set: { companyName: input.companyName, exchange: input.exchange, assetType: input.assetType, priority: input.priority, note: input.note || null, updatedAt: new Date() } }).returning();
     monitorCache.delete(symbol);
     return row;
   }),
