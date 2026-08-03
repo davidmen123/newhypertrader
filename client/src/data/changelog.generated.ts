@@ -14,6 +14,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.62.0",
+    "date": "2026-08-03",
+    "zh": "持仓明细新增止盈止损及保证金模式",
+    "en": "Added take-profit, stop-loss and margin mode to positions"
+  },
+  {
+    "version": "1.61.0",
+    "date": "2026-08-03",
+    "zh": "个人助手技术状态新增底部动能钝化",
+    "en": "Added bottom momentum stalling as an assistant technical state"
+  },
+  {
     "version": "1.60.0",
     "date": "2026-08-03",
     "zh": "个人助手关注清单新增技术观察字段",

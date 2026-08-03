@@ -1304,7 +1304,13 @@ export async function getHyperliquidPortfolioSnapshots(params: {
 
 export async function getHyperliquidPositions() {
   const now = Date.now();
-  const states = await getHyperliquidPerpStates();
+  const [states, openOrders] = await Promise.all([
+    getHyperliquidPerpStates(),
+    getHyperliquidOpenOrders().catch((error) => {
+      console.warn("[Hyperliquid] Failed to read trigger orders for positions:", error);
+      return [];
+    }),
+  ]);
   return states.flatMap(({ dex, state }) => {
     logHyperliquidPositions(dex, state);
     return (state.assetPositions ?? []).map(({ position }) => {
@@ -1314,6 +1320,19 @@ export async function getHyperliquidPositions() {
     const mark = Math.abs(size) > 0 && toNumber(position.positionValue) > 0
       ? toNumber(position.positionValue) / Math.abs(size)
       : entry;
+    const triggerOrders = openOrders.filter((order) =>
+      order.coin === position.coin && order.isTrigger && order.reduceOnly && toNumber(order.triggerPrice) > 0
+    );
+    const classifyTrigger = (order: (typeof triggerOrders)[number]) => {
+      const orderType = order.orderType.toLowerCase();
+      if (orderType.includes("take profit")) return "takeProfit";
+      if (orderType.includes("stop")) return "stopLoss";
+      const trigger = toNumber(order.triggerPrice);
+      const isTakeProfit = side === "long" ? trigger >= entry : trigger <= entry;
+      return isTakeProfit ? "takeProfit" : "stopLoss";
+    };
+    const takeProfitPrices = triggerOrders.filter((order) => classifyTrigger(order) === "takeProfit").map((order) => order.triggerPrice);
+    const stopLossPrices = triggerOrders.filter((order) => classifyTrigger(order) === "stopLoss").map((order) => order.triggerPrice);
 
     return {
       category: "PERP",
@@ -1331,6 +1350,8 @@ export async function getHyperliquidPositions() {
       unrealisedPnl: String(toNumber(position.unrealizedPnl)),
       fundingFee: String(-toNumber(position.cumFunding?.sinceOpen)),
       liquidationPrice: position.liquidationPx ? String(position.liquidationPx) : "0",
+      takeProfitPrice: takeProfitPrices.join(" / "),
+      stopLossPrice: stopLossPrices.join(" / "),
       profitRate: String(toNumber(position.returnOnEquity)),
       updatedTime: String(state.time ?? now),
     };
