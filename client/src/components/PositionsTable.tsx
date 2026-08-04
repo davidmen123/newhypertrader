@@ -43,6 +43,12 @@ function signed(value: string | number | null | undefined, decimals = 2) {
   return `${n > 0 ? "+" : ""}${fmt(n, decimals)}`;
 }
 
+function leverageLabel(value: string | number | null | undefined) {
+  const leverage = num(value);
+  if (leverage <= 0) return "";
+  return `${leverage.toLocaleString("en-US", { maximumFractionDigits: 2 })}×`;
+}
+
 function pnlColor(value: string | number | null | undefined) {
   const n = num(value);
   if (n > 0) return "text-profit";
@@ -131,7 +137,20 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                   <th>{t("均价", "Avg Price")}</th>
                   <th>{t("标记价", "Mark")}</th>
                   <th>{t("止盈 / 止损", "Take Profit / Stop Loss")}</th>
-                  <th>{t("保证金", "Margin")}</th>
+                  <th className="flex items-center gap-1">
+                    {t("保证金", "Margin")}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="text-muted-foreground/60 cursor-help" style={{ width: "12px", height: "12px" }} />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-64 text-xs" style={{ fontSize: "0.7rem" }}>
+                        {t(
+                          "显示保证金金额、全仓/逐仓模式及交易所设置的杠杆倍数；杠杆倍数不代表实际单笔风险。",
+                          "Shows margin, cross/isolated mode and configured leverage. Leverage does not equal the actual risk per trade."
+                        )}
+                      </TooltipContent>
+                    </Tooltip>
+                  </th>
                   <th>{t("未实现盈亏", "Unrealized")}</th>
                   <th>{t("收益率", "ROI")}</th>
                   <th>{t("资金费", "Funding")}</th>
@@ -154,7 +173,13 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                       <td>{fmt(p.avgPrice, 2)}</td>
                       <td>{fmt(p.markPrice, 2)}</td>
                       <td>{p.takeProfitPrice || "—"} / {p.stopLossPrice || "—"}</td>
-                      <td>{fmt(p.marginUsed, 2)} <span className="text-muted-foreground" style={{ fontSize: "0.62rem" }}>{p.marginMode === "isolated" ? t("逐仓", "Isolated") : t("全仓", "Cross")}</span></td>
+                      <td>
+                        {fmt(p.marginUsed, 2)}{" "}
+                        <span className="text-muted-foreground whitespace-nowrap" style={{ fontSize: "0.58rem" }}>
+                          {p.marginMode === "isolated" ? t("逐仓", "Isolated") : t("全仓", "Cross")}
+                          {leverageLabel(p.leverage) ? ` · ${leverageLabel(p.leverage)}` : ""}
+                        </span>
+                      </td>
                       <td className={pnlColor(p.unrealisedPnl)}>{signed(p.unrealisedPnl, 2)}</td>
                       <td className={pnlColor(p.profitRate)}>{signed(num(p.profitRate) * 100, 2)}%</td>
                       <td className={pnlColor(p.fundingFee)}>{signed(p.fundingFee, 2)}</td>
@@ -184,7 +209,13 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                     <span>{t("均价", "Avg")}: {fmt(p.avgPrice, 2)}</span>
                     <span>{t("标记价", "Mark")}: {fmt(p.markPrice, 2)}</span>
                     <span>{t("止盈 / 止损", "TP / SL")}: {p.takeProfitPrice || "—"} / {p.stopLossPrice || "—"}</span>
-                    <span>{t("保证金", "Margin")}: {fmt(p.marginUsed, 2)} <span className="text-muted-foreground" style={{ fontSize: "0.62rem" }}>{p.marginMode === "isolated" ? t("逐仓", "Isolated") : t("全仓", "Cross")}</span></span>
+                    <span>
+                      {t("保证金", "Margin")}: {fmt(p.marginUsed, 2)}{" "}
+                      <span className="text-muted-foreground whitespace-nowrap" style={{ fontSize: "0.62rem" }}>
+                        {p.marginMode === "isolated" ? t("逐仓", "Isolated") : t("全仓", "Cross")}
+                        {leverageLabel(p.leverage) ? ` · ${leverageLabel(p.leverage)}` : ""}
+                      </span>
+                    </span>
                     <span className={pnlColor(p.unrealisedPnl)}>{t("盈亏", "PnL")}: {signed(p.unrealisedPnl, 2)}</span>
                     <span className={pnlColor(p.fundingFee)}>{t("资金费", "Funding")}: {signed(p.fundingFee, 2)}</span>
                   </div>
