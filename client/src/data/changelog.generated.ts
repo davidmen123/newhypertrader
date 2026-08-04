@@ -14,6 +14,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.60.0",
+    "date": "2026-08-04",
+    "zh": "个人助手新闻支持24小时持续累积",
+    "en": "Added rolling 24-hour accumulation for assistant news"
+  },
+  {
     "version": "1.59.1",
     "date": "2026-08-03",
     "zh": "持仓明细新增止盈止损等字段",

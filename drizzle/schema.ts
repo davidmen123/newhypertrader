@@ -7,6 +7,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   varchar,
 } from "drizzle-orm/pg-core";
 
@@ -164,3 +165,19 @@ export const assistantWatchlist = pgTable("assistant_watchlist", {
 
 export type AssistantWatchlistItem = typeof assistantWatchlist.$inferSelect;
 export type InsertAssistantWatchlistItem = typeof assistantWatchlist.$inferInsert;
+
+export const assistantNews = pgTable("assistant_news", {
+  id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+  symbol: varchar("symbol", { length: 32 }).notNull(),
+  title: text("title").notNull(),
+  summaryZh: text("summaryzh").notNull(),
+  link: text("link").notNull(),
+  publishedAt: timestamp("publishedat").notNull(),
+  source: varchar("source", { length: 160 }).notNull(),
+  createdAt: timestamp("createdat").defaultNow().notNull(),
+}, (table) => ({
+  symbolLinkUnique: uniqueIndex("assistant_news_symbol_link_unique").on(table.symbol, table.link),
+}));
+
+export type AssistantNewsItem = typeof assistantNews.$inferSelect;
+export type InsertAssistantNewsItem = typeof assistantNews.$inferInsert;

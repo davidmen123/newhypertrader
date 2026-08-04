@@ -623,7 +623,7 @@ function PersonalAssistant() {
     <div className="space-y-5">
       <Panel title="个人助手" sub="关注标的 · 财报 · 新闻 · 邮件提醒">
         <div className="mb-5 rounded-lg px-4 py-3 text-sm leading-relaxed" style={{ background: "var(--surface-subtle)", color: "var(--muted-foreground)" }}>
-          后台每天北京时间 09:00 检查关注标的，并向站点配置的收件地址发送摘要；财报在未来 3 天内时会标记为提醒。
+          后台每天北京时间 09:00 检查关注标的，并向站点配置的收件地址发送摘要；新闻持续收集过去 24 小时内的相关内容，财报在未来 3 天内时会标记为提醒。
         </div>
         <div className="grid gap-3 sm:grid-cols-[1.4fr_110px_150px_1.4fr_auto] sm:items-end">
           <label className="text-xs text-muted-foreground">
@@ -718,8 +718,8 @@ function PersonalAssistant() {
                         <div className="mt-1">{monitored?.earnings ? `${monitored.earnings.reportDate} · ${monitored.earnings.timeOfDayUtc8 ?? "时间待确认"}${daysUntil(monitored.earnings.reportDate) <= 3 ? ` · 还有 ${Math.max(0, daysUntil(monitored.earnings.reportDate))} 天` : ""}` : "未来 7 天未找到财报安排"}</div>
                       </div>
                       <div>
-                        <div className="text-muted-foreground">最新新闻</div>
-                        {monitored?.news?.[0] ? <div className="mt-1 min-w-0"><div className="leading-relaxed">{monitored.news[0].title}</div><div className="mt-1 line-clamp-3 leading-relaxed text-muted-foreground">{monitored.news[0].summaryZh}</div><a href={monitored.news[0].link} target="_blank" rel="noreferrer" className="mt-1 inline-block text-muted-foreground underline-offset-2 hover:underline">{monitored.news[0].source}{monitored.news[0].publishedAt ? ` · ${absoluteTime(monitored.news[0].publishedAt)}` : ""} · 查看原文</a></div> : <div className="mt-1">暂无相关新闻</div>}
+                        <div className="text-muted-foreground">过去 24 小时新闻{monitored?.news?.length ? `（${monitored.news.length} 条）` : ""}</div>
+                        {monitored?.news?.length ? <div className="mt-1 max-h-80 space-y-3 overflow-y-auto pr-1">{monitored.news.map((news: { title: string; summaryZh: string; link: string; source: string; publishedAt: string | null }, index: number) => <div key={`${news.link}-${index}`} className="min-w-0 border-b pb-3 last:border-b-0 last:pb-0" style={{ borderColor: "var(--panel-border)" }}><div className="leading-relaxed">{news.title}</div><div className="mt-1 leading-relaxed text-muted-foreground">{news.summaryZh}</div><a href={news.link} target="_blank" rel="noreferrer" className="mt-1 inline-block text-muted-foreground underline-offset-2 hover:underline">{news.source}{news.publishedAt ? ` · ${absoluteTime(news.publishedAt)}` : ""} · 查看原文</a></div>)}</div> : <div className="mt-1">过去 24 小时暂无相关新闻</div>}
                       </div>
                     </div>
                   );

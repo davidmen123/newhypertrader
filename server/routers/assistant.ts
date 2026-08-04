@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { ownerProcedure, router } from "../_core/trpc.js";
 import { ENV } from "../_core/env.js";
 import { getDb } from "../db.js";
-import { assistantWatchlist } from "../../drizzle/schema.js";
+import { assistantNews, assistantWatchlist } from "../../drizzle/schema.js";
 import { invokeLLM } from "../_core/llm.js";
 
 type EarningsItem = {
@@ -27,7 +27,7 @@ export type AssistantMonitorItem = {
 
 const monitorCache = new Map<string, { expiresAt: number; value: AssistantMonitorItem }>();
 const CACHE_MS = 30 * 60 * 1000;
-const NEWS_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
+const NEWS_LOOKBACK_MS = 24 * 60 * 60 * 1000;
 let assistantSchemaReady: Promise<void> | null = null;
 
 async function ensureAssistantSchema(): Promise<void> {
@@ -56,6 +56,20 @@ async function ensureAssistantSchema(): Promise<void> {
     await db.execute(sql`ALTER TABLE assistant_watchlist ADD COLUMN IF NOT EXISTS technicalstate varchar(32)`).catch(() => {});
     await db.execute(sql`ALTER TABLE assistant_watchlist ADD COLUMN IF NOT EXISTS observationperiods text`).catch(() => {});
     await db.execute(sql`ALTER TABLE assistant_watchlist ADD COLUMN IF NOT EXISTS keycondition text`).catch(() => {});
+    await db.execute(sql.raw(`
+      CREATE TABLE IF NOT EXISTS assistant_news (
+        id SERIAL PRIMARY KEY,
+        symbol varchar(32) NOT NULL,
+        title text NOT NULL,
+        summaryzh text NOT NULL,
+        link text NOT NULL,
+        publishedat timestamp NOT NULL,
+        source varchar(160) NOT NULL,
+        createdat timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (symbol, link)
+      )
+    `));
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS assistant_news_symbol_publishedat_idx ON assistant_news (symbol, publishedat DESC)`).catch(() => {});
   })().catch((error) => {
     assistantSchemaReady = null;
     throw error;
@@ -149,11 +163,22 @@ function newsMatchesCompany(news: any, symbol: string, companyName: string): boo
   const title = String(news?.title ?? "").toLowerCase();
   const relatedTickers = Array.isArray(news?.relatedTickers) ? news.relatedTickers.map((value: unknown) => String(value).toLowerCase()) : [];
   if (relatedTickers.some((ticker: string) => ticker === symbol.toLowerCase() || ticker.split(/[.:-]/)[0] === symbolKey)) return true;
-  const companyWords = companyKey.split(" ").filter((word) => word.length >= 3);
+  const companyWords = companyKey.split(" ").filter((word) => /[\u4e00-\u9fff]/.test(word) ? word.length >= 2 : word.length >= 3);
   return companyWords.length > 0 && companyWords.some((word) => title.includes(word));
 }
 
-async function fetchNews(item: { symbol: string; companyName: string | null }): Promise<NewsItem[]> {
+function canonicalNewsLink(link: string): string {
+  try {
+    const url = new URL(link);
+    ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "guccounter", "guce_referrer", "guce_referrer_sig"].forEach((key) => url.searchParams.delete(key));
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return link.trim();
+  }
+}
+
+async function fetchNewsSources(item: { symbol: string; companyName: string | null }): Promise<Array<Omit<NewsItem, "summaryZh">>> {
   const companyName = item.companyName?.trim() || item.symbol;
   const cutoff = Date.now() - NEWS_LOOKBACK_MS;
   const items: Array<Omit<NewsItem, "summaryZh">> = [];
@@ -161,12 +186,12 @@ async function fetchNews(item: { symbol: string; companyName: string | null }): 
 
   try {
     const query = encodeURIComponent(companyName);
-    const text = await fetchText(`https://query1.finance.yahoo.com/v1/finance/search?q=${query}&quotesCount=0&newsCount=10`, { Accept: "application/json, text/plain, */*" });
+    const text = await fetchText(`https://query1.finance.yahoo.com/v1/finance/search?q=${query}&quotesCount=0&newsCount=50`, { Accept: "application/json, text/plain, */*" });
     const news = JSON.parse(text)?.news;
     for (const entry of Array.isArray(news) ? news : []) {
       if (!newsMatchesCompany(entry, item.symbol, companyName)) continue;
       const title = String(entry?.title ?? "").trim();
-      const link = String(entry?.link ?? "").trim();
+      const link = canonicalNewsLink(String(entry?.link ?? ""));
       const publishedAt = Number(entry?.providerPublishTime);
       const publishedMs = Number.isFinite(publishedAt) ? publishedAt * 1000 : 0;
       if (!title || !link || !publishedMs || publishedMs < cutoff || seenLinks.has(link)) continue;
@@ -180,14 +205,14 @@ async function fetchNews(item: { symbol: string; companyName: string | null }): 
   try {
     const symbolKey = item.symbol.split(/[.:-]/)[0];
     const companyKey = companyName.split(/\s+/)[0];
-    const query = encodeURIComponent(`"${symbolKey}" OR "${companyKey}"`);
+    const query = encodeURIComponent(`"${symbolKey}" OR "${companyName}" when:1d`);
     const text = await fetchText(`https://news.google.com/rss/search?q=${query}&hl=zh-CN&gl=CN&ceid=CN:zh-Hans`, { Accept: "application/rss+xml, application/xml, text/xml" });
     for (const block of text.match(/<item>[\s\S]*?<\/item>/gi) ?? []) {
       const title = cleanXml(block.match(/<title>([\s\S]*?)<\/title>/i)?.[1] ?? "");
-      const link = cleanXml(block.match(/<link>([\s\S]*?)<\/link>/i)?.[1] ?? "");
+      const link = canonicalNewsLink(cleanXml(block.match(/<link>([\s\S]*?)<\/link>/i)?.[1] ?? ""));
       const pubDate = cleanXml(block.match(/<pubDate>([\s\S]*?)<\/pubDate>/i)?.[1] ?? "");
       const publishedMs = Date.parse(pubDate);
-      if (!title || !link || !publishedMs || publishedMs < cutoff || seenLinks.has(link)) continue;
+      if (!title || !link || !publishedMs || publishedMs < cutoff || seenLinks.has(link) || !newsMatchesCompany({ title }, item.symbol, companyName)) continue;
       seenLinks.add(link);
       items.push({ title, link, publishedAt: new Date(publishedMs).toISOString(), source: "Google 新闻" });
     }
@@ -195,14 +220,43 @@ async function fetchNews(item: { symbol: string; companyName: string | null }): 
     console.warn(`[Assistant] Google news unavailable for ${item.symbol}:`, error);
   }
 
-  items.sort((a, b) => new Date(b.publishedAt ?? 0).getTime() - new Date(a.publishedAt ?? 0).getTime());
-  return summarizeNews(items.slice(0, 5));
+  return items.sort((a, b) => new Date(b.publishedAt ?? 0).getTime() - new Date(a.publishedAt ?? 0).getTime());
+}
+
+async function readNewsPool(symbol: string, cutoff: Date): Promise<NewsItem[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select().from(assistantNews)
+    .where(and(eq(assistantNews.symbol, symbol), gte(assistantNews.publishedAt, cutoff)))
+    .orderBy(desc(assistantNews.publishedAt));
+  return rows.map((row: { title: string; summaryZh: string; link: string; publishedAt: Date; source: string }) => ({ title: row.title, summaryZh: row.summaryZh, link: row.link, publishedAt: row.publishedAt.toISOString(), source: row.source }));
+}
+
+async function updateNewsPool(item: { symbol: string; companyName: string | null }): Promise<NewsItem[]> {
+  const cutoff = new Date(Date.now() - NEWS_LOOKBACK_MS);
+  const db = await getDb();
+  const fetched = await fetchNewsSources(item);
+  if (!db) return summarizeNews(fetched);
+
+  await db.delete(assistantNews).where(lte(assistantNews.publishedAt, cutoff));
+  const existing = await db.select({ link: assistantNews.link }).from(assistantNews)
+    .where(and(eq(assistantNews.symbol, item.symbol), gte(assistantNews.publishedAt, cutoff)));
+  const existingLinks = new Set(existing.map((row: { link: string }) => canonicalNewsLink(row.link)));
+  const newItems = fetched.filter((news) => !existingLinks.has(news.link));
+  if (newItems.length > 0) {
+    const summarized = await summarizeNews(newItems);
+    await db.insert(assistantNews).values(summarized.flatMap((news) => {
+      if (!news.publishedAt) return [];
+      return [{ symbol: item.symbol, title: news.title, summaryZh: news.summaryZh, link: news.link, publishedAt: new Date(news.publishedAt), source: news.source }];
+    })).onConflictDoNothing();
+  }
+  return readNewsPool(item.symbol, cutoff);
 }
 
 async function getMonitorItem(item: { symbol: string; companyName: string | null; exchange: string | null; priority: string; note: string | null }): Promise<AssistantMonitorItem> {
   const cached = monitorCache.get(item.symbol);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
-  const [earnings, news] = await Promise.allSettled([fetchEarnings(item.symbol), fetchNews(item)]);
+  const [earnings, news] = await Promise.allSettled([fetchEarnings(item.symbol), updateNewsPool(item)]);
   const value: AssistantMonitorItem = { symbol: item.symbol, companyName: item.companyName, exchange: item.exchange, priority: item.priority, note: item.note, earnings: earnings.status === "fulfilled" ? earnings.value : null, news: news.status === "fulfilled" ? news.value : [] };
   monitorCache.set(item.symbol, { expiresAt: Date.now() + CACHE_MS, value });
   return value;
