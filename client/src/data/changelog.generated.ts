@@ -14,6 +14,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.61.0",
+    "date": "2026-08-04",
+    "zh": "损益历史新增多市场指数涨跌幅对比",
+    "en": "Added selectable market index benchmarks to PnL history"
+  },
+  {
     "version": "1.60.0",
     "date": "2026-08-04",
     "zh": "个人助手新闻支持24小时持续累积",

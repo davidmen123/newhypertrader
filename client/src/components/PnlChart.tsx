@@ -6,8 +6,15 @@ import {
   ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ReferenceArea, ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
-import { Info, RefreshCw, Database, X } from "lucide-react";
+import { ChevronDown, Info, RefreshCw, Database, X } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // ─── Series config ────────────────────────────────────────────────────────────
 const SERIES = [
@@ -36,6 +43,7 @@ type SeriesKey = (typeof SERIES)[number]["key"];
 // trade. Only the trade query needs a date spelled out: an absent start date means
 // "everything" to the PnL query but "the last 30 days" to the trade query.
 const FULL_HISTORY_START_DATE = "2023-01-01";
+type BenchmarkKey = "btc" | "shanghai" | "sp500" | "nasdaq" | "hangSeng";
 
 // ─── Tooltip ─────────────────────────────────────────────────────────────────
 interface TooltipProps {
@@ -44,6 +52,7 @@ interface TooltipProps {
   label?: string | number;
   labels: Record<SeriesKey, string>;
   visible: Record<SeriesKey, boolean>;
+  benchmarkValueLabel: string;
 }
 
 type ChartPoint = {
@@ -53,7 +62,7 @@ type ChartPoint = {
   pnl: number;
   accountPerformance: number;
   btcBenchmark: number | null;
-  btcPrice: number | null;
+  benchmarkPrice: number | null;
   assetTrend: number;
 };
 
@@ -238,7 +247,7 @@ function makeValueGridTicks(values: number[], preferredCount = 6) {
   return ticks.length > 0 ? ticks : [0];
 }
 
-function CustomTooltip({ active, payload, label, labels, visible }: TooltipProps) {
+function CustomTooltip({ active, payload, label, labels, visible, benchmarkValueLabel }: TooltipProps) {
   if (!active || !payload?.length) return null;
   const seen = new Set<SeriesKey>();
 
@@ -267,9 +276,9 @@ function CustomTooltip({ active, payload, label, labels, visible }: TooltipProps
           seriesKey === "accountPerformance" && p.payload
             ? `${formatSigned(p.payload.pnl)} USDC`
             : null;
-        const btcPrice =
-          seriesKey === "btcBenchmark" && p.payload?.btcPrice != null && Number.isFinite(p.payload.btcPrice)
-            ? `$${p.payload.btcPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        const benchmarkPrice =
+          seriesKey === "btcBenchmark" && p.payload?.benchmarkPrice != null && Number.isFinite(p.payload.benchmarkPrice)
+            ? p.payload.benchmarkPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
             : null;
         return (
           <div key={`${p.dataKey}-${label}`} style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: "0.78rem", marginBottom: 6 }}>
@@ -291,13 +300,13 @@ function CustomTooltip({ active, payload, label, labels, visible }: TooltipProps
                 </span>
               </div>
             )}
-            {btcPrice && (
+            {benchmarkPrice && (
               <div style={{ display: "flex", justifyContent: "space-between", gap: 16, fontSize: "0.72rem" }}>
                 <span style={{ color: "rgb(209 231 226 / 46%)" }}>
-                  {labels.btcBenchmark.includes("BTC 涨跌幅") ? "BTC价格" : "BTC Price"}
+                  {benchmarkValueLabel}
                 </span>
                 <span style={{ color: "rgb(209 231 226 / 78%)", fontFamily: "DM Mono, monospace" }}>
-                  {btcPrice}
+                  {benchmarkPrice}
                 </span>
               </div>
             )}
@@ -454,6 +463,69 @@ function SeriesToggle({
   );
 }
 
+function BenchmarkSeriesToggle({
+  label,
+  color,
+  active,
+  value,
+  options,
+  onToggle,
+  onValueChange,
+}: {
+  label: string;
+  color: string;
+  active: boolean;
+  value: BenchmarkKey;
+  options: Array<{ key: BenchmarkKey; label: string; menuLabel?: string }>;
+  onToggle: () => void;
+  onValueChange: (value: BenchmarkKey) => void;
+}) {
+  return (
+    <div
+      className="flex items-center rounded-full transition-all"
+      style={{
+        border: `1px solid ${active ? color : "var(--panel-border)"}`,
+        background: active ? `${color}22` : "transparent",
+        color: active ? color : "var(--text-soft)",
+        boxShadow: active ? `0 0 18px ${color}18` : "none",
+      }}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex items-center gap-1.5 py-1 pl-3 pr-1"
+        style={{ fontSize: "0.68rem", letterSpacing: "0.06em" }}
+      >
+        <span
+          className="inline-block h-2 w-2 shrink-0 rounded-full"
+          style={{ background: active ? color : "oklch(35% 0.02 200 / 60%)" }}
+        />
+        {label}
+      </button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label="选择对比指数"
+            className="flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:bg-foreground/5"
+          >
+            <ChevronDown size={11} />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-40">
+          <DropdownMenuRadioGroup value={value} onValueChange={(next) => onValueChange(next as BenchmarkKey)}>
+            {options.map((option) => (
+              <DropdownMenuRadioItem key={option.key} value={option.key} className="text-xs">
+                {option.menuLabel ?? option.label}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 // accountId selects which configured Hyperliquid account to chart. Left undefined
 // (the home page) it charts the default account.
@@ -466,6 +538,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
     btcBenchmark: true,
     assetTrend: false,
   });
+  const [selectedBenchmark, setSelectedBenchmark] = useState<BenchmarkKey>("btc");
   const [timeRange, setTimeRange] = useState<TimeRange | null>(null);
   const [reviewMode, setReviewMode] = useState(false);
   const [selectedTrade, setSelectedTrade] = useState<TradeMarker | null>(null);
@@ -506,6 +579,11 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
   const { data, isLoading, error, refetch, isFetching } = trpc.hyperliquid.pnlHistory.useQuery(
     { startDate, limit: queryLimit, accountId, rebase: !isFullHistory },
     { refetchInterval: 60_000 }
+  );
+  const externalBenchmark = selectedBenchmark === "btc" ? "sp500" : selectedBenchmark;
+  const { data: benchmarkHistory = [], isFetching: isBenchmarkFetching, refetch: refetchBenchmark } = trpc.hyperliquid.benchmarkHistory.useQuery(
+    { benchmark: externalBenchmark, startDate },
+    { enabled: selectedBenchmark !== "btc", staleTime: 10 * 60_000 }
   );
 
   useEffect(() => {
@@ -672,24 +750,51 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
       })
     : allSnapshots;
   // Labels per language
+  const benchmarkOptions: Array<{ key: BenchmarkKey; label: string; menuLabel: string; valueLabel: string }> = lang === "zh"
+    ? [
+        { key: "btc", label: "BTC 涨跌幅", menuLabel: "BTC", valueLabel: "BTC 价格" },
+        { key: "shanghai", label: "上证指数涨跌幅", menuLabel: "上证指数", valueLabel: "上证指数点位" },
+        { key: "sp500", label: "标普500指数涨跌幅", menuLabel: "标普500指数", valueLabel: "标普500指数点位" },
+        { key: "nasdaq", label: "纳斯达克指数涨跌幅", menuLabel: "纳斯达克指数", valueLabel: "纳斯达克指数点位" },
+        { key: "hangSeng", label: "恒生指数涨跌幅", menuLabel: "恒生指数", valueLabel: "恒生指数点位" },
+      ]
+    : [
+        { key: "btc", label: "BTC Change", menuLabel: "BTC", valueLabel: "BTC Price" },
+        { key: "shanghai", label: "Shanghai Composite", menuLabel: "Shanghai Composite", valueLabel: "Shanghai Composite Level" },
+        { key: "sp500", label: "S&P 500", menuLabel: "S&P 500", valueLabel: "S&P 500 Level" },
+        { key: "nasdaq", label: "Nasdaq Composite", menuLabel: "Nasdaq Composite", valueLabel: "Nasdaq Composite Level" },
+        { key: "hangSeng", label: "Hang Seng Index", menuLabel: "Hang Seng Index", valueLabel: "Hang Seng Index Level" },
+      ];
+  const selectedBenchmarkOption = benchmarkOptions.find((option) => option.key === selectedBenchmark) ?? benchmarkOptions[0];
   const labels: Record<SeriesKey, string> = {
-    accountPerformance: lang === "zh" ? "账户盈亏 (%)" : "Account PnL (%)",
-    btcBenchmark: lang === "zh" ? "BTC 涨跌幅 (%)" : "BTC Change (%)",
+    accountPerformance: lang === "zh" ? "账户盈亏" : "Account PnL",
+    btcBenchmark: selectedBenchmarkOption.label,
     assetTrend: lang === "zh" ? "账户净值" : "Account Equity",
   };
 
-  // Build chart data: account performance follows PnL, while BTC benchmark
-  // follows BTC price change. Both are percentages on one axis.
+  // Build chart data: account performance follows PnL, while the selected
+  // market benchmark follows its own price change. Both share one percent axis.
   const baseEquity = snapshots.length > 0 ? parseFloat(snapshots[0].equity) : null;
-  const validBtcPrices = snapshots
-    .map((s) => parseFloat(String(s.btcPrice ?? "")))
-    .filter((price) => Number.isFinite(price) && price > 0);
-  const baseBtcPrice = validBtcPrices.length > 0 ? validBtcPrices[0] : null;
-  const baseChartData = snapshots.map((s) => {
+  const benchmarkPrices = snapshots.map((snapshot) => {
+    if (selectedBenchmark === "btc") {
+      const price = parseFloat(String(snapshot.btcPrice ?? ""));
+      return Number.isFinite(price) && price > 0 ? price : null;
+    }
+    const snapshotDay = getDateKey(snapshot.date);
+    let latestPrice: number | null = null;
+    for (const point of benchmarkHistory) {
+      const pointDay = new Date(point.timestamp).toISOString().slice(0, 10);
+      if (pointDay > snapshotDay) break;
+      if (Number.isFinite(point.close) && point.close > 0) latestPrice = point.close;
+    }
+    return latestPrice;
+  });
+  const baseBenchmarkPrice = benchmarkPrices.find((price): price is number => price != null && Number.isFinite(price) && price > 0) ?? null;
+  const baseChartData = snapshots.map((s, index) => {
     const eq = parseFloat(s.equity);
-    const btcPrice = parseFloat(String(s.btcPrice ?? ""));
-    const btcBenchmark = baseBtcPrice && baseBtcPrice !== 0 && Number.isFinite(btcPrice) && btcPrice > 0
-      ? ((btcPrice - baseBtcPrice) / baseBtcPrice) * 100
+    const benchmarkPrice = benchmarkPrices[index];
+    const btcBenchmark = baseBenchmarkPrice && baseBenchmarkPrice !== 0 && benchmarkPrice != null
+      ? ((benchmarkPrice - baseBenchmarkPrice) / baseBenchmarkPrice) * 100
       : null;
     const pnl = s.totalPnl ? parseFloat(s.totalPnl) : 0;
     // The server sends a time-weighted return per point, which is what makes the
@@ -707,7 +812,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
       pnl,
       accountPerformance,
       btcBenchmark,
-      btcPrice: Number.isFinite(btcPrice) && btcPrice > 0 ? btcPrice : null,
+      benchmarkPrice,
       assetTrend: eq,
     };
   });
@@ -842,8 +947,8 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
           <div className="mt-2" style={{ width: 40, height: 1, background: "rgb(215 187 114 / 62%)" }} />
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => { refetch(); }} className="text-muted-foreground hover:text-foreground transition-colors p-1">
-            <RefreshCw size={13} className={isFetching ? "animate-spin" : ""} />
+          <button onClick={() => { refetch(); if (selectedBenchmark !== "btc") refetchBenchmark(); }} className="text-muted-foreground hover:text-foreground transition-colors p-1">
+            <RefreshCw size={13} className={isFetching || isBenchmarkFetching ? "animate-spin" : ""} />
           </button>
         </div>
       </div>
@@ -910,8 +1015,22 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
           <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.62rem" }}>
             {lang === "zh" ? "显示" : "Show"}
           </span>
-          <div className="flex gap-2">
-            {SERIES.map((s) => (
+          <div className="flex flex-wrap gap-2">
+            {SERIES.map((s) => s.key === "btcBenchmark" ? (
+              <BenchmarkSeriesToggle
+                key={s.key}
+                label={labels[s.key]}
+                color={s.color}
+                active={visible[s.key]}
+                value={selectedBenchmark}
+                options={benchmarkOptions}
+                onToggle={() => toggleSeries(s.key)}
+                onValueChange={(value) => {
+                  setSelectedBenchmark(value);
+                  setVisible((current) => ({ ...current, btcBenchmark: true }));
+                }}
+              />
+            ) : (
               <SeriesToggle
                 key={s.key}
                 label={labels[s.key]}
@@ -1110,6 +1229,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
                     <CustomTooltip
                       labels={labels}
                       visible={visible}
+                      benchmarkValueLabel={selectedBenchmarkOption.valueLabel}
                     />
                   }
                 />

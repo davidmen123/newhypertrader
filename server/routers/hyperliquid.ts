@@ -216,6 +216,66 @@ async function fetchYahooCloses(symbol: string, interval: string, range: string)
   }
 }
 
+type BenchmarkHistoryPoint = { timestamp: number; close: number };
+
+const benchmarkHistoryCache = new Map<string, { at: number; data: BenchmarkHistoryPoint[] }>();
+const BENCHMARK_HISTORY_TTL_MS = 10 * 60 * 1000;
+
+async function fetchYahooHistory(symbol: string, startDate?: string, endDate?: string): Promise<BenchmarkHistoryPoint[]> {
+  const startTimestamp = startDate
+    ? Date.parse(`${startDate}T00:00:00.000Z`) - 10 * DAY_MS
+    : Date.parse("2023-01-01T00:00:00.000Z");
+  const endTimestamp = endDate
+    ? Date.parse(`${endDate}T23:59:59.999Z`) + DAY_MS
+    : Date.now() + DAY_MS;
+  const cacheKey = `${symbol}:${startDate ?? "MAX"}:${endDate ?? "NOW"}`;
+  const cached = benchmarkHistoryCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < BENCHMARK_HISTORY_TTL_MS) return cached.data;
+
+  const symbolPath = encodeURIComponent(symbol);
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbolPath}?interval=1d&period1=${Math.floor(startTimestamp / 1000)}&period2=${Math.floor(endTimestamp / 1000)}&events=history`;
+  const extract = (payload: unknown): BenchmarkHistoryPoint[] => {
+    const result = (payload as any)?.chart?.result?.[0];
+    const timestamps: number[] = result?.timestamp ?? [];
+    const closes: Array<number | null> = result?.indicators?.adjclose?.[0]?.adjclose
+      ?? result?.indicators?.quote?.[0]?.close
+      ?? [];
+    return timestamps
+      .map((timestamp, index) => ({ timestamp: Number(timestamp) * 1000, close: Number(closes[index]) }))
+      .filter((point) => Number.isFinite(point.timestamp) && Number.isFinite(point.close) && point.close > 0)
+      .sort((a, b) => a.timestamp - b.timestamp);
+  };
+
+  let data: BenchmarkHistoryPoint[] = [];
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": yahooUserAgent, Accept: "application/json", Referer: "https://finance.yahoo.com/" },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) throw new Error(`Yahoo returned ${response.status}`);
+    data = extract(await response.json());
+  } catch (error) {
+    try {
+      const { execFile } = await import("child_process");
+      const { promisify } = await import("util");
+      const execFileAsync = promisify(execFile);
+      const { stdout } = await execFileAsync("curl", [
+        "-sS", "-L", "--max-time", "10",
+        "-A", yahooUserAgent,
+        "-H", "Accept: application/json",
+        "-H", "Referer: https://finance.yahoo.com/",
+        url,
+      ], { timeout: 12000 });
+      data = extract(JSON.parse(stdout));
+    } catch (fallbackError) {
+      console.warn(`[BenchmarkHistory] Yahoo history failed for ${symbol}:`, error, fallbackError);
+    }
+  }
+
+  benchmarkHistoryCache.set(cacheKey, { at: Date.now(), data });
+  return data;
+}
+
 async function fetchHyperliquidCloses(coin: string, interval: string, spanMs: number): Promise<number[]> {
   const now = Date.now();
   const raw = await getHyperliquidCandles({ coin, interval, startTime: now - spanMs, endTime: now }).catch(() => []);
@@ -372,6 +432,22 @@ export const hyperliquidRouter = router({
   marketIndicators: publicProcedure.query(async () => {
     return getMarketIndicators();
   }),
+
+  benchmarkHistory: publicProcedure
+    .input(z.object({
+      benchmark: z.enum(["shanghai", "sp500", "nasdaq", "hangSeng"]),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+    }))
+    .query(async ({ input }) => {
+      const symbols = {
+        shanghai: "000001.SS",
+        sp500: "^GSPC",
+        nasdaq: "^IXIC",
+        hangSeng: "^HSI",
+      } as const;
+      return fetchYahooHistory(symbols[input.benchmark], input.startDate, input.endDate);
+    }),
 
   accountOverview: publicProcedure
     .input(accountInput.optional())
