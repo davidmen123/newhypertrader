@@ -53,6 +53,8 @@ const EXCLUDED_SHAS = new Set([
   "659667b", // 持仓字段调整的旧 trailer，不重复发布版本日志
   "72c0001", // 持仓字段调整的旧 trailer，不重复发布版本日志
   "0afa46e", // 个人助手技术观察字段的小幅扩展，不单独发布版本日志
+  "2eae1cb", // 持仓字段调整的旧 trailer，不重复发布版本日志
+  "9df302a", // 持仓字段调整的旧 trailer，不重复发布版本日志
 ]);
 
 // Entries whose committed trailer overran the 15-character Chinese limit, or
@@ -86,6 +88,8 @@ const OVERRIDES = new Map([
   ["f48238f", { zh: "公布状态改按事件时间", en: "Publish status now follows event time" }],
   ["74dc6c5", { zh: "页面UI优化", en: "Page UI refinements" }],
   ["6e88fd3", { zh: "常见问题优化", en: "FAQ refinements" }],
+  ["0fe9f42", { zh: "持仓明细新增止盈止损等字段", en: "Added take-profit and stop-loss fields to positions" }],
+  ["ca49ea7", { zh: "持仓明细新增止盈止损等字段", en: "Added take-profit and stop-loss fields to positions" }],
 ]);
 
 // Bump-kind corrections (keyed by SHA) for entries released before the

@@ -16,8 +16,8 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     "version": "1.59.1",
     "date": "2026-08-03",
-    "zh": "持仓明细字段显示优化",
-    "en": "Refined position protection field display"
+    "zh": "持仓明细新增止盈止损等字段",
+    "en": "Added take-profit and stop-loss fields to positions"
   },
   {
     "version": "1.59.0",
