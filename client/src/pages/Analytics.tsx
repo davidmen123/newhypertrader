@@ -1,8 +1,9 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { trpc } from "@/lib/trpc";
 import { writeAdminKey } from "@/lib/adminKey";
-import { ArrowLeft, Clock, Globe, Info, Laptop, MapPin, Monitor, Plus, RefreshCw, Smartphone, Trash2 } from "lucide-react";
+import { ArrowLeft, Clock, Globe, Info, Laptop, MapPin, Monitor, Moon, Plus, RefreshCw, Smartphone, Sun, Trash2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useTheme } from "@/contexts/ThemeContext";
 import AccountOverview from "@/components/AccountOverview";
 import PnlChart from "@/components/PnlChart";
 import PositionsTable from "@/components/PositionsTable";
@@ -743,6 +744,8 @@ const PERIODS: Array<{ key: Period; label: string }> = [
 ];
 
 function AnalyticsDashboard() {
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === "dark";
   const [period, setPeriod] = useState<Period>("week");
   const [view, setView] = useState<"traffic" | "reviews" | "accounts" | "assistant">("traffic");
   const [customStart, setCustomStart] = useState(() => utc8DateStr(Date.now() - 6 * DAY_MS));
@@ -833,6 +836,15 @@ function AnalyticsDashboard() {
                   <RefreshCw size={13} className={isFetching ? "animate-spin" : ""} />
                 </button>
               )}
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className="header-icon-button"
+                title={isDark ? "切换到白天" : "切换到黑夜"}
+                aria-label={isDark ? "切换到白天" : "切换到黑夜"}
+              >
+                {isDark ? <Sun size={14} /> : <Moon size={14} />}
+              </button>
               <a
                 href="/"
                 className="text-muted-foreground hover:text-foreground transition-colors p-1"
