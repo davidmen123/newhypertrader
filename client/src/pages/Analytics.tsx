@@ -585,7 +585,7 @@ function AccountPnlManager() {
 function PersonalAssistant() {
   const { data: rawItems, isLoading } = trpc.assistant.list.useQuery();
   const items = (rawItems ?? []) as Array<{ id: number; symbol: string; companyName: string | null; exchange: string | null; assetType: string | null; priority: string; technicalState: string | null; observationPeriods: string | null; keyCondition: string | null; note: string | null }>;
-  const { data: monitorItems = [], isFetching: isMonitoring } = trpc.assistant.monitor.useQuery(undefined, { refetchInterval: 30 * 60 * 1000 });
+  const { data: monitorItems = [], isFetching: isMonitoring } = trpc.assistant.monitor.useQuery(undefined, { staleTime: 5 * 60 * 1000, refetchOnWindowFocus: false, refetchOnReconnect: false });
   const addMutation = trpc.assistant.add.useMutation();
   const removeMutation = trpc.assistant.remove.useMutation();
   const refreshMutation = trpc.assistant.refresh.useMutation();
@@ -624,7 +624,7 @@ function PersonalAssistant() {
     <div className="space-y-5">
       <Panel title="个人助手" sub="关注标的 · 财报 · 新闻 · 邮件提醒">
         <div className="mb-5 rounded-lg px-4 py-3 text-sm leading-relaxed" style={{ background: "var(--surface-subtle)", color: "var(--muted-foreground)" }}>
-          后台每天北京时间 09:00 检查关注标的，并向站点配置的收件地址发送摘要；新闻持续收集过去 24 小时内的相关内容，财报在未来 3 天内时会标记为提醒。
+          新闻只会在点击“刷新监控”时主动搜索并更新，以减少不必要的 Token 消耗；后台仍每天北京时间 09:00 检查关注标的，并向站点配置的收件地址发送摘要。新闻展示最近 24 小时内容，财报在未来 3 天内时会标记为提醒。
         </div>
         <div className="grid gap-3 sm:grid-cols-[1.4fr_110px_150px_1.4fr_auto] sm:items-end">
           <label className="text-xs text-muted-foreground">
@@ -688,7 +688,8 @@ function PersonalAssistant() {
       </Panel>
 
       <Panel title="关注清单" sub={`${items.length} 个标的 · ${isMonitoring ? "更新中" : "已更新"}`}>
-        <div className="mb-4 flex justify-end gap-2">
+        <div className="mb-4 flex items-center justify-end gap-2">
+          <span className="text-xs text-muted-foreground">新闻需手动刷新</span>
           <button type="button" onClick={async () => { setRefreshFeedback(true); window.setTimeout(() => setRefreshFeedback(false), 700); const refreshed = await refreshMutation.mutateAsync(); utils.assistant.monitor.setData(undefined, refreshed); }} disabled={refreshMutation.isPending} className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs transition-transform disabled:opacity-50 ${refreshMutation.isPending || refreshFeedback ? "animate-pulse scale-[0.96]" : ""}`} style={{ border: "1px solid var(--panel-border)", color: "var(--muted-foreground)" }}><RefreshCw size={13} className={refreshMutation.isPending || refreshFeedback ? "animate-spin" : ""} />{refreshMutation.isPending ? "更新中…" : "刷新监控"}</button>
         </div>
         {isLoading ? (

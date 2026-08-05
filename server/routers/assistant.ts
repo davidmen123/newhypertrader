@@ -253,10 +253,11 @@ async function updateNewsPool(item: { symbol: string; companyName: string | null
   return readNewsPool(item.symbol, cutoff);
 }
 
-async function getMonitorItem(item: { symbol: string; companyName: string | null; exchange: string | null; priority: string; note: string | null }): Promise<AssistantMonitorItem> {
+async function getMonitorItem(item: { symbol: string; companyName: string | null; exchange: string | null; priority: string; note: string | null }, refreshNews = false): Promise<AssistantMonitorItem> {
   const cached = monitorCache.get(item.symbol);
-  if (cached && cached.expiresAt > Date.now()) return cached.value;
-  const [earnings, news] = await Promise.allSettled([fetchEarnings(item.symbol), updateNewsPool(item)]);
+  if (!refreshNews && cached && cached.expiresAt > Date.now()) return cached.value;
+  const newsPromise = refreshNews ? updateNewsPool(item) : readNewsPool(item.symbol, new Date(Date.now() - NEWS_LOOKBACK_MS));
+  const [earnings, news] = await Promise.allSettled([fetchEarnings(item.symbol), newsPromise]);
   const value: AssistantMonitorItem = { symbol: item.symbol, companyName: item.companyName, exchange: item.exchange, priority: item.priority, note: item.note, earnings: earnings.status === "fulfilled" ? earnings.value : null, news: news.status === "fulfilled" ? news.value : [] };
   monitorCache.set(item.symbol, { expiresAt: Date.now() + CACHE_MS, value });
   return value;
@@ -298,7 +299,7 @@ export async function runAssistantDailyDigest(now = new Date()): Promise<void> {
   const rows = await readWatchlist();
   const pending = rows.filter((row: any) => row.emailEnabled && row.lastDigestDate !== today);
   if (pending.length === 0) return;
-  const items = await Promise.all(pending.map((row: any) => getMonitorItem(row)));
+  const items = await Promise.all(pending.map((row: any) => getMonitorItem(row, true)));
   const reminders = items.filter((item) => {
     if (!item.earnings) return false;
     const days = Math.round((new Date(`${item.earnings.reportDate}T00:00:00+08:00`).getTime() - new Date(`${today}T00:00:00+08:00`).getTime()) / 86400000);
@@ -334,7 +335,7 @@ export const assistantRouter = router({
   refresh: ownerProcedure.mutation(async () => {
     monitorCache.clear();
     const rows = await readWatchlist();
-    return Promise.all(rows.map((row: any) => getMonitorItem(row)));
+    return Promise.all(rows.map((row: any) => getMonitorItem(row, true)));
   }),
   add: ownerProcedure.input(z.object({ symbol: z.string().trim().min(1).max(32), companyName: z.string().trim().min(1).max(160), exchange: z.string().trim().min(1).max(64), assetType: z.string().trim().min(1).max(32), priority: z.enum(["高", "中", "低"]).default("中"), technicalState: z.enum(["筑底中", "底部动能钝化", "趋势延续", "区间震荡", "即将突破", "等待回踩"]).optional(), observationPeriods: z.array(z.enum(["1H", "4H", "1D", "1W"])).max(4).default([]), keyCondition: z.string().trim().max(200).optional(), note: z.string().trim().max(200).optional() })).mutation(async ({ input }) => {
     await ensureAssistantSchema();
@@ -355,7 +356,7 @@ export const assistantRouter = router({
   }),
   sendNow: ownerProcedure.mutation(async () => {
     const rows = await readWatchlist();
-    const items = await Promise.all(rows.map((row: any) => getMonitorItem(row)));
+    const items = await Promise.all(rows.map((row: any) => getMonitorItem(row, true)));
     return { sent: await sendDigestEmail(items, "【PnLNote】个人助手关注标的摘要"), count: items.length };
   }),
 });
