@@ -194,30 +194,74 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
           <div className="sm:hidden flex flex-col gap-2">
             {positions.map((p) => {
               const isLong = p.posSide === "long";
+              const leverage = leverageLabel(p.leverage);
+              const marginMode = p.marginMode === "isolated" ? t("逐仓", "Isolated") : t("全仓", "Cross");
               return (
                 <div
                   key={`${p.category}-${p.symbol}-${p.posSide}`}
-                  className="rounded-lg px-4 py-3"
+                  className="rounded-xl px-4 py-4"
                   style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium">{p.symbol}</span>
-                    <span className={isLong ? "text-profit" : "text-loss"}>{isLong ? t("多", "Long") : t("空", "Short")}</span>
+                  <div className="grid grid-cols-3 gap-x-3 gap-y-5">
+                    <div className="min-w-0">
+                      <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("市场", "Market")}</div>
+                      <div className="mt-1 truncate font-medium text-foreground" style={{ fontSize: "0.9rem" }}>{p.symbol}</div>
+                      <div className={`mt-0.5 ${isLong ? "text-profit" : "text-loss"}`} style={{ fontSize: "0.68rem" }}>
+                        {isLong ? t("多", "Long") : t("空", "Short")}{leverage ? ` · ${leverage}` : ""}
+                      </div>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("数量", "Size")}</div>
+                      <div className="num-display mt-1 truncate" style={{ fontSize: "0.9rem" }}>{fmt(p.total, 2)}</div>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("盈亏（ROE）", "PnL (ROE)")}</div>
+                      <div className={`num-display mt-1 leading-tight ${pnlColor(p.unrealisedPnl)}`} style={{ fontSize: "0.84rem" }}>
+                        {signed(p.unrealisedPnl, 2)}
+                      </div>
+                      <div className={`num-display mt-0.5 ${pnlColor(p.profitRate)}`} style={{ fontSize: "0.68rem" }}>
+                        ({signed(num(p.profitRate) * 100, 2)}%)
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("开仓价格", "Entry Price")}</div>
+                      <div className="num-display mt-1" style={{ fontSize: "0.84rem" }}>{fmt(p.avgPrice, 2)}</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("标记价格", "Mark Price")}</div>
+                      <div className="num-display mt-1" style={{ fontSize: "0.84rem" }}>{fmt(p.markPrice, 2)}</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("强平价格", "Liq. Price")}</div>
+                      <div className="num-display mt-1" style={{ fontSize: "0.84rem" }}>
+                        {num(p.liquidationPrice) > 0 ? fmt(p.liquidationPrice, 2) : "—"}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("仓位价值", "Position Value")}</div>
+                      <div className="num-display mt-1" style={{ fontSize: "0.84rem" }}>{fmt(p.positionValue, 2)}</div>
+                      <div className="text-muted-foreground" style={{ fontSize: "0.62rem" }}>USDC</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("保证金", "Margin")}</div>
+                      <div className="num-display mt-1" style={{ fontSize: "0.84rem" }}>{fmt(p.marginUsed, 2)}</div>
+                      <div className="text-muted-foreground" style={{ fontSize: "0.62rem" }}>{marginMode}</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("止盈 / 止损", "TP / SL")}</div>
+                      <div className="num-display mt-1 leading-tight" style={{ fontSize: "0.78rem" }}>
+                        {p.takeProfitPrice || "—"} / {p.stopLossPrice || "—"}
+                      </div>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <span>{t("数量", "Size")}: {fmt(p.total, 2)}</span>
-                    <span>{t("均价", "Avg")}: {fmt(p.avgPrice, 2)}</span>
-                    <span>{t("标记价", "Mark")}: {fmt(p.markPrice, 2)}</span>
-                    <span>{t("止盈 / 止损", "TP / SL")}: {p.takeProfitPrice || "—"} / {p.stopLossPrice || "—"}</span>
-                    <span>
-                      {t("保证金", "Margin")}: {fmt(p.marginUsed, 2)}{" "}
-                      <span className="text-muted-foreground whitespace-nowrap" style={{ fontSize: "0.62rem" }}>
-                        {p.marginMode === "isolated" ? t("逐仓", "Isolated") : t("全仓", "Cross")}
-                        {leverageLabel(p.leverage) ? ` · ${leverageLabel(p.leverage)}` : ""}
-                      </span>
-                    </span>
-                    <span className={pnlColor(p.unrealisedPnl)}>{t("盈亏", "PnL")}: {signed(p.unrealisedPnl, 2)}</span>
-                    <span className={pnlColor(p.fundingFee)}>{t("资金费", "Funding")}: {signed(p.fundingFee, 2)}</span>
+
+                  <div className="mt-4 border-t pt-3" style={{ borderColor: "var(--panel-border)" }}>
+                    <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("资金费", "Funding")}</div>
+                    <div className={`num-display mt-1 ${pnlColor(p.fundingFee)}`} style={{ fontSize: "0.82rem" }}>
+                      {signed(p.fundingFee, 2)}
+                    </div>
                   </div>
                 </div>
               );
