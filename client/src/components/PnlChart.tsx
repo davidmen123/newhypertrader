@@ -1071,6 +1071,29 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
 
       </div>
 
+      {reviewMode && (
+        <div className="flex flex-wrap items-start gap-x-3 gap-y-1 mb-5 rounded-lg px-3 py-2.5 text-muted-foreground" style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)", fontSize: "0.68rem" }}>
+          <span className="shrink-0 text-foreground/80 tracking-widest">{lang === "zh" ? "说明" : "Guide"}</span>
+          <span>
+            {lang === "zh" ? (
+              <>
+                点击净值曲线上的交易节点（
+                <i className="inline-block mx-0.5 h-2 w-2 rounded-full align-middle" style={{ background: "oklch(68% 0.15 145)" }} />
+                <i className="inline-block mx-0.5 h-2 w-2 rounded-full align-middle" style={{ background: "oklch(62% 0.15 25)" }} />
+                ）悬停查看摘要，点击“查看详情”展开复盘；同日有多笔交易时，可在详情区切换；K 线支持 1h、4h、1d、1w，EMA20 仅作辅助参考。
+              </>
+            ) : (
+              <>
+                Click a trade node on the equity curve (
+                <i className="inline-block mx-0.5 h-2 w-2 rounded-full align-middle" style={{ background: "oklch(68% 0.15 145)" }} />
+                <i className="inline-block mx-0.5 h-2 w-2 rounded-full align-middle" style={{ background: "oklch(62% 0.15 25)" }} />
+                ) to preview a summary on hover; click “View Details” to expand the review. Switch between same-day trades in the detail panel. Candles support 1h, 4h, 1d and 1w, with EMA20 as a reference.
+              </>
+            )}
+          </span>
+        </div>
+      )}
+
       {isLoading && <div className="text-muted-foreground text-sm animate-pulse py-8 text-center">{lang === "zh" ? "加载中..." : "Loading..."}</div>}
       {error && <div className="text-loss text-sm py-4">{error.message}</div>}
 
@@ -1363,34 +1386,6 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
             </div>
           )}
 
-          {reviewMode && (
-            <div className="flex items-center justify-center gap-5 text-muted-foreground mb-3" style={{ fontSize: "0.7rem" }}>
-              <span className="flex items-center gap-1.5"><i className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "oklch(68% 0.15 145)" }} />买入</span>
-              <span className="flex items-center gap-1.5"><i className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "oklch(62% 0.15 25)" }} />卖出</span>
-            </div>
-          )}
-          {reviewMode && (
-            <div className="flex flex-wrap items-start gap-x-3 gap-y-1 mt-1 mb-3 rounded-lg px-3 py-2.5 text-muted-foreground" style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)", fontSize: "0.68rem" }}>
-              <span className="shrink-0 text-foreground/80 tracking-widest">{lang === "zh" ? "说明" : "Guide"}</span>
-              <span>
-                {lang === "zh" ? (
-                  <>
-                    点击净值曲线上的交易节点（
-                    <i className="inline-block mx-0.5 h-2 w-2 rounded-full align-middle" style={{ background: "oklch(68% 0.15 145)" }} />
-                    <i className="inline-block mx-0.5 h-2 w-2 rounded-full align-middle" style={{ background: "oklch(62% 0.15 25)" }} />
-                    ）悬停查看摘要，点击“查看详情”展开复盘；同日有多笔交易时，可在详情区切换；K 线支持 1h、4h、1d、1w，EMA20 仅作辅助参考。
-                  </>
-                ) : (
-                  <>
-                    Click a trade node on the equity curve (
-                    <i className="inline-block mx-0.5 h-2 w-2 rounded-full align-middle" style={{ background: "oklch(68% 0.15 145)" }} />
-                    <i className="inline-block mx-0.5 h-2 w-2 rounded-full align-middle" style={{ background: "oklch(62% 0.15 25)" }} />
-                    ) to preview a summary on hover; click “View Details” to expand the review. Switch between same-day trades in the detail panel. Candles support 1h, 4h, 1d and 1w, with EMA20 as a reference.
-                  </>
-                )}
-              </span>
-            </div>
-          )}
           <div className="mt-2 text-center text-muted-foreground/60" style={{ fontSize: "0.72rem", letterSpacing: "0.12em" }}>
             用纪律封住下限，用复利打开上限
           </div>
