@@ -145,14 +145,13 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                       </TooltipTrigger>
                       <TooltipContent className="max-w-64 text-xs" style={{ fontSize: "0.7rem" }}>
                         {t(
-                          "显示保证金金额、全仓/逐仓模式及交易所设置的杠杆倍数；杠杆倍数不代表实际单笔风险。",
-                          "Shows margin, cross/isolated mode and configured leverage. Leverage does not equal the actual risk per trade."
+                          "显示保证金金额及全仓/逐仓模式。",
+                          "Shows margin and cross/isolated mode."
                         )}
                       </TooltipContent>
                     </Tooltip>
                   </th>
-                  <th>{t("未实现盈亏", "Unrealized")}</th>
-                  <th>{t("收益率", "ROI")}</th>
+                  <th>{t("盈亏（ROE）", "PnL (ROE)")}</th>
                   <th>{t("资金费", "Funding")}</th>
                   <th>{t("强平价", "Liq.")}</th>
                 </tr>
@@ -164,8 +163,9 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                     <tr key={`${p.category}-${p.symbol}-${p.posSide}`}>
                       <td className="text-foreground font-medium">{p.symbol}</td>
                       <td>
-                        <span className={isLong ? "text-profit" : "text-loss"}>
+                        <span className={`${isLong ? "text-profit" : "text-loss"} whitespace-nowrap`}>
                           {isLong ? t("多", "Long") : t("空", "Short")}
+                          {leverageLabel(p.leverage) ? ` · ${leverageLabel(p.leverage)}` : ""}
                         </span>
                       </td>
                       <td>{fmt(p.total, 2)}</td>
@@ -177,11 +177,14 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                         {fmt(p.marginUsed, 2)}{" "}
                         <span className="text-muted-foreground whitespace-nowrap" style={{ fontSize: "0.58rem" }}>
                           {p.marginMode === "isolated" ? t("逐仓", "Isolated") : t("全仓", "Cross")}
-                          {leverageLabel(p.leverage) ? ` · ${leverageLabel(p.leverage)}` : ""}
                         </span>
                       </td>
-                      <td className={pnlColor(p.unrealisedPnl)}>{signed(p.unrealisedPnl, 2)}</td>
-                      <td className={pnlColor(p.profitRate)}>{signed(num(p.profitRate) * 100, 2)}%</td>
+                      <td className={pnlColor(p.unrealisedPnl)}>
+                        <span className="whitespace-nowrap">{signed(p.unrealisedPnl, 2)}</span>
+                        <span className="ml-1 whitespace-nowrap" style={{ fontSize: "0.68rem" }}>
+                          ({signed(num(p.profitRate) * 100, 2)}%)
+                        </span>
+                      </td>
                       <td className={pnlColor(p.fundingFee)}>{signed(p.fundingFee, 2)}</td>
                       <td>{num(p.liquidationPrice) > 0 ? fmt(p.liquidationPrice, 2) : "—"}</td>
                     </tr>
