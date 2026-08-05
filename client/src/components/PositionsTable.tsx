@@ -121,7 +121,20 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
               <thead>
                 <tr>
                   <th>{t("市场", "Market")}</th>
-                  <th>{t("方向", "Side")}</th>
+                  <th className="flex items-center gap-1">
+                    {t("方向", "Side")}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="text-muted-foreground/60 cursor-help" style={{ width: "12px", height: "12px" }} />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-64 text-xs" style={{ fontSize: "0.7rem" }}>
+                        {t(
+                          "显示持仓方向及交易所设置的杠杆倍数；杠杆倍数不代表实际单笔风险。",
+                          "Shows position side and configured leverage. Leverage does not equal the actual risk per trade."
+                        )}
+                      </TooltipContent>
+                    </Tooltip>
+                  </th>
                   <th>{t("数量", "Size")}</th>
                   <th className="flex items-center gap-1">
                     {t("仓位价值", "Position Value")}
