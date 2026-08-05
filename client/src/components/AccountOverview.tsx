@@ -252,7 +252,7 @@ export default function AccountOverview({ accountId }: { accountId?: string } = 
   const strategyStatus = hasExposure
     ? totalPnlUsdc != null && totalPnlUsdc >= 0
       ? t("持仓中", "In Position")
-      : t("持仓观察", "Monitoring")
+      : t("持仓中", "Position Open")
     : t("空仓观察", "Watching");
   const strategyColor = hasExposure
     ? totalPnlUsdc != null && totalPnlUsdc >= 0
