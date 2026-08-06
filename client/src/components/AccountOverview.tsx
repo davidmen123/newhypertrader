@@ -454,8 +454,8 @@ export default function AccountOverview({ accountId }: { accountId?: string } = 
               value={data.maxDrawdownPct != null ? `${data.maxDrawdownPct.toFixed(2)}%` : "--"}
               tone={data.maxDrawdownUsdc != null && data.maxDrawdownUsdc < 0 ? "loss" : "neutral"}
               tooltip={t(
-                "账户净值从历史最高点回落到最低点的最大跌幅，按全周期净值曲线计算、含未平仓浮亏。注意出金也会计入净值下降。与最大连亏（按已平仓交易统计）互为对照。",
-                "Largest peak-to-trough decline of account equity over the full history, including unrealized PnL. Note that withdrawals also register as equity decline. The equity-curve counterpart to max consecutive losses (closed trades only)."
+                "基于累计 PnL 构造的现金流调整后策略净值，从历史峰值到其后谷值的最大跌幅，按全周期计算；充值和出金不直接计入回撤。与最大连续亏损（按已平仓交易统计）互为对照。",
+                "Largest peak-to-trough decline of the cash-flow-adjusted strategy equity reconstructed from cumulative PnL over the full history. Deposits and withdrawals do not directly count as drawdown. The curve-based counterpart to max consecutive losses (closed trades only)."
               )}
             />
             <MetricTile
@@ -469,8 +469,8 @@ export default function AccountOverview({ accountId }: { accountId?: string } = 
               }
               tone="neutral"
               tooltip={t(
-                "历史上连续亏损的最长笔数及该段累计亏损。按已平仓交易统计，与最大回撤（净值曲线口径、含浮亏）互为对照。",
-                "Longest run of losing round trips and its cumulative loss. Closed trades only — the trade-based counterpart to max drawdown (equity-curve based, includes unrealized)."
+                "历史上连续亏损的最长笔数及该段累计亏损。按已平仓交易统计，与最大回撤（现金流调整后的策略净值曲线口径）互为对照。",
+                "Longest run of losing round trips and its cumulative loss. Closed trades only — the trade-based counterpart to max drawdown (cash-flow-adjusted strategy equity curve)."
               )}
             />
             <MetricTile
