@@ -221,7 +221,45 @@ type BenchmarkHistoryPoint = { timestamp: number; close: number };
 const benchmarkHistoryCache = new Map<string, { at: number; data: BenchmarkHistoryPoint[] }>();
 const BENCHMARK_HISTORY_TTL_MS = 10 * 60 * 1000;
 
+async function fetchTencentIndexHistory(symbol: string, startDate?: string, endDate?: string): Promise<BenchmarkHistoryPoint[]> {
+  const code = symbol === "000688.SS" ? "sh000688" : symbol === "000510.SS" ? "sh000510" : null;
+  if (!code) return [];
+
+  // Tencent returns an empty payload for an excessively large count; 1000
+  // daily points cover the supported benchmark history and remain reliable.
+  const url = `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=${code},day,,,1000,qfq`;
+
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": yahooUserAgent, Accept: "application/json", Referer: "https://quote.eastmoney.com/" },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) return [];
+    const payload = await response.json() as { data?: Record<string, { day?: string[][] }> };
+    const rows = payload.data?.[code]?.day ?? [];
+    return rows
+      .map((row) => {
+        const [date, , close] = row;
+        return { timestamp: Date.parse(`${date}T00:00:00.000Z`), close: Number(close) };
+      })
+      .filter((point) => {
+        const day = new Date(point.timestamp).toISOString().slice(0, 10);
+        return (!startDate || day >= startDate) && (!endDate || day <= endDate);
+      })
+      .filter((point) => Number.isFinite(point.timestamp) && Number.isFinite(point.close) && point.close > 0);
+  } catch {
+    return [];
+  }
+}
+
 async function fetchYahooHistory(symbol: string, startDate?: string, endDate?: string): Promise<BenchmarkHistoryPoint[]> {
+  // Yahoo's China index chart responses are inconsistent even when the quote
+  // page has data. Use the native Shanghai index feed as the primary source for
+  // these two benchmarks instead of accepting a misleading partial Yahoo series.
+  if (symbol === "000688.SS" || symbol === "000510.SS") {
+    return fetchTencentIndexHistory(symbol, startDate, endDate);
+  }
+
   const startTimestamp = startDate
     ? Date.parse(`${startDate}T00:00:00.000Z`) - 10 * DAY_MS
     : Date.parse("2023-01-01T00:00:00.000Z");
@@ -271,6 +309,8 @@ async function fetchYahooHistory(symbol: string, startDate?: string, endDate?: s
       console.warn(`[BenchmarkHistory] Yahoo history failed for ${symbol}:`, error, fallbackError);
     }
   }
+
+  if (data.length === 0) data = await fetchTencentIndexHistory(symbol, startDate, endDate);
 
   // Do not pin transient Yahoo/network failures as an empty series for the
   // full cache TTL; the next chart request should be able to recover.
