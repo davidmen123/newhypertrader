@@ -272,7 +272,9 @@ async function fetchYahooHistory(symbol: string, startDate?: string, endDate?: s
     }
   }
 
-  benchmarkHistoryCache.set(cacheKey, { at: Date.now(), data });
+  // Do not pin transient Yahoo/network failures as an empty series for the
+  // full cache TTL; the next chart request should be able to recover.
+  if (data.length > 0) benchmarkHistoryCache.set(cacheKey, { at: Date.now(), data });
   return data;
 }
 
