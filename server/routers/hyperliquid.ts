@@ -232,7 +232,7 @@ async function fetchYahooHistory(symbol: string, startDate?: string, endDate?: s
   const cached = benchmarkHistoryCache.get(cacheKey);
   if (cached && Date.now() - cached.at < BENCHMARK_HISTORY_TTL_MS) return cached.data;
 
-  const symbolPath = encodeURIComponent(symbol);
+  const symbolPath = symbol.includes("%") ? symbol : encodeURIComponent(symbol);
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbolPath}?interval=1d&period1=${Math.floor(startTimestamp / 1000)}&period2=${Math.floor(endTimestamp / 1000)}&events=history`;
   const extract = (payload: unknown): BenchmarkHistoryPoint[] => {
     const result = (payload as any)?.chart?.result?.[0];
@@ -447,7 +447,7 @@ export const hyperliquidRouter = router({
         hangSeng: "^HSI",
         star50: "000688.SS",
         nasdaq100: "^NDX",
-        csiA500: "000510.CSI",
+        csiA500: "000510.SS",
       } as const;
       return fetchYahooHistory(symbols[input.benchmark], input.startDate, input.endDate);
     }),
