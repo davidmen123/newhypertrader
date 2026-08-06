@@ -435,7 +435,7 @@ export const hyperliquidRouter = router({
 
   benchmarkHistory: publicProcedure
     .input(z.object({
-      benchmark: z.enum(["shanghai", "sp500", "nasdaq", "hangSeng"]),
+      benchmark: z.enum(["shanghai", "sp500", "nasdaq", "hangSeng", "star50", "nasdaq100", "csiA500"]),
       startDate: z.string().optional(),
       endDate: z.string().optional(),
     }))
@@ -445,6 +445,9 @@ export const hyperliquidRouter = router({
         sp500: "^GSPC",
         nasdaq: "^IXIC",
         hangSeng: "^HSI",
+        star50: "000688.SS",
+        nasdaq100: "^NDX",
+        csiA500: "000510.CSI",
       } as const;
       return fetchYahooHistory(symbols[input.benchmark], input.startDate, input.endDate);
     }),

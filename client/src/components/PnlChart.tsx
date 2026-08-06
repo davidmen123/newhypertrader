@@ -43,7 +43,7 @@ type SeriesKey = (typeof SERIES)[number]["key"];
 // trade. Only the trade query needs a date spelled out: an absent start date means
 // "everything" to the PnL query but "the last 30 days" to the trade query.
 const FULL_HISTORY_START_DATE = "2023-01-01";
-type BenchmarkKey = "btc" | "shanghai" | "sp500" | "nasdaq" | "hangSeng";
+type BenchmarkKey = "btc" | "shanghai" | "sp500" | "nasdaq" | "hangSeng" | "star50" | "nasdaq100" | "csiA500";
 
 // ─── Tooltip ─────────────────────────────────────────────────────────────────
 interface TooltipProps {
@@ -757,6 +757,9 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
         { key: "sp500", label: "标普500指数涨跌幅", menuLabel: "标普500指数", valueLabel: "标普500指数点位" },
         { key: "nasdaq", label: "纳斯达克指数涨跌幅", menuLabel: "纳斯达克指数", valueLabel: "纳斯达克指数点位" },
         { key: "hangSeng", label: "恒生指数涨跌幅", menuLabel: "恒生指数", valueLabel: "恒生指数点位" },
+        { key: "star50", label: "科创50指数涨跌幅", menuLabel: "科创50指数", valueLabel: "科创50指数点位" },
+        { key: "nasdaq100", label: "纳指100指数涨跌幅", menuLabel: "纳指100指数", valueLabel: "纳指100指数点位" },
+        { key: "csiA500", label: "中证A500指数涨跌幅", menuLabel: "中证A500指数", valueLabel: "中证A500指数点位" },
       ]
     : [
         { key: "btc", label: "BTC Change", menuLabel: "BTC", valueLabel: "BTC Price" },
@@ -764,6 +767,9 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
         { key: "sp500", label: "S&P 500", menuLabel: "S&P 500", valueLabel: "S&P 500 Level" },
         { key: "nasdaq", label: "Nasdaq Composite", menuLabel: "Nasdaq Composite", valueLabel: "Nasdaq Composite Level" },
         { key: "hangSeng", label: "Hang Seng Index", menuLabel: "Hang Seng Index", valueLabel: "Hang Seng Index Level" },
+        { key: "star50", label: "STAR 50", menuLabel: "STAR 50", valueLabel: "STAR 50 Level" },
+        { key: "nasdaq100", label: "Nasdaq 100", menuLabel: "Nasdaq 100", valueLabel: "Nasdaq 100 Level" },
+        { key: "csiA500", label: "CSI A500", menuLabel: "CSI A500", valueLabel: "CSI A500 Level" },
       ];
   const selectedBenchmarkOption = benchmarkOptions.find((option) => option.key === selectedBenchmark) ?? benchmarkOptions[0];
   const labels: Record<SeriesKey, string> = {
