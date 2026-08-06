@@ -1386,9 +1386,11 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
             </div>
           )}
 
-          <div className="mt-2 text-center text-muted-foreground/60" style={{ fontSize: "0.72rem", letterSpacing: "0.12em" }}>
-            用纪律封住下限，用复利打开上限
-          </div>
+          {reviewMode && (
+            <div className="mt-2 text-center text-muted-foreground/60" style={{ fontSize: "0.72rem", letterSpacing: "0.12em" }}>
+              用纪律封住下限，用复利打开上限
+            </div>
+          )}
         </div>
 
       {selectedTrade && showReviewDetail && (
