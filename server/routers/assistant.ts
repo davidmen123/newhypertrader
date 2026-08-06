@@ -274,7 +274,14 @@ async function sendDigestEmail(items: AssistantMonitorItem[], subject: string): 
   if (!ENV.resendApiKey || items.length === 0) return false;
   const lines = items.flatMap((item) => {
     const earnings = item.earnings ? `财报：${item.earnings.reportDate} ${item.earnings.timeOfDayUtc8 ?? ""}` : "财报：未来 7 天未找到已发布日期";
-    return [`【${item.symbol}】${item.note ? `（${item.note}）` : ""}`, earnings, "相关新闻请登录网页端个人助手查看。", ""];
+    const newsLines = item.news.length === 0
+      ? ["新闻：过去 24 小时未找到相关新闻"]
+      : ["新闻：", ...item.news.slice(0, 8).flatMap((news, index) => [
+          `${index + 1}. ${news.title}（${news.source}）`,
+          `摘要：${news.summaryZh}`,
+          `原文：${news.link}`,
+        ]), ...(item.news.length > 8 ? [`其余 ${item.news.length - 8} 条新闻请登录网页端查看。`] : [])];
+    return [`【${item.symbol}】${item.note ? `（${item.note}）` : ""}`, earnings, ...newsLines, ""];
   });
   try {
     const response = await fetch("https://api.resend.com/emails", {
