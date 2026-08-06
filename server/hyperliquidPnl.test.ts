@@ -4,6 +4,7 @@ import {
   classifyHyperliquidLedgerFlow,
   trimLeadingUnfundedSamples,
   getHyperliquidCumulativePnlUsdc,
+  getHyperliquidMaxDrawdown,
   getHyperliquidPerformanceStats,
   getHyperliquidPortfolioSeries,
   getHyperliquidTimeWeightedReturnPct,
@@ -126,6 +127,32 @@ describe("getHyperliquidTimeWeightedReturnPct", () => {
 
   it("returns null when there is only one sample", () => {
     expect(getHyperliquidTimeWeightedReturnPct(portfolio([[1, 100, 0]]))).toBeNull();
+  });
+});
+
+describe("getHyperliquidMaxDrawdown", () => {
+  it("takes the maximum percentage drawdown independently from the dollar drawdown", () => {
+    const result = getHyperliquidMaxDrawdown(portfolio([
+      [1, 100, 0],
+      [2, 0, -100],
+      [3, 1000, 900],
+      [4, 800, 700],
+    ]));
+
+    expect(result.maxDrawdownUsdc).toBe(-200);
+    expect(result.maxDrawdownPct).toBe(-100);
+  });
+
+  it("removes a deposit from the drawdown curve", () => {
+    const result = getHyperliquidMaxDrawdown(portfolio([
+      [1, 100, 0],
+      [2, 110, 10],
+      [3, 1110, 10], // 1000 deposit
+      [4, 1010, -90],
+    ]));
+
+    expect(result.maxDrawdownUsdc).toBe(-100);
+    expect(result.maxDrawdownPct).toBeCloseTo(-90.91, 2);
   });
 });
 

@@ -901,33 +901,46 @@ export function getHyperliquidMaxDrawdown(portfolio: HyperliquidPortfolio) {
   const windowData =
     findPortfolioWindow(portfolio, "allTime") ??
     portfolio.find(([, data]) => data.accountValueHistory?.length)?.[1];
-  const history = windowData?.accountValueHistory ?? [];
+  const hasPnlHistory = (windowData?.pnlHistory?.length ?? 0) >= 2;
+  const series = getHyperliquidPortfolioSeries(portfolio)
+    .filter((point) => Number.isFinite(point.time) && Number.isFinite(point.equity) && Number.isFinite(point.pnl))
+    .sort((a, b) => a.time - b.time);
 
-  if (history.length < 2) {
+  // A strict performance drawdown must remove deposits and withdrawals. The
+  // portfolio PnL series is exchange-derived and is unaffected by those flows,
+  // so reconstruct a cash-flow-neutral equity curve from its PnL changes.
+  if (!hasPnlHistory || series.length < 2) {
     return { maxDrawdownUsdc: null, maxDrawdownPct: null };
   }
 
-  let peak = toNumber(history[0][1]);
-  let maxDrawdown = 0;
-  let maxDrawdownPeak = peak;
-
-  for (const [, equity] of history) {
-    const value = toNumber(equity);
-    if (value > peak) peak = value;
-    const drawdown = peak - value;
-    if (drawdown > maxDrawdown) {
-      maxDrawdown = drawdown;
-      maxDrawdownPeak = peak;
-    }
+  const fundedSeries = series.slice(series.findIndex((point) => point.equity > 0));
+  if (fundedSeries.length < 2 || fundedSeries[0].equity <= 0) {
+    return { maxDrawdownUsdc: null, maxDrawdownPct: null };
   }
 
-  if (maxDrawdown <= 0) {
+  const baseEquity = fundedSeries[0].equity;
+  const basePnl = fundedSeries[0].pnl;
+  let peak = baseEquity;
+  let maxDrawdownUsdc = 0;
+  let maxDrawdownPct = 0;
+
+  for (const point of fundedSeries) {
+    const value = baseEquity + (point.pnl - basePnl);
+    if (value > peak) peak = value;
+    if (peak <= 0) continue;
+    const drawdownUsdc = peak - value;
+    const drawdownPct = drawdownUsdc / peak;
+    if (drawdownUsdc > maxDrawdownUsdc) maxDrawdownUsdc = drawdownUsdc;
+    if (drawdownPct > maxDrawdownPct) maxDrawdownPct = drawdownPct;
+  }
+
+  if (maxDrawdownUsdc <= 0 || maxDrawdownPct <= 0) {
     return { maxDrawdownUsdc: 0, maxDrawdownPct: 0 };
   }
 
   return {
-    maxDrawdownUsdc: -maxDrawdown,
-    maxDrawdownPct: maxDrawdownPeak > 0 ? -(maxDrawdown / maxDrawdownPeak) * 100 : null,
+    maxDrawdownUsdc: -maxDrawdownUsdc,
+    maxDrawdownPct: -maxDrawdownPct * 100,
   };
 }
 
