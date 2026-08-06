@@ -269,16 +269,17 @@ export default function AccountOverview({ accountId }: { accountId?: string } = 
     : leverage >= 5
     ? "oklch(72% 0.14 55)"
     : "oklch(68% 0.15 145)";
-  // Trading style: single-dimension bucketing on average holding time.
+  // Trading style: bucket by average holding time — high-frequency/intraday
+  // (<1d), medium-frequency/swing (1–30d), and low-frequency/trend (>30d).
   const avgHoldingHours = metricsData?.averageHoldingHours ?? null;
   const tradingStyle =
     avgHoldingHours == null
       ? "--"
       : avgHoldingHours < 24
-      ? t("日内交易", "Intraday")
+      ? t("高频 / 日内", "High-frequency / Intraday")
       : avgHoldingHours < 24 * 30
-      ? t("波段交易", "Swing")
-      : t("趋势跟踪", "Trend Following");
+      ? t("中频 / 波段", "Medium-frequency / Swing")
+      : t("低频 / 趋势", "Low-frequency / Trend");
   const openOrders = openOrdersData ?? [];
   const hasStopLossOrder = openOrders.some((order) => {
     const type = String(order.orderType ?? "").toLowerCase();
@@ -578,8 +579,8 @@ export default function AccountOverview({ accountId }: { accountId?: string } = 
               }
               tone="neutral"
               tooltip={t(
-                "按平均持仓时长分档：<1天 日内 / 1–30天 波段 / >30天 趋势跟踪。",
-                "Bucketed by average holding time: <1d intraday / 1–30d swing / >30d trend following."
+                "按平均持仓时长分档：<1天 高频/日内，1–30天 中频/波段，>30天 低频/趋势。",
+                "Bucketed by average holding time: <1d high-frequency/intraday, 1–30d medium-frequency/swing, >30d low-frequency/trend."
               )}
             />
           </div>
