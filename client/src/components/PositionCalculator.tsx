@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 
 const ACCOUNT_CAPITAL_KEY = "pnlnote-position-calculator-capital-v2";
 const RISK_OPTIONS = [0.5, 1, 2] as const;
+const RISK_REWARD_OPTIONS = [1.5, 2, 3] as const;
 type LiquidationAssetOption = {
   value: string;
   label: string;
@@ -65,6 +66,8 @@ export default function PositionCalculator() {
   const [customRiskPercent, setCustomRiskPercent] = useState("");
   const [entryPrice, setEntryPrice] = useState("");
   const [stopPrice, setStopPrice] = useState("");
+  const [riskRewardSelection, setRiskRewardSelection] = useState<number | "custom">(2);
+  const [customRiskReward, setCustomRiskReward] = useState("");
   const [calculatorMode, setCalculatorMode] = useState<CalculatorMode>("position");
   const [liquidationAsset, setLiquidationAsset] = useState("BTC-PERP");
   const [assetPickerOpen, setAssetPickerOpen] = useState(false);
@@ -82,6 +85,8 @@ export default function PositionCalculator() {
   const riskPercent = riskSelection === "custom"
     ? parsedCustomRisk <= 100 ? parsedCustomRisk : 0
     : riskSelection;
+  const parsedCustomRiskReward = parsePositiveNumber(customRiskReward);
+  const riskReward = riskRewardSelection === "custom" ? parsedCustomRiskReward : riskRewardSelection;
 
   const liquidationAssets: readonly LiquidationAssetOption[] = hyperliquidAssets?.length ? hyperliquidAssets : LIQUIDATION_ASSETS;
   const selectedLiquidationAsset = liquidationAssets.find((asset) => asset.value === liquidationAsset) ?? liquidationAssets[0];
@@ -116,6 +121,16 @@ export default function PositionCalculator() {
       ),
     [accountCapital, riskPercent, entryPrice, stopPrice],
   );
+  const takeProfit = useMemo(() => {
+    const entry = parsePositiveNumber(entryPrice);
+    if (!result || !entry || !riskReward) return null;
+    const price = result.direction === "long"
+      ? entry + result.stopDistance * riskReward
+      : entry - result.stopDistance * riskReward;
+    const expectedProfit = result.quantity * result.stopDistance * riskReward;
+    if (![price, expectedProfit].every((value) => Number.isFinite(value) && value > 0)) return null;
+    return { price, expectedProfit };
+  }, [entryPrice, result, riskReward]);
   const plannedRiskAmount = parsePositiveNumber(accountCapital) * (riskPercent / 100);
   const riskCalculation = useMemo(() => {
     const entry = parsePositiveNumber(entryPrice);
@@ -413,6 +428,84 @@ export default function PositionCalculator() {
                     <div className="num-display text-xl text-foreground sm:text-2xl">
                       ≈ {formatNumber(result.quantity, 2)}
                     </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 border-t border-border/70 pt-3">
+                  <div className="mb-2 text-xs text-muted-foreground">
+                    {zh ? "止盈目标" : "Take-profit target"}
+                  </div>
+                  <div className="flex w-full rounded-md border border-input p-0.5" role="group" aria-label={zh ? "选择盈亏比" : "Choose risk-reward ratio"}>
+                    {RISK_REWARD_OPTIONS.map((option) => {
+                      const selected = riskRewardSelection === option;
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => setRiskRewardSelection(option)}
+                          aria-pressed={selected}
+                          className={`h-8 flex-1 rounded px-2 text-xs transition-colors ${
+                            selected
+                              ? "bg-primary text-primary-foreground"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                          }`}
+                        >
+                          {option}:1
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => setRiskRewardSelection("custom")}
+                      aria-pressed={riskRewardSelection === "custom"}
+                      className={`h-8 flex-1 rounded px-2 text-xs transition-colors ${
+                        riskRewardSelection === "custom"
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}
+                    >
+                      {zh ? "自定义" : "Custom"}
+                    </button>
+                  </div>
+                  {riskRewardSelection === "custom" && (
+                    <div className="relative mt-2">
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        min="0.01"
+                        step="any"
+                        value={customRiskReward}
+                        onChange={(event) => setCustomRiskReward(event.target.value)}
+                        placeholder={zh ? "输入盈亏比，例如 2.5" : "Enter ratio, e.g. 2.5"}
+                        className="pr-8 num-display"
+                        aria-label={zh ? "自定义盈亏比" : "Custom risk-reward ratio"}
+                        aria-invalid={customRiskReward !== "" && riskReward === 0}
+                      />
+                      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground">:1</span>
+                    </div>
+                  )}
+                  <div className="mt-3 grid grid-cols-2 gap-5">
+                    <div>
+                      <div className="mb-1 text-xs leading-relaxed text-muted-foreground">
+                        {zh ? "目标止盈价" : "Take-profit price"}
+                      </div>
+                      <div className="num-display text-xl text-foreground sm:text-2xl">
+                        {takeProfit ? formatNumber(takeProfit.price, 8) : "—"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="mb-1 text-xs leading-relaxed text-muted-foreground">
+                        {zh ? "预期盈利金额" : "Expected profit"}
+                      </div>
+                      <div className="num-display text-xl text-foreground sm:text-2xl">
+                        {takeProfit ? formatNumber(takeProfit.expectedProfit) : "—"} <span className="text-xs text-muted-foreground">USDC</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    {zh
+                      ? `盈亏比 ${riskReward > 0 ? `${formatNumber(riskReward)}:1` : "—"} · ${result.direction === "long" ? "入场价 + 止损距离 × 盈亏比" : "入场价 − 止损距离 × 盈亏比"}`
+                      : `R:R ${riskReward > 0 ? `${formatNumber(riskReward)}:1` : "—"} · ${result.direction === "long" ? "Entry + stop distance × R:R" : "Entry − stop distance × R:R"}`}
                   </div>
                 </div>
 
