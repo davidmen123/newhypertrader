@@ -26,12 +26,15 @@ function signed(value: number | null | undefined) {
 }
 
 function TreemapContent(props: any) {
-  const { x, y, width, height, payload } = props;
+  const { x, y, width, height, payload, name, index, rows } = props;
   if (![x, y, width, height].every((value) => Number.isFinite(value)) || width <= 0 || height <= 0) return null;
   const candidate = payload as Partial<PnlBySymbolRow> | undefined;
-  const row = candidate && typeof candidate.symbol === "string" && Number.isFinite(Number(candidate.netPnl))
+  const payloadRow = candidate && typeof candidate.symbol === "string" && Number.isFinite(Number(candidate.netPnl))
     ? candidate as PnlBySymbolRow
     : undefined;
+  const row = payloadRow ?? (Array.isArray(rows)
+    ? rows.find((item: PnlBySymbolRow) => item.symbol === name) ?? rows[index]
+    : undefined);
   const fill = row && row.netPnl >= 0 ? PROFIT : LOSS;
   const showLabel = Boolean(row) && width >= 46 && height >= 44;
   const centerX = x + width / 2;
@@ -75,7 +78,7 @@ export default function PnlBySymbol({ accountId }: { accountId?: string } = {}) 
     { refetchInterval: 120_000 },
   );
   const rows = data as PnlBySymbolRow[];
-  const chartData = rows.map((row) => ({ ...row, size: Math.max(Math.abs(row.netPnl), 0.01) }));
+  const chartData = rows.map((row) => ({ ...row, name: row.symbol, size: Math.max(Math.abs(row.netPnl), 0.01) }));
   const total = rows.reduce((sum, row) => sum + row.netPnl, 0);
 
   return (
@@ -104,7 +107,7 @@ export default function PnlBySymbol({ accountId }: { accountId?: string } = {}) 
       ) : (
         <div className="h-[360px] w-full sm:h-[430px]">
           <ResponsiveContainer width="100%" height="100%">
-            <Treemap data={chartData} dataKey="size" aspectRatio={1.8} stroke="var(--background)" content={<TreemapContent />}>
+            <Treemap data={chartData} dataKey="size" aspectRatio={1.8} stroke="var(--background)" content={<TreemapContent rows={chartData} />}>
               <ChartTooltip content={<PnlTooltip lang={lang} />} />
             </Treemap>
           </ResponsiveContainer>
