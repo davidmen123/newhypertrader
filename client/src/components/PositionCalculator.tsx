@@ -432,8 +432,13 @@ export default function PositionCalculator() {
                 </div>
 
                 <div className="mt-4 border-t border-border/70 pt-3">
-                  <div className="mb-2 text-xs text-muted-foreground">
-                    {zh ? "止盈目标" : "Take-profit target"}
+                  <div className="mb-2">
+                    <div className="text-xs text-muted-foreground">
+                      {zh ? "止盈目标（按盈亏比）" : "Take-profit target (risk-reward)"}
+                    </div>
+                    <div className="mt-1 text-[0.68rem] text-muted-foreground/70">
+                      {zh ? "每承担 1 份止损风险，目标盈利多少份" : "How much to target for each 1 unit of stop-loss risk"}
+                    </div>
                   </div>
                   <div className="flex w-full rounded-md border border-input p-0.5" role="group" aria-label={zh ? "选择盈亏比" : "Choose risk-reward ratio"}>
                     {RISK_REWARD_OPTIONS.map((option) => {
