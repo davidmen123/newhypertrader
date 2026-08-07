@@ -557,6 +557,56 @@ export const hyperliquidRouter = router({
       })
     ),
 
+  pnlBySymbol: publicProcedure
+    .input(z.object({
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+      accountId: z.string().max(32).optional(),
+    }))
+    .query(async ({ ctx, input }) =>
+      withAccount(ctx, input, async () => {
+        const startTime = input.startDate ? new Date(`${input.startDate}T00:00:00`).getTime() : 0;
+        const endTime = input.endDate ? new Date(`${input.endDate}T23:59:59`).getTime() : Date.now();
+        const [history, positions] = await Promise.all([
+          getHyperliquidTradeHistory({ startTime, endTime, limit: 10000, category: "ALL" }),
+          getHyperliquidPositions(),
+        ]);
+        const grouped = new Map<string, {
+          symbol: string;
+          realizedPnl: number;
+          unrealizedPnl: number;
+          fundingFee: number;
+          fees: number;
+        }>();
+        const getRow = (symbol: string) => {
+          const existing = grouped.get(symbol);
+          if (existing) return existing;
+          const row = { symbol, realizedPnl: 0, unrealizedPnl: 0, fundingFee: 0, fees: 0 };
+          grouped.set(symbol, row);
+          return row;
+        };
+
+        for (const trade of history.trades) {
+          const row = getRow(trade.symbol);
+          row.realizedPnl += Number(trade.execPnl) || 0;
+          row.fundingFee += Number(trade.fundingFee) || 0;
+          row.fees += (trade.feeDetail ?? []).reduce((sum, item) => sum + Math.abs(Number(item.fee) || 0), 0);
+        }
+        for (const position of positions) {
+          const row = getRow(position.symbol);
+          row.unrealizedPnl += Number(position.unrealisedPnl) || 0;
+          // Open-position funding has not yet been assigned to a closing fill.
+          row.fundingFee += Number(position.fundingFee) || 0;
+        }
+
+        const rows = Array.from(grouped.values()).map((row) => ({
+          ...row,
+          netPnl: row.realizedPnl + row.unrealizedPnl + row.fundingFee - row.fees,
+        })).filter((row) => Math.abs(row.netPnl) > 0.000001 || Math.abs(row.unrealizedPnl) > 0.000001);
+        return rows.sort((a, b) => Math.abs(b.netPnl) - Math.abs(a.netPnl));
+      })
+    ),
+
   candles: publicProcedure
     .input(
       z.object({

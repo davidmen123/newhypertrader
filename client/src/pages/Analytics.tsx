@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useTheme } from "@/contexts/ThemeContext";
 import AccountOverview from "@/components/AccountOverview";
 import PnlChart from "@/components/PnlChart";
+import PnlBySymbol from "@/components/PnlBySymbol";
 import PositionsTable from "@/components/PositionsTable";
 import TradeHistory from "@/components/TradeHistory";
 
@@ -575,6 +576,7 @@ function AccountPnlManager() {
       <div key={activeId} className="space-y-5">
         <AccountOverview accountId={activeId} />
         <PnlChart accountId={activeId} />
+        <PnlBySymbol accountId={activeId} />
         <PositionsTable accountId={activeId} />
         <TradeHistory accountId={activeId} />
       </div>
