@@ -90,7 +90,7 @@ export default function PnlBySymbol({ accountId }: { accountId?: string } = {}) 
       <div className="mb-5 flex items-center justify-between">
         <div>
           <h2 className="text-xl font-light sm:text-2xl" style={{ fontFamily: "Cormorant Garamond, serif" }}>
-            {lang === "zh" ? "盈亏币对" : "Symbol PnL"}
+            {lang === "zh" ? "盈亏图谱" : "Symbol PnL"}
           </h2>
           <div className="mt-2" style={{ width: 40, height: 1, background: "rgb(215 187 114 / 62%)" }} />
           <div className="mt-2 text-xs text-muted-foreground/60">
@@ -99,15 +99,15 @@ export default function PnlBySymbol({ accountId }: { accountId?: string } = {}) 
         </div>
         <div className="flex items-center gap-3">
           <span className="num-display text-xs text-muted-foreground">{signed(total)} USDC</span>
-          <button type="button" onClick={() => refetch()} className="text-muted-foreground transition-colors hover:text-foreground" aria-label={lang === "zh" ? "刷新盈亏币对" : "Refresh symbol PnL"}>
+          <button type="button" onClick={() => refetch()} className="text-muted-foreground transition-colors hover:text-foreground" aria-label={lang === "zh" ? "刷新盈亏图谱" : "Refresh symbol PnL"}>
             <RefreshCw size={13} className={isFetching ? "animate-spin" : ""} />
           </button>
         </div>
       </div>
       {isLoading ? (
-        <div className="flex h-[360px] items-center justify-center text-sm text-muted-foreground/60">{lang === "zh" ? "计算盈亏币对中…" : "Calculating symbol PnL…"}</div>
+        <div className="flex h-[360px] items-center justify-center text-sm text-muted-foreground/60">{lang === "zh" ? "计算盈亏图谱中…" : "Calculating symbol PnL…"}</div>
       ) : chartData.length === 0 ? (
-        <div className="flex h-[360px] items-center justify-center text-sm text-muted-foreground/60">{lang === "zh" ? "暂无币对盈亏数据" : "No symbol PnL data"}</div>
+        <div className="flex h-[360px] items-center justify-center text-sm text-muted-foreground/60">{lang === "zh" ? "暂无盈亏图谱数据" : "No symbol PnL data"}</div>
       ) : (
         <div className="h-[360px] w-full sm:h-[430px]">
           <ResponsiveContainer width="100%" height="100%">
