@@ -14,6 +14,114 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.72.0",
+    "date": "2026-08-07",
+    "zh": "仓位计算器新增止盈目标，盈亏图谱完成测试",
+    "en": "Added take-profit targets to the position calculator and tested the PnL map"
+  },
+  {
+    "version": "1.71.0",
+    "date": "2026-08-07",
+    "zh": "盈亏图谱移除USDC交易对后缀并减细文字",
+    "en": "Removed USDC pair suffixes and lightened symbol treemap labels"
+  },
+  {
+    "version": "1.70.0",
+    "date": "2026-08-07",
+    "zh": "盈亏币对模块更名为盈亏图谱",
+    "en": "Renamed the symbol PnL module to PnL Map"
+  },
+  {
+    "version": "1.69.0",
+    "date": "2026-08-07",
+    "zh": "盈亏币对方框只显示币种名称",
+    "en": "Simplified treemap labels to show base symbols only"
+  },
+  {
+    "version": "1.68.2",
+    "date": "2026-08-07",
+    "zh": "盈亏币对树图正确显示盈亏颜色和居中标签",
+    "en": "Fixed symbol PnL treemap node mapping for colors and centered labels"
+  },
+  {
+    "version": "1.68.1",
+    "date": "2026-08-07",
+    "zh": "避免盈亏币对树图加载阶段空数据导致页面崩溃",
+    "en": "Guarded symbol PnL treemap against incomplete loading data"
+  },
+  {
+    "version": "1.68.0",
+    "date": "2026-08-06",
+    "zh": "个人助手每日搜索新闻并将摘要发送到邮箱",
+    "en": "Added daily news search, summaries and article links to assistant emails"
+  },
+  {
+    "version": "1.67.0",
+    "date": "2026-08-06",
+    "zh": "交易风格统一为高频日内、中频波段和低频趋势",
+    "en": "Renamed trading style buckets to high-frequency intraday, medium-frequency swing and low-frequency trend"
+  },
+  {
+    "version": "1.66.0",
+    "date": "2026-08-06",
+    "zh": "明确最大回撤采用现金流调整后的累计PnL口径",
+    "en": "Clarified the cash-flow-adjusted cumulative PnL definition of max drawdown"
+  },
+  {
+    "version": "1.65.4",
+    "date": "2026-08-06",
+    "zh": "最大回撤改为现金流调整后的严格MDD",
+    "en": "Calculate strict maximum drawdown on a cash-flow-neutral equity curve"
+  },
+  {
+    "version": "1.65.3",
+    "date": "2026-08-06",
+    "zh": "科创50和中证A500指数曲线数据源",
+    "en": "Fixed STAR 50 and CSI A500 benchmark history data sources"
+  },
+  {
+    "version": "1.65.2",
+    "date": "2026-08-06",
+    "zh": "不缓存指数历史请求的临时空结果",
+    "en": "Avoid caching transient empty benchmark history responses"
+  },
+  {
+    "version": "1.65.1",
+    "date": "2026-08-06",
+    "zh": "中证A500指数曲线使用正确的行情代码",
+    "en": "Fixed CSI A500 benchmark history symbol"
+  },
+  {
+    "version": "1.65.0",
+    "date": "2026-08-06",
+    "zh": "损益历史新增科创50、纳指100和中证A500指数",
+    "en": "Added STAR 50, Nasdaq 100 and CSI A500 benchmarks to PnL history"
+  },
+  {
+    "version": "1.64.1",
+    "date": "2026-08-06",
+    "zh": "仅在复盘模式显示复盘警句",
+    "en": "Show the review slogan only in review mode"
+  },
+  {
+    "version": "1.64.0",
+    "date": "2026-08-05",
+    "zh": "移除买入卖出提示，恢复复盘说明位置",
+    "en": "Removed the buy and sell legend and restored the review guide position"
+  },
+  {
+    "version": "1.63.0",
+    "date": "2026-08-05",
+    "zh": "复盘模式说明移动到资金曲线下方，Slogan置于说明之后",
+    "en": "Moved the review guide below the equity curve and placed the slogan after it"
+  },
+  {
+    "version": "1.62.0",
+    "date": "2026-08-05",
+    "zh": "个人助手新闻改为手动刷新，保留每日9点邮件监控",
+    "en": "Made assistant news refresh manual while keeping the daily 9 AM email digest"
+  },
+  {
     "version": "1.61.0",
     "date": "2026-08-04",
     "zh": "损益历史新增多市场指数涨跌幅对比",
