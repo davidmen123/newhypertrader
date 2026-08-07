@@ -6,7 +6,8 @@ import {
   ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ReferenceArea, ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
-import { ChevronDown, Info, RefreshCw, Database, X } from "lucide-react";
+import { ChevronDown, Info, RefreshCw, Database, Search, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
@@ -541,6 +542,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
   const [selectedBenchmark, setSelectedBenchmark] = useState<BenchmarkKey>("btc");
   const [timeRange, setTimeRange] = useState<TimeRange | null>(null);
   const [reviewMode, setReviewMode] = useState(false);
+  const [reviewSymbolQuery, setReviewSymbolQuery] = useState("");
   const [selectedTrade, setSelectedTrade] = useState<TradeMarker | null>(null);
   const [hoveredTradeId, setHoveredTradeId] = useState<string | null>(null);
   const [showReviewDetail, setShowReviewDetail] = useState(false);
@@ -631,6 +633,11 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
     const timestamp = Number(trade.createdTime);
     return Number.isFinite(timestamp) && timestamp >= reviewStartTimestamp;
   });
+  const visibleReviewTrades = useMemo(() => {
+    const query = reviewSymbolQuery.trim().toLowerCase();
+    if (!reviewMode || !query) return trades;
+    return trades.filter((trade) => trade.symbol.toLowerCase().includes(query));
+  }, [reviewMode, reviewSymbolQuery, trades]);
   const selectedCoin = selectedTrade?.trade.symbol?.replace(/-PERP$/i, "") || "BTC";
   const selectedTime = Number(selectedTrade?.trade.createdTime);
   const candleWindowMs: Record<CandleInterval, number> = {
@@ -826,7 +833,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
     if (!reviewMode || baseChartData.length === 0) return baseChartData;
     const snapshotDays = new Set(baseChartData.map((point) => getDateKey(point.date)));
     const missingTradeDays = Array.from(new Set(
-      trades
+      visibleReviewTrades
         .map((trade) => Number(trade.createdTime))
         .filter((timestamp) => Number.isFinite(timestamp))
         .map((timestamp) => formatUtc8Date(new Date(timestamp)))
@@ -844,11 +851,11 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
       timestamp: parseUtc8Timestamp(`${day}T00:00:00+08:00`),
     }));
     return [...anchorPoints, ...baseChartData].sort((a, b) => a.timestamp - b.timestamp);
-  }, [baseChartData, reviewMode, trades]);
+  }, [baseChartData, reviewMode, visibleReviewTrades]);
   const tradeMarkers = useMemo<TradeMarker[]>(() => {
     if (chartData.length === 0) return [];
     const tradesByDay = new Map<string, TradeFill[]>();
-    trades.forEach((trade) => {
+    visibleReviewTrades.forEach((trade) => {
       const timestamp = Number(trade.createdTime);
       if (!Number.isFinite(timestamp)) return;
       const dayKey = formatUtc8Date(new Date(timestamp));
@@ -857,7 +864,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
       tradesByDay.set(dayKey, dayTrades);
     });
     const grouped = new Map<string, TradeMarker>();
-    trades.forEach((trade) => {
+    visibleReviewTrades.forEach((trade) => {
       const timestamp = Number(trade.createdTime);
       if (!Number.isFinite(timestamp)) return;
       const dayKey = formatUtc8Date(new Date(timestamp));
@@ -885,7 +892,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
       grouped.set(groupKey, childLabel ? { ...marker, childLabel } : marker);
     });
     return Array.from(grouped.values());
-  }, [chartData, trades]);
+  }, [chartData, visibleReviewTrades]);
   const markerOffset = (() => {
     const values = chartData.map((point) => point.assetTrend).filter(Number.isFinite);
     if (values.length < 2) return 1;
@@ -1055,11 +1062,25 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
           </div>
         )}
 
+        {reviewMode && (
+          <div className="relative w-full sm:w-44 sm:ml-auto">
+            <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={reviewSymbolQuery}
+              onChange={(event) => setReviewSymbolQuery(event.target.value)}
+              placeholder={lang === "zh" ? "搜索标的" : "Search symbol"}
+              aria-label={lang === "zh" ? "搜索复盘标的" : "Search review symbol"}
+              className="h-8 rounded-full pl-8 pr-3 text-xs"
+            />
+          </div>
+        )}
+
         <div className="hidden sm:block" style={{ width: 1, height: 16, background: "var(--panel-border)" }} />
 
         <button
           onClick={() => {
             setReviewMode((active) => !active);
+            setReviewSymbolQuery("");
             clearHoverPreviewTimer();
             setHoveredTradePreview(null);
             setSelectedTrade(null);
