@@ -57,6 +57,17 @@ const EXCLUDED_SHAS = new Set([
   "9df302a", // 持仓字段调整的旧 trailer，不重复发布版本日志
 ]);
 
+// Changes after the last deployed public release (1.61.0) were committed
+// before the next deployment. Collapse them into the next public release
+// instead of exposing every internal commit as a separate version.
+const COLLAPSED_UNRELEASED_SHAS = new Set([
+  "b1a6a7f", "1864441", "3321e84", "13e6e64", "d5b5bd8", "daaed8c",
+  "226c616", "9c1d8bb", "a34c487", "2764b20", "712955a", "4a49651",
+  "1a8338e", "b2b3b40", "60e6bfa", "39df9f4", "fd61e0d", "26f71cc",
+  "6d39928", "5878a70", "f028a85", "d5efd1d", "47009ed", "247d030",
+  "d9720bb", "53c2d17", "f1ee806",
+]);
+
 // Entries whose committed trailer overran the 15-character Chinese limit, or
 // read too much like an internal commit note. Rewritten here (keyed by SHA) so
 // the original commit messages stay untouched. Keep new zh text <= 15 chars.
@@ -124,7 +135,7 @@ function readTrailerCommits() {
     if (!date || rest.length === 0) continue;
     const body = rest.join("\x1f");
     const shortSha = sha.trim();
-    if (EXCLUDED_SHAS.has(shortSha)) continue;
+    if (EXCLUDED_SHAS.has(shortSha) || COLLAPSED_UNRELEASED_SHAS.has(shortSha)) continue;
     // SemVer bump kind: 更新: = feature → minor, 修复: = fix → patch,
     // 重大: = breaking → major. 更新: is matched anywhere (subject or body)
     // because the earliest convention used single-line "更新: ..." subjects.
