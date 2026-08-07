@@ -15,18 +15,23 @@ type PnlBySymbolRow = {
 const PROFIT = "oklch(58% 0.16 158)";
 const LOSS = "oklch(62% 0.16 25)";
 
-function fmt(value: number, digits = 2) {
-  return value.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+function fmt(value: number | null | undefined, digits = 2) {
+  const safeValue = Number(value ?? 0);
+  return (Number.isFinite(safeValue) ? safeValue : 0).toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
-function signed(value: number) {
-  return `${value >= 0 ? "+" : ""}${fmt(value)}`;
+function signed(value: number | null | undefined) {
+  const safeValue = Number(value ?? 0);
+  return `${safeValue >= 0 ? "+" : ""}${fmt(safeValue)}`;
 }
 
 function TreemapContent(props: any) {
   const { x, y, width, height, payload } = props;
   if (![x, y, width, height].every((value) => Number.isFinite(value)) || width <= 0 || height <= 0) return null;
-  const row = (payload ?? props) as PnlBySymbolRow | undefined;
+  const candidate = payload as Partial<PnlBySymbolRow> | undefined;
+  const row = candidate && typeof candidate.symbol === "string" && Number.isFinite(Number(candidate.netPnl))
+    ? candidate as PnlBySymbolRow
+    : undefined;
   const fill = row && row.netPnl >= 0 ? PROFIT : LOSS;
   const showLabel = Boolean(row) && width >= 46 && height >= 44;
   const centerX = x + width / 2;
@@ -47,7 +52,8 @@ function TreemapContent(props: any) {
 }
 
 function PnlTooltip({ active, payload, lang }: { active?: boolean; payload?: Array<{ payload?: PnlBySymbolRow }>; lang: string }) {
-  const row = payload?.[0]?.payload;
+  const candidate = payload?.[0]?.payload;
+  const row = candidate && typeof candidate.symbol === "string" && Number.isFinite(Number(candidate.netPnl)) ? candidate : undefined;
   if (!active || !row) return null;
   const label = (zh: string, en: string) => lang === "zh" ? zh : en;
   return (
