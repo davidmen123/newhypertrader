@@ -26,16 +26,20 @@ function signed(value: number) {
 function TreemapContent(props: any) {
   const { x, y, width, height, payload } = props;
   if (![x, y, width, height].every((value) => Number.isFinite(value)) || width <= 0 || height <= 0) return null;
-  const row = payload as PnlBySymbolRow | undefined;
+  const row = (payload ?? props) as PnlBySymbolRow | undefined;
   const fill = row && row.netPnl >= 0 ? PROFIT : LOSS;
-  const showLabel = width >= 72 && height >= 42;
+  const showLabel = Boolean(row) && width >= 46 && height >= 44;
+  const centerX = x + width / 2;
+  const centerY = y + height / 2;
+  const titleSize = Math.min(24, Math.max(11, width / 10));
+  const valueSize = Math.min(16, Math.max(9, width / 15));
   return (
     <g>
       <rect x={x} y={y} width={width} height={height} fill={fill} stroke="var(--background)" strokeWidth={3} rx={1} />
       {showLabel && row && (
         <>
-          <text x={x + 10} y={y + 25} fill="#fff" fontSize={Math.min(22, Math.max(12, width / 11))} fontWeight={600}>{row.symbol}</text>
-          {height >= 68 && <text x={x + 10} y={y + 49} fill="#fff" fontSize={Math.min(16, Math.max(10, width / 16))}>{signed(row.netPnl)} USDC</text>}
+          <text x={centerX} y={centerY - (height >= 70 ? valueSize * 0.75 : 0)} textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize={titleSize} fontWeight={600}>{row.symbol}</text>
+          {height >= 70 && <text x={centerX} y={centerY + titleSize * 0.85} textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize={valueSize}>{signed(row.netPnl)} USDC</text>}
         </>
       )}
     </g>
@@ -98,6 +102,13 @@ export default function PnlBySymbol({ accountId }: { accountId?: string } = {}) 
               <ChartTooltip content={<PnlTooltip lang={lang} />} />
             </Treemap>
           </ResponsiveContainer>
+        </div>
+      )}
+      {chartData.length > 0 && (
+        <div className="mt-3 flex items-center gap-5 text-xs text-muted-foreground/70">
+          <span className="inline-flex items-center gap-2"><span className="h-3 w-3" style={{ background: PROFIT }} />{lang === "zh" ? "盈利" : "Profit"}</span>
+          <span className="inline-flex items-center gap-2"><span className="h-3 w-3" style={{ background: LOSS }} />{lang === "zh" ? "亏损" : "Loss"}</span>
+          <span className="ml-2 text-muted-foreground/50">{lang === "zh" ? "面积按净盈亏绝对值计算，标签保留正负号" : "Area uses absolute net PnL; labels retain the sign"}</span>
         </div>
       )}
     </section>
