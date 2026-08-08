@@ -1102,7 +1102,10 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
         </div>}
 
         {reviewMode && (
-          <div className="flex items-center gap-2 text-muted-foreground" style={{ fontSize: "0.68rem" }}>
+          <div
+            className="pnl-chart-control-pill flex shrink-0 items-center gap-1.5 rounded-full px-2 text-muted-foreground"
+            style={{ fontSize: "0.68rem", border: "1px solid var(--panel-border)" }}
+          >
             <span className="inline-block w-2 h-2 rounded-full" style={{ background: "oklch(72% 0.08 230)" }} />
             {lang === "zh" ? "账户净值" : "Account Equity"}
           </div>
@@ -1116,7 +1119,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
               onChange={(event) => setReviewSymbolQuery(event.target.value)}
               placeholder={lang === "zh" ? "搜索标的" : "Search symbol"}
               aria-label={lang === "zh" ? "搜索复盘标的" : "Search review symbol"}
-              className="h-8 w-[112px] rounded-full pl-8 pr-2 text-xs"
+              className="pnl-chart-control-pill w-[112px] rounded-full pl-8 pr-2 text-xs"
             />
           </div>
         )}
