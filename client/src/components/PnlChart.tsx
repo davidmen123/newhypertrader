@@ -440,7 +440,7 @@ function SeriesToggle({
   return (
     <button
       onClick={onClick}
-      className="pnl-chart-series-toggle flex items-center gap-1 px-2 py-0.5 rounded-full transition-all"
+      className="pnl-chart-control-pill pnl-chart-series-toggle flex items-center gap-1 px-2 rounded-full transition-all"
       style={{
         fontSize: "0.64rem",
         letterSpacing: "0.04em",
@@ -484,7 +484,7 @@ function BenchmarkSeriesToggle({
 }) {
   return (
     <div
-      className="flex items-center rounded-full transition-all"
+      className="pnl-chart-control-pill flex items-center rounded-full transition-all"
       style={{
         border: `1px solid ${active ? color : "var(--panel-border)"}`,
         background: active ? `${color}22` : "transparent",
@@ -1132,7 +1132,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
             setSelectedTrade(null);
             setShowReviewDetail(false);
           }}
-          className="shrink-0 rounded-full px-2 py-0.5 text-[0.68rem] tracking-wider transition-colors"
+          className="pnl-chart-control-pill flex shrink-0 items-center rounded-full px-2 text-[0.68rem] tracking-wider transition-colors"
           style={{
             border: `1px solid ${reviewMode ? "rgb(92 211 184 / 62%)" : "var(--panel-border)"}`,
             color: reviewMode ? "rgb(92 211 184 / 92%)" : "var(--text-soft)",

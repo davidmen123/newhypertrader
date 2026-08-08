@@ -247,9 +247,14 @@
   color: #111315;
 }
 .pnl-chart-range-pill {
+  height: 1.75rem;
   padding: 0.25rem 0.75rem;
   font-size: 0.66rem;
   letter-spacing: 0.06em;
+}
+.pnl-chart-control-pill {
+  height: 1.75rem;
+  box-sizing: border-box;
 }
 .dark .pill-tab {
   border-color: rgb(255 255 255 / 18%);
