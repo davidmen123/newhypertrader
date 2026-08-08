@@ -762,12 +762,10 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
   // but reusing it here makes older nodes disappear or forces flat synthetic
   // anchors when switching between 7D, 90D and MAX.
   const allSnapshots = (reviewMode ? (reviewPnlHistory ?? data) : data || []) as PnlSnapshot[];
-  const snapshots = reviewMode
-    ? allSnapshots.filter((snapshot) => {
-        const timestamp = parseUtc8Timestamp(snapshot.date);
-        return timestamp >= reviewStartTimestamp && timestamp <= reviewEndTimestamp;
-      })
-    : allSnapshots;
+  const snapshots = allSnapshots.filter((snapshot) => {
+    const timestamp = parseUtc8Timestamp(snapshot.date);
+    return timestamp >= reviewStartTimestamp && timestamp <= reviewEndTimestamp;
+  });
   // Labels per language
   const benchmarkOptions: Array<{ key: BenchmarkKey; label: string; menuLabel: string; valueLabel: string }> = lang === "zh"
     ? [
@@ -842,8 +840,21 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
     };
   });
   const chartData = useMemo(() => {
-    if (!reviewMode || baseChartData.length === 0) return baseChartData;
-    const snapshotDays = new Set(baseChartData.map((point) => getDateKey(point.date)));
+    if (baseChartData.length === 0) return baseChartData;
+    let rangeChartData = baseChartData;
+    if (startDate) {
+      const startTimestamp = parseUtc8Timestamp(`${startDate}T00:00:00+08:00`);
+      if (baseChartData[0].timestamp > startTimestamp) {
+        const firstPoint = baseChartData[0];
+        rangeChartData = [{
+          ...firstPoint,
+          date: `${startDate}T00:00:00+08:00`,
+          timestamp: startTimestamp,
+        }, ...baseChartData];
+      }
+    }
+    if (!reviewMode) return rangeChartData;
+    const snapshotDays = new Set(rangeChartData.map((point) => getDateKey(point.date)));
     const missingTradeDays = Array.from(new Set(
       visibleReviewTrades
         .map((trade) => Number(trade.createdTime))
@@ -851,19 +862,19 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
         .map((timestamp) => formatUtc8Date(new Date(timestamp)))
         .filter((day) => !snapshotDays.has(day))
     )).sort();
-    if (missingTradeDays.length === 0) return baseChartData;
+    if (missingTradeDays.length === 0) return rangeChartData;
 
     // Portfolio history may not contain a point on every trade day. Add an
     // explicit anchor for each missing day so the node is part of the x-axis
     // even when the exchange returns sparse equity snapshots.
-    const firstPoint = baseChartData[0];
+    const firstPoint = rangeChartData[0];
     const anchorPoints = missingTradeDays.map((day) => ({
       ...firstPoint,
       date: `${day}T00:00:00+08:00`,
       timestamp: parseUtc8Timestamp(`${day}T00:00:00+08:00`),
     }));
-    return [...anchorPoints, ...baseChartData].sort((a, b) => a.timestamp - b.timestamp);
-  }, [baseChartData, reviewMode, visibleReviewTrades]);
+    return [...anchorPoints, ...rangeChartData].sort((a, b) => a.timestamp - b.timestamp);
+  }, [baseChartData, reviewMode, startDate, visibleReviewTrades]);
   const tradeMarkers = useMemo<TradeMarker[]>(() => {
     if (chartData.length === 0) return [];
     const tradesByDay = new Map<string, TradeFill[]>();
