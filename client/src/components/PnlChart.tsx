@@ -1063,14 +1063,14 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
         )}
 
         {reviewMode && (
-          <div className="relative w-full sm:w-44 sm:ml-auto">
+          <div className="relative shrink-0 sm:ml-auto">
             <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={reviewSymbolQuery}
               onChange={(event) => setReviewSymbolQuery(event.target.value)}
               placeholder={lang === "zh" ? "搜索标的" : "Search symbol"}
               aria-label={lang === "zh" ? "搜索复盘标的" : "Search review symbol"}
-              className="h-8 rounded-full pl-8 pr-3 text-xs"
+              className="h-8 w-[112px] rounded-full pl-8 pr-2 text-xs"
             />
           </div>
         )}
