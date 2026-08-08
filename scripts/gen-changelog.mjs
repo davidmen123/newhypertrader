@@ -182,6 +182,22 @@ function build() {
     entries.push({ version, date: commit.date, zh: commit.zh, en: commit.en });
   }
 
+  // Keep the public changelog aligned with the user's deployed baseline. All
+  // internal releases after 1.62.0 are intentionally consolidated into one
+  // release entry until the next public release is explicitly chosen.
+  const baselineIndex = entries.findIndex((entry) => entry.version === "1.62.0");
+  if (baselineIndex >= 0) {
+    return [
+      ...entries.slice(0, baselineIndex + 1),
+      {
+        version: "1.62.1",
+        date: "2026-08-08",
+        zh: "损益历史及复盘模式增减字段优化",
+        en: "Optimized PnL history and review mode fields",
+      },
+    ].reverse();
+  }
+
   // Newest first for display.
   return entries.reverse();
 }

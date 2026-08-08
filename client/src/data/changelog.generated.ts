@@ -14,82 +14,10 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    "version": "1.67.0",
-    "date": "2026-08-08",
-    "zh": "账户评级支持周期选择",
-    "en": "Added period selection to account ratings"
-  },
-  {
-    "version": "1.66.0",
-    "date": "2026-08-08",
-    "zh": "分析页新增五维账户评级",
-    "en": "Added five-dimension account rating to analytics"
-  },
-  {
-    "version": "1.65.2",
-    "date": "2026-08-08",
-    "zh": "标准损益周期仅显示真实净值历史",
-    "en": "Avoided synthetic points in standard PnL ranges"
-  },
-  {
-    "version": "1.65.1",
-    "date": "2026-08-08",
-    "zh": "强制复盘搜索框字体与净值标签一致",
-    "en": "Enforced matching typography for the review search field"
-  },
-  {
-    "version": "1.65.0",
-    "date": "2026-08-08",
-    "zh": "统一复盘搜索文字字号",
-    "en": "Matched review search text size"
-  },
-  {
-    "version": "1.64.0",
-    "date": "2026-08-08",
-    "zh": "统一复盘模式控件尺寸",
-    "en": "Aligned review mode control sizing"
-  },
-  {
-    "version": "1.63.5",
-    "date": "2026-08-08",
-    "zh": "自定义损益周期最早从2026年6月25日开始",
-    "en": "Limit custom PnL ranges to the available history start date"
-  },
-  {
-    "version": "1.63.4",
-    "date": "2026-08-08",
-    "zh": "自定义损益曲线严格过滤日期并补齐起始横轴锚点",
-    "en": "Enforce custom PnL date filtering and anchor the selected start date"
-  },
-  {
-    "version": "1.63.3",
-    "date": "2026-08-08",
-    "zh": "自定义日期包含起始日的Hyperliquid净值快照",
-    "en": "Include the first Hyperliquid PnL snapshot in custom date ranges"
-  },
-  {
-    "version": "1.63.2",
-    "date": "2026-08-08",
-    "zh": "自定义损益周期按北京时间自然日过滤曲线和交易数据",
-    "en": "Align custom PnL date filters with Asia/Shanghai calendar days"
-  },
-  {
-    "version": "1.63.1",
-    "date": "2026-08-08",
-    "zh": "盈亏图谱按基础币种合并同一标的",
-    "en": "Aggregate PnL treemap entries by canonical base symbol"
-  },
-  {
-    "version": "1.63.0",
-    "date": "2026-08-08",
-    "zh": "止盈目标补充盈亏比含义说明",
-    "en": "Clarified the meaning of risk-reward target presets"
-  },
-  {
     "version": "1.62.1",
-    "date": "2026-08-07",
-    "zh": "日志版本按线上已发布版本递增，合并未部署期间的内部更新",
-    "en": "Align changelog versions with deployed releases and collapse unreleased internal changes"
+    "date": "2026-08-08",
+    "zh": "损益历史及复盘模式增减字段优化",
+    "en": "Optimized PnL history and review mode fields"
   },
   {
     "version": "1.62.0",
