@@ -44,7 +44,6 @@ type SeriesKey = (typeof SERIES)[number]["key"];
 // trade. Only the trade query needs a date spelled out: an absent start date means
 // "everything" to the PnL query but "the last 30 days" to the trade query.
 const FULL_HISTORY_START_DATE = "2023-01-01";
-const MIN_CUSTOM_START_DATE = "2026-06-25";
 type BenchmarkKey = "btc" | "shanghai" | "sp500" | "nasdaq" | "hangSeng" | "star50" | "nasdaq100" | "csiA500";
 
 // ─── Tooltip ─────────────────────────────────────────────────────────────────
@@ -581,6 +580,22 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
 
   // Generous limit — actual filtering is done server-side by startDate
   const queryLimit = 1000;
+  // The earliest selectable date belongs to the active account. The public
+  // home page and /analytics can point at different Hyperliquid addresses, so
+  // a global hard-coded date would incorrectly constrain a secondary account.
+  const { data: accountHistory = [] } = trpc.hyperliquid.pnlHistory.useQuery(
+    { accountId, limit: queryLimit, rebase: false },
+    { staleTime: 60_000, refetchOnWindowFocus: false },
+  );
+  const earliestAccountDate = useMemo(() => {
+    const first = accountHistory[0]?.date;
+    return first ? formatUtc8Date(new Date(first.replace(" ", "T") + ":00+08:00")) : undefined;
+  }, [accountHistory]);
+  useEffect(() => {
+    if (earliestAccountDate && customStartDate < earliestAccountDate) {
+      setCustomStartDate(earliestAccountDate);
+    }
+  }, [customStartDate, earliestAccountDate]);
 
   // MAX covers the account's whole history, so it keeps Hyperliquid's cumulative
   // PnL rather than zeroing at the first sample — that is what makes the figure in
@@ -1050,9 +1065,9 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
               <input
                 type="date"
                 value={customStartDate}
-                min={MIN_CUSTOM_START_DATE}
+                min={earliestAccountDate}
                 max={customEndDate || undefined}
-                onChange={(event) => setCustomStartDate(event.target.value < MIN_CUSTOM_START_DATE ? MIN_CUSTOM_START_DATE : event.target.value)}
+                onChange={(event) => setCustomStartDate(earliestAccountDate && event.target.value < earliestAccountDate ? earliestAccountDate : event.target.value)}
                 className="h-7 w-[118px] rounded-md border border-input bg-transparent px-1.5 text-[0.68rem] text-foreground"
                 aria-label={lang === "zh" ? "自定义开始日期" : "Custom start date"}
               />
