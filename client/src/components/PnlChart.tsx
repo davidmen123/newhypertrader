@@ -1119,7 +1119,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
               onChange={(event) => setReviewSymbolQuery(event.target.value)}
               placeholder={lang === "zh" ? "搜索标的" : "Search symbol"}
               aria-label={lang === "zh" ? "搜索复盘标的" : "Search review symbol"}
-              className="pnl-chart-control-pill w-[112px] rounded-full pl-8 pr-2 text-xs"
+              className="pnl-chart-control-pill w-[112px] rounded-full pl-8 pr-2 text-[0.68rem]"
             />
           </div>
         )}
