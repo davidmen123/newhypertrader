@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useTheme } from "@/contexts/ThemeContext";
 import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 import AccountOverview from "@/components/AccountOverview";
+import CapitalFlows from "@/components/CapitalFlows";
 import PnlChart, { type PnlDateRange } from "@/components/PnlChart";
 import PnlBySymbol from "@/components/PnlBySymbol";
 import PositionsTable from "@/components/PositionsTable";
@@ -747,6 +748,7 @@ function AccountPnlManager() {
           previous account's numbers while the new ones load. */}
       <div key={activeId} className="space-y-5">
         <AccountOverview accountId={activeId} />
+        <CapitalFlows accountId={activeId} />
         <AccountRating accountId={activeId} />
         <PnlChart accountId={activeId} onDateRangeChange={setPnlDateRange} />
         <PnlBySymbol accountId={activeId} dateRange={pnlDateRange} />

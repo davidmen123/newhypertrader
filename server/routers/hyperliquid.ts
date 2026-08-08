@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { ownerProcedure, publicProcedure, router } from "../_core/trpc.js";
 import {
   getHyperliquidAccountOverview,
+  getHyperliquidCapitalFlows,
   getHyperliquidBtcPrice,
   getHyperliquidCandles,
   getHyperliquidConfigStatus,
@@ -521,6 +522,12 @@ export const hyperliquidRouter = router({
           totalPnlCny: usdCnyRate && overview.totalPnlUsdc != null ? overview.totalPnlUsdc * usdCnyRate : null,
         };
       })
+    ),
+
+  capitalFlows: publicProcedure
+    .input(accountInput.optional())
+    .query(async ({ ctx, input }) =>
+      withAccount(ctx, input, () => getHyperliquidCapitalFlows())
     ),
 
   tradeMetrics: publicProcedure

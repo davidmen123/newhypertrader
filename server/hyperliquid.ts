@@ -715,6 +715,26 @@ export async function getHyperliquidNetDepositsUsdc() {
   return counted > 0 ? netDeposits : null;
 }
 
+export async function getHyperliquidCapitalFlows() {
+  const address = assertAddress();
+  const updates = await getHyperliquidLedgerUpdates();
+  return updates
+    .map((update) => {
+      const direction = classifyHyperliquidLedgerFlow(update, address);
+      const amount = Math.abs(getLedgerUsdcAmount(update));
+      if (direction !== 1 && direction !== -1 || amount <= 0) return null;
+      return {
+        time: Number(update.time ?? 0),
+        hash: update.hash ?? null,
+        type: direction === 1 ? "deposit" as const : "withdraw" as const,
+        amount,
+        sourceType: String(update.delta?.type ?? ""),
+      };
+    })
+    .filter((flow): flow is NonNullable<typeof flow> => flow != null && Number.isFinite(flow.time))
+    .sort((a, b) => b.time - a.time);
+}
+
 export async function getHyperliquidMids() {
   return callInfo<Record<string, string>>({ type: "allMids" });
 }
