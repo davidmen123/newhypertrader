@@ -533,7 +533,7 @@ function BenchmarkSeriesToggle({
 export default function PnlChart({ accountId }: { accountId?: string } = {}) {
   const { lang } = useLang();
   const { theme } = useTheme();
-  type TimeRange = "7D" | "30D" | "90D" | "MAX";
+  type TimeRange = "7D" | "30D" | "90D" | "MAX" | "CUSTOM";
   const [visible, setVisible] = useState<Record<SeriesKey, boolean>>({
     accountPerformance: true,
     btcBenchmark: true,
@@ -541,6 +541,12 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
   });
   const [selectedBenchmark, setSelectedBenchmark] = useState<BenchmarkKey>("btc");
   const [timeRange, setTimeRange] = useState<TimeRange | null>(null);
+  const [customStartDate, setCustomStartDate] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 30);
+    return formatUtc8Date(date);
+  });
+  const [customEndDate, setCustomEndDate] = useState(() => formatUtc8Date(new Date()));
   const [reviewMode, setReviewMode] = useState(false);
   const [reviewSymbolQuery, setReviewSymbolQuery] = useState("");
   const [selectedTrade, setSelectedTrade] = useState<TradeMarker | null>(null);
@@ -563,12 +569,14 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
   //       to be told when that was.
   const startDate = useMemo(() => {
     if (timeRange == null || timeRange === "MAX") return undefined;
+    if (timeRange === "CUSTOM") return customStartDate || undefined;
     const now = new Date();
     const days = timeRange === "7D" ? 7 : timeRange === "30D" ? 30 : 90;
     const d = new Date(now);
     d.setDate(d.getDate() - days);
     return formatUtc8Date(d);
-  }, [timeRange]);
+  }, [customStartDate, timeRange]);
+  const endDate = timeRange === "CUSTOM" ? customEndDate || undefined : undefined;
 
   // Generous limit — actual filtering is done server-side by startDate
   const queryLimit = 1000;
@@ -579,12 +587,12 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
   const isFullHistory = timeRange == null || timeRange === "MAX";
 
   const { data, isLoading, error, refetch, isFetching } = trpc.hyperliquid.pnlHistory.useQuery(
-    { startDate, limit: queryLimit, accountId, rebase: !isFullHistory },
+    { startDate, endDate, limit: queryLimit, accountId, rebase: !isFullHistory },
     { refetchInterval: 60_000 }
   );
   const externalBenchmark = selectedBenchmark === "btc" ? "sp500" : selectedBenchmark;
   const { data: benchmarkHistory = [], isFetching: isBenchmarkFetching, refetch: refetchBenchmark } = trpc.hyperliquid.benchmarkHistory.useQuery(
-    { benchmark: externalBenchmark, startDate },
+    { benchmark: externalBenchmark, startDate, endDate },
     { enabled: selectedBenchmark !== "btc", staleTime: 10 * 60_000 }
   );
 
@@ -613,8 +621,9 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
     setShowReviewDetail(true);
   };
   const reviewTradeStartDate = reviewMode ? undefined : (startDate ?? FULL_HISTORY_START_DATE);
+  const reviewTradeEndDate = reviewMode ? undefined : endDate;
   const { data: tradeHistory } = trpc.hyperliquid.tradeHistory.useQuery(
-    { startDate: reviewTradeStartDate, limit: 10000, allHistory: true, accountId },
+    { startDate: reviewTradeStartDate, endDate: reviewTradeEndDate, limit: 10000, allHistory: true, accountId },
     { refetchInterval: 120_000 }
   );
   const { data: reviewPnlHistory } = trpc.hyperliquid.pnlHistory.useQuery(
@@ -629,9 +638,12 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
   const reviewStartTimestamp = startDate
     ? parseUtc8Timestamp(`${startDate}T00:00:00+08:00`)
     : 0;
+  const reviewEndTimestamp = endDate
+    ? parseUtc8Timestamp(`${endDate}T23:59:59+08:00`)
+    : Number.POSITIVE_INFINITY;
   const trades = allTrades.filter((trade) => {
     const timestamp = Number(trade.createdTime);
-    return Number.isFinite(timestamp) && timestamp >= reviewStartTimestamp;
+    return Number.isFinite(timestamp) && timestamp >= reviewStartTimestamp && timestamp <= reviewEndTimestamp;
   });
   const visibleReviewTrades = useMemo(() => {
     const query = reviewSymbolQuery.trim().toLowerCase();
@@ -752,8 +764,8 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
   const allSnapshots = (reviewMode ? (reviewPnlHistory ?? data) : data || []) as PnlSnapshot[];
   const snapshots = reviewMode
     ? allSnapshots.filter((snapshot) => {
-        if (!reviewStartTimestamp) return true;
-        return parseUtc8Timestamp(snapshot.date) >= reviewStartTimestamp;
+        const timestamp = parseUtc8Timestamp(snapshot.date);
+        return timestamp >= reviewStartTimestamp && timestamp <= reviewEndTimestamp;
       })
     : allSnapshots;
   // Labels per language
@@ -1008,16 +1020,37 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
             {lang === "zh" ? "周期" : "Range"}
           </span>
           <div className="flex gap-1">
-            {(["7D", "30D", "90D", "MAX"] as const).map((r) => (
+            {(["7D", "30D", "90D", "MAX", "CUSTOM"] as const).map((r) => (
               <button
                 key={r}
                 onClick={() => setTimeRange(r)}
                 className={`pill-tab ${timeRange === r ? "active" : ""}`}
               >
-                {r}
+                {r === "CUSTOM" ? (lang === "zh" ? "自定义" : "Custom") : r}
               </button>
             ))}
           </div>
+          {timeRange === "CUSTOM" && (
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="date"
+                value={customStartDate}
+                max={customEndDate || undefined}
+                onChange={(event) => setCustomStartDate(event.target.value)}
+                className="h-8 rounded-md border border-input bg-transparent px-2 text-xs text-foreground"
+                aria-label={lang === "zh" ? "自定义开始日期" : "Custom start date"}
+              />
+              <span className="text-xs text-muted-foreground">—</span>
+              <input
+                type="date"
+                value={customEndDate}
+                min={customStartDate || undefined}
+                onChange={(event) => setCustomEndDate(event.target.value)}
+                className="h-8 rounded-md border border-input bg-transparent px-2 text-xs text-foreground"
+                aria-label={lang === "zh" ? "自定义结束日期" : "Custom end date"}
+              />
+            </div>
+          )}
         </div>
 
         {/* Divider — hidden on mobile */}
