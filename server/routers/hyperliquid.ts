@@ -270,10 +270,10 @@ async function fetchYahooHistory(symbol: string, startDate?: string, endDate?: s
   }
 
   const startTimestamp = startDate
-    ? Date.parse(`${startDate}T00:00:00.000Z`) - 10 * DAY_MS
+    ? Date.parse(`${startDate}T00:00:00.000+08:00`) - 10 * DAY_MS
     : Date.parse("2023-01-01T00:00:00.000Z");
   const endTimestamp = endDate
-    ? Date.parse(`${endDate}T23:59:59.999Z`) + DAY_MS
+    ? Date.parse(`${endDate}T23:59:59.999+08:00`) + DAY_MS
     : Date.now() + DAY_MS;
   const cacheKey = `${symbol}:${startDate ?? "MAX"}:${endDate ?? "NOW"}`;
   const cached = benchmarkHistoryCache.get(cacheKey);
@@ -557,10 +557,10 @@ export const hyperliquidRouter = router({
       withAccount(ctx, input, () => {
         const hasDateFilter = Boolean(input.startDate || input.endDate);
         const startTime = hasDateFilter
-          ? (input.startDate ? new Date(`${input.startDate}T00:00:00`).getTime() : 0)
+          ? (input.startDate ? new Date(`${input.startDate}T00:00:00+08:00`).getTime() : 0)
           : input.allHistory ? 0 : undefined;
         const endTime = hasDateFilter
-          ? (input.endDate ? new Date(`${input.endDate}T23:59:59`).getTime() : Date.now())
+          ? (input.endDate ? new Date(`${input.endDate}T23:59:59+08:00`).getTime() : Date.now())
           : input.allHistory ? Date.now() : undefined;
         return getHyperliquidTradeHistory({ startTime, endTime, limit: input.limit, category: input.category });
       })

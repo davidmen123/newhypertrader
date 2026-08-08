@@ -1217,8 +1217,8 @@ export async function getHyperliquidPortfolioSnapshots(params: {
   rebase?: boolean;
 }) {
   const portfolio = await getHyperliquidPortfolio();
-  const startMs = params.startDate ? new Date(`${params.startDate}T00:00:00Z`).getTime() : 0;
-  const endMs = params.endDate ? new Date(`${params.endDate}T23:59:59Z`).getTime() : Number.MAX_SAFE_INTEGER;
+  const startMs = params.startDate ? new Date(`${params.startDate}T00:00:00+08:00`).getTime() : 0;
+  const endMs = params.endDate ? new Date(`${params.endDate}T23:59:59+08:00`).getTime() : Number.MAX_SAFE_INTEGER;
   const windowData =
     choosePortfolioWindow(portfolio, startMs) ??
     portfolio.find(([, data]) => data.accountValueHistory?.length)?.[1];
