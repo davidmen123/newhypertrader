@@ -597,10 +597,10 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
     return first ? formatUtc8Date(new Date(first.replace(" ", "T") + ":00+08:00")) : undefined;
   }, [accountHistory]);
   useEffect(() => {
-    if (earliestAccountDate && customStartDate < earliestAccountDate) {
-      setCustomStartDate(earliestAccountDate);
-    }
-  }, [customStartDate, earliestAccountDate]);
+    if (!earliestAccountDate) return;
+    if (customStartDate < earliestAccountDate) setCustomStartDate(earliestAccountDate);
+    if (customEndDate < earliestAccountDate) setCustomEndDate(formatUtc8Date(new Date()));
+  }, [customEndDate, customStartDate, earliestAccountDate]);
 
   // MAX covers the account's whole history, so it keeps Hyperliquid's cumulative
   // PnL rather than zeroing at the first sample — that is what makes the figure in
@@ -1080,8 +1080,11 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
               <input
                 type="date"
                 value={customEndDate}
-                min={customStartDate || undefined}
-                onChange={(event) => setCustomEndDate(event.target.value)}
+                min={earliestAccountDate && customStartDate > earliestAccountDate ? customStartDate : earliestAccountDate || customStartDate || undefined}
+                onChange={(event) => {
+                  const minimum = earliestAccountDate && customStartDate > earliestAccountDate ? customStartDate : earliestAccountDate;
+                  setCustomEndDate(minimum && event.target.value < minimum ? minimum : event.target.value);
+                }}
                 className="h-7 w-[118px] rounded-md border border-input bg-transparent px-1.5 text-[0.68rem] text-foreground"
                 aria-label={lang === "zh" ? "自定义结束日期" : "Custom end date"}
               />
