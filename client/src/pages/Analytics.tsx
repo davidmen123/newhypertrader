@@ -61,14 +61,17 @@ const BLUE = "oklch(72% 0.08 230)";
 const NEUTRAL = "var(--metric-neutral)";
 
 // ─── Building blocks ───────────────────────────────────────────────────────
-function Panel({ title, sub, children, className = "" }: { title: string; sub?: string; children: ReactNode; className?: string }) {
+function Panel({ title, sub, headerRight, children, className = "" }: { title: string; sub?: string; headerRight?: ReactNode; children: ReactNode; className?: string }) {
   return (
     <div className={`glass-card px-5 py-5 sm:px-6 ${className}`}>
       <div className="flex items-baseline justify-between mb-4">
         <h3 className="text-base font-light" style={{ fontFamily: "Cormorant Garamond, serif" }}>
           {title}
         </h3>
-        {sub && <span className="text-muted-foreground/55" style={{ fontSize: "0.66rem" }}>{sub}</span>}
+        <div className="flex items-center gap-3">
+          {sub && <span className="text-muted-foreground/55" style={{ fontSize: "0.66rem" }}>{sub}</span>}
+          {headerRight}
+        </div>
       </div>
       {children}
     </div>
@@ -147,6 +150,7 @@ const RATING_PERIODS: Array<{ key: RatingPeriod; label: string }> = [
 
 function AccountRating({ accountId }: { accountId?: string }) {
   const [period, setPeriod] = useState<RatingPeriod>("30D");
+  const [showExplanation, setShowExplanation] = useState(false);
   const startDate = useMemo(() => {
     if (period === "MAX") return undefined;
     const days = period === "7D" ? 7 : period === "30D" ? 30 : 90;
@@ -237,7 +241,20 @@ function AccountRating({ accountId }: { accountId?: string }) {
   const radarData = dimensions.map((item) => ({ subject: item.label, score: item.score, fullMark: 100 }));
 
   return (
-    <Panel title="账户评级" sub="五维账户体检 · 0–100 分">
+    <Panel
+      title="账户评级"
+      sub="五维账户体检 · 0–100 分"
+      headerRight={
+        <button
+          type="button"
+          onClick={() => setShowExplanation((visible) => !visible)}
+          className="text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
+          style={{ fontSize: "0.66rem" }}
+        >
+          说明
+        </button>
+      }
+    >
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <span className="text-muted-foreground tracking-widest" style={{ fontSize: "0.62rem" }}>周期</span>
         <div className="flex flex-wrap gap-1">
@@ -269,6 +286,19 @@ function AccountRating({ accountId }: { accountId?: string }) {
           {dimensions.map((item) => <RatingBar key={item.key} label={item.label} score={item.score} detail={item.detail} />)}
         </div>
       </div>
+      {showExplanation && (
+        <div className="mt-5 rounded-lg px-4 py-3 text-muted-foreground/75" style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)", fontSize: "0.66rem", lineHeight: 1.7 }}>
+          <div className="mb-2 text-foreground/80" style={{ fontSize: "0.72rem" }}>评分说明（0–100 分）</div>
+          <div className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
+            <div><span className="text-foreground/80">盈利能力：</span>依据所选周期的收益率及年化收益率，收益越高分数越高。</div>
+            <div><span className="text-foreground/80">稳定性：</span>优先依据区间夏普比率；数据不足时参考区间最大回撤。</div>
+            <div><span className="text-foreground/80">风险控制：</span>依据最大回撤和当前杠杆使用情况，回撤与杠杆越低分数越高。</div>
+            <div><span className="text-foreground/80">胜率：</span>所选周期内盈利完整交易数 ÷ 完整交易总数。</div>
+            <div><span className="text-foreground/80">市场感知：</span>当前以所选周期的盈利因子和盈亏比作为代理评分，后续可接入基准超额收益。</div>
+            <div><span className="text-foreground/80">综合评分：</span>五项评分的算术平均值。评级区间：90优秀、80良好、70中等、60偏弱。</div>
+          </div>
+        </div>
+      )}
       <div className="mt-5 rounded-lg px-3 py-2.5 text-muted-foreground/60" style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)", fontSize: "0.62rem" }}>
         评分为账户分析辅助指标，不代表收益承诺；市场感知当前为代理评分，待接入基准超额收益和不同市场阶段表现后再升级为直接评分。
       </div>
