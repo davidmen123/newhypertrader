@@ -14,6 +14,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.67.0",
+    "date": "2026-08-08",
+    "zh": "账户评级支持周期选择",
+    "en": "Added period selection to account ratings"
+  },
+  {
     "version": "1.66.0",
     "date": "2026-08-08",
     "zh": "分析页新增五维账户评级",

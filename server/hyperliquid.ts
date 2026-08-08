@@ -1034,7 +1034,7 @@ function signedFillSize(fill: HyperliquidFill) {
   return fill.side === "A" ? -size : size;
 }
 
-export function calculateRoundTripTradeMetrics(fills: HyperliquidFill[]) {
+export function calculateRoundTripTradeMetrics(fills: HyperliquidFill[], completedAfter?: number) {
   const tolerance = 0.00000001;
   // `userFills` returns newest-first while `userFillsByTime` returns oldest-first.
   // Array#sort is stable, so partial fills sharing a timestamp keep their input
@@ -1074,7 +1074,9 @@ export function calculateRoundTripTradeMetrics(fills: HyperliquidFill[]) {
     if (endsFlat || flipsSide) {
       const closingTrade = openTrades.get(coin);
       if (closingTrade) {
-        completedPnls.push(closingTrade.pnl);
+        if (completedAfter == null || fill.time >= completedAfter) {
+          completedPnls.push(closingTrade.pnl);
+        }
         const holdingHours = (fill.time - closingTrade.openedAt) / (60 * 60 * 1000);
         if (Number.isFinite(holdingHours) && holdingHours >= 0) {
           completedHoldingHours.push(holdingHours);

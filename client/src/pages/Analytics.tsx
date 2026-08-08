@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { trpc } from "@/lib/trpc";
 import { writeAdminKey } from "@/lib/adminKey";
 import { ArrowLeft, Clock, Globe, Info, Laptop, MapPin, Monitor, Moon, Plus, RefreshCw, Smartphone, Sun, Trash2 } from "lucide-react";
@@ -134,26 +134,85 @@ function RatingBar({ label, score, detail }: { label: string; score: number; det
   );
 }
 
+type RatingPeriod = "7D" | "30D" | "90D" | "MAX";
+type RatingPnlRow = { date: string; equity: string; totalPnl: string };
+
+const RATING_PERIODS: Array<{ key: RatingPeriod; label: string }> = [
+  { key: "7D", label: "近 7 天" },
+  { key: "30D", label: "近 1 个月" },
+  { key: "90D", label: "近 3 个月" },
+  { key: "MAX", label: "全部" },
+];
+
 function AccountRating({ accountId }: { accountId?: string }) {
+  const [period, setPeriod] = useState<RatingPeriod>("30D");
+  const startDate = useMemo(() => {
+    if (period === "MAX") return undefined;
+    const days = period === "7D" ? 7 : period === "30D" ? 30 : 90;
+    return utc8DateStr(Date.now() - days * DAY_MS);
+  }, [period]);
   const { data: overview, isLoading: overviewLoading } = trpc.hyperliquid.accountOverview.useQuery(
     { accountId },
     { refetchInterval: 60_000 },
   );
   const { data: metrics, isLoading: metricsLoading } = trpc.hyperliquid.tradeMetrics.useQuery(
-    { accountId },
+    { accountId, startDate },
+    { refetchInterval: 60_000 },
+  );
+  const { data: pnlHistory = [], isLoading: pnlLoading } = trpc.hyperliquid.pnlHistory.useQuery(
+    { accountId, startDate, limit: 1000, rebase: true },
     { refetchInterval: 60_000 },
   );
 
-  if (overviewLoading || metricsLoading) {
+  const periodStats = useMemo(() => {
+    const rows = (pnlHistory as RatingPnlRow[])
+      .map((row) => ({
+        time: new Date(row.date.replace(" ", "T") + ":00+08:00").getTime(),
+        equity: Number(row.equity),
+        pnl: Number(row.totalPnl),
+      }))
+      .filter((row) => Number.isFinite(row.time) && Number.isFinite(row.equity) && Number.isFinite(row.pnl))
+      .sort((a, b) => a.time - b.time);
+    if (rows.length === 0) return { returnPct: null, annualizedPct: null, sharpe: null, drawdownPct: null };
+    const first = rows[0];
+    const last = rows[rows.length - 1];
+    const returnPct = first.equity > 0 ? ((last.equity - first.equity) / first.equity) * 100 : null;
+    // The rebased totalPnl is the performance series; use it to remove deposits
+    // from the period return and drawdown calculations.
+    const performanceValues = rows.map((row) => first.equity + (row.pnl - first.pnl));
+    const performanceReturn = first.equity > 0 ? ((performanceValues.at(-1)! - first.equity) / first.equity) * 100 : returnPct;
+    let peak = performanceValues[0];
+    let maxDrawdown = 0;
+    for (const value of performanceValues) {
+      peak = Math.max(peak, value);
+      if (peak > 0) maxDrawdown = Math.max(maxDrawdown, (peak - value) / peak);
+    }
+    const returns: number[] = [];
+    for (let index = 1; index < rows.length; index += 1) {
+      const previousEquity = performanceValues[index - 1];
+      const change = performanceValues[index] - performanceValues[index - 1];
+      if (previousEquity > 0 && Number.isFinite(change / previousEquity)) returns.push(change / previousEquity);
+    }
+    const mean = returns.length > 0 ? returns.reduce((sum, value) => sum + value, 0) / returns.length : 0;
+    const variance = returns.length > 1 ? returns.reduce((sum, value) => sum + (value - mean) ** 2, 0) / (returns.length - 1) : 0;
+    const volatility = Math.sqrt(variance);
+    const sharpe = volatility > 0 ? (mean / volatility) * Math.sqrt(365) : null;
+    const spanDays = Math.max(1, (last.time - first.time) / DAY_MS);
+    const annualizedPct = performanceReturn != null && 1 + performanceReturn / 100 > 0
+      ? (Math.pow(1 + performanceReturn / 100, 365 / spanDays) - 1) * 100
+      : null;
+    return { returnPct: performanceReturn, annualizedPct, sharpe, drawdownPct: maxDrawdown * 100 };
+  }, [pnlHistory]);
+  if (overviewLoading || metricsLoading || pnlLoading) {
     return <Panel title="账户评级" sub="五维账户体检"><div className="py-10 text-center text-sm text-muted-foreground animate-pulse">计算账户评级中…</div></Panel>;
   }
   if (!overview || !metrics) return null;
 
-  const profitability = rangeRating(overview.annualizedReturnPct ?? overview.totalPnlPct, 0, 50);
-  const stability = overview.sharpeRatio != null
-    ? rangeRating(overview.sharpeRatio, 0, 2)
-    : rangeRating(overview.maxDrawdownPct != null ? -Math.abs(overview.maxDrawdownPct) : null, -20, 0);
-  const drawdown = overview.maxDrawdownPct == null ? null : Math.abs(overview.maxDrawdownPct);
+  const profitability = rangeRating(periodStats.annualizedPct ?? periodStats.returnPct, 0, 50);
+  const stability = periodStats.sharpe != null
+    ? rangeRating(periodStats.sharpe, 0, 2)
+    : rangeRating(periodStats.drawdownPct != null ? -periodStats.drawdownPct : null, -20, 0);
+  const drawdown = periodStats.drawdownPct ?? (period === "MAX" && overview.maxDrawdownPct != null ? Math.abs(overview.maxDrawdownPct) : null);
   const riskControl = drawdown == null
     ? 50
     : clampRating(100 - drawdown * 4 - Math.max(0, overview.marginUsageRatio || 0) * 2);
@@ -165,8 +224,8 @@ function AccountRating({ accountId }: { accountId?: string }) {
     ((rangeRating(metrics.profitFactor, 0.5, 2) + rangeRating(metrics.plRatio, 0.5, 3)) / 2),
   );
   const dimensions = [
-    { key: "profitability", label: "盈利能力", score: profitability, detail: overview.annualizedReturnPct != null ? `年化收益 ${overview.annualizedReturnPct.toFixed(2)}%` : "依据累计收益率" },
-    { key: "stability", label: "稳定性", score: stability, detail: overview.sharpeRatio != null ? `夏普 ${overview.sharpeRatio.toFixed(2)}` : "依据回撤表现" },
+    { key: "profitability", label: "盈利能力", score: profitability, detail: periodStats.annualizedPct != null ? `区间年化 ${periodStats.annualizedPct.toFixed(2)}%` : "依据区间收益率" },
+    { key: "stability", label: "稳定性", score: stability, detail: periodStats.sharpe != null ? `区间夏普 ${periodStats.sharpe.toFixed(2)}` : "依据区间回撤" },
     { key: "risk", label: "风险控制", score: riskControl, detail: drawdown != null ? `最大回撤 ${drawdown.toFixed(2)}%` : "暂无回撤数据" },
     { key: "winRate", label: "胜率", score: winScore, detail: winRate != null ? `完整交易胜率 ${winRate.toFixed(2)}%` : "暂无完整交易" },
     { key: "market", label: "市场感知", score: marketAwareness, detail: "暂以盈利因子与盈亏比代理" },
@@ -178,12 +237,22 @@ function AccountRating({ accountId }: { accountId?: string }) {
 
   return (
     <Panel title="账户评级" sub="五维账户体检 · 0–100 分">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <span className="text-muted-foreground tracking-widest" style={{ fontSize: "0.62rem" }}>周期</span>
+        <div className="flex flex-wrap gap-1">
+          {RATING_PERIODS.map((item) => (
+            <button key={item.key} type="button" onClick={() => setPeriod(item.key)} className={`pill-tab ${period === item.key ? "active" : ""}`} style={{ padding: "0.3rem 0.7rem", fontSize: "0.64rem" }}>
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="grid gap-5 lg:grid-cols-[0.72fr_1fr_1.15fr] lg:items-center">
         <div className="flex flex-col items-center justify-center rounded-lg px-4 py-6 text-center" style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}>
           <div className="text-muted-foreground tracking-widest" style={{ fontSize: "0.62rem" }}>综合评分</div>
           <div className="num-display mt-2" style={{ color: ratingColor, fontSize: "3.2rem", lineHeight: 1 }}>{overall}</div>
           <div className="mt-2 rounded-full px-3 py-1" style={{ color: ratingColor, background: `${ratingColor}18`, border: `1px solid ${ratingColor}44`, fontSize: "0.72rem" }}>{ratingLabel}</div>
-          <div className="mt-4 text-muted-foreground/60" style={{ fontSize: "0.62rem" }}>基于当前账户历史数据</div>
+          <div className="mt-4 text-muted-foreground/60" style={{ fontSize: "0.62rem" }}>基于所选周期数据</div>
         </div>
         <div className="h-[230px] min-w-0">
           <ResponsiveContainer width="100%" height="100%">

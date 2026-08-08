@@ -10,6 +10,7 @@ import {
   getHyperliquidOpenOrders,
   getHyperliquidOrderHistory,
   getHyperliquidPerpetualAssets,
+  getHyperliquidFills,
   getActiveHyperliquidPerpStates,
   getHyperliquidPerpStates,
   getHyperliquidPositions,
@@ -18,6 +19,7 @@ import {
   getHyperliquidSpotEquityUsdc,
   getHyperliquidSpotState,
   getHyperliquidTradeHistory,
+  calculateRoundTripTradeMetrics,
 } from "../hyperliquid.js";
 import { getPnlSnapshots, getTradeReview, getTradeReviews, upsertPnlSnapshot, upsertTradeReview } from "../db.js";
 import { seriesIndicators } from "../indicators.js";
@@ -522,9 +524,18 @@ export const hyperliquidRouter = router({
     ),
 
   tradeMetrics: publicProcedure
-    .input(accountInput.optional())
+    .input(accountInput.extend({ startDate: z.string().optional(), endDate: z.string().optional() }).optional())
     .query(async ({ ctx, input }) =>
       withAccount(ctx, input, async () => {
+        if (input?.startDate || input?.endDate) {
+          const startTime = input.startDate ? new Date(`${input.startDate}T00:00:00+08:00`).getTime() : 0;
+          const endTime = input.endDate ? new Date(`${input.endDate}T23:59:59+08:00`).getTime() : Date.now();
+          const fills = await getHyperliquidFills(0);
+          return calculateRoundTripTradeMetrics(
+            fills.filter((fill) => Number(fill.time) <= endTime),
+            startTime,
+          );
+        }
         const account = await getHyperliquidAccountOverview();
         return account.metrics;
       })
