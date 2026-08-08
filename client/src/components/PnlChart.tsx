@@ -534,7 +534,7 @@ function BenchmarkSeriesToggle({
 export default function PnlChart({ accountId }: { accountId?: string } = {}) {
   const { lang } = useLang();
   const { theme } = useTheme();
-  type TimeRange = "7D" | "30D" | "90D" | "MAX" | "CUSTOM";
+  type TimeRange = "24H" | "30D" | "90D" | "MAX" | "CUSTOM";
   const [visible, setVisible] = useState<Record<SeriesKey, boolean>>({
     accountPerformance: true,
     btcBenchmark: true,
@@ -561,7 +561,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
   const hoverPreviewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Compute startDate from timeRange
-  // 7D  = past 7 calendar days
+  // 24H = past 24 hours (represented by the latest calendar day in the daily history)
   // 30D = past 30 calendar days
   // 90D = past 90 calendar days
   // MAX = the account's whole history, requested with no start date at all. The
@@ -572,7 +572,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
     if (timeRange == null || timeRange === "MAX") return undefined;
     if (timeRange === "CUSTOM") return customStartDate || undefined;
     const now = new Date();
-    const days = timeRange === "7D" ? 7 : timeRange === "30D" ? 30 : 90;
+    const days = timeRange === "24H" ? 1 : timeRange === "30D" ? 30 : 90;
     const d = new Date(now);
     d.setDate(d.getDate() - days);
     return formatUtc8Date(d);
@@ -1032,7 +1032,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
             {lang === "zh" ? "周期" : "Range"}
           </span>
           <div className="flex shrink-0 gap-1">
-            {(["7D", "30D", "90D", "MAX", "CUSTOM"] as const).map((r) => (
+            {(["24H", "30D", "90D", "MAX", "CUSTOM"] as const).map((r) => (
               <button
                 key={r}
                 onClick={() => setTimeRange(r)}
