@@ -44,6 +44,7 @@ type SeriesKey = (typeof SERIES)[number]["key"];
 // trade. Only the trade query needs a date spelled out: an absent start date means
 // "everything" to the PnL query but "the last 30 days" to the trade query.
 const FULL_HISTORY_START_DATE = "2023-01-01";
+const MIN_CUSTOM_START_DATE = "2026-06-25";
 type BenchmarkKey = "btc" | "shanghai" | "sp500" | "nasdaq" | "hangSeng" | "star50" | "nasdaq100" | "csiA500";
 
 // ─── Tooltip ─────────────────────────────────────────────────────────────────
@@ -1046,8 +1047,9 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
               <input
                 type="date"
                 value={customStartDate}
+                min={MIN_CUSTOM_START_DATE}
                 max={customEndDate || undefined}
-                onChange={(event) => setCustomStartDate(event.target.value)}
+                onChange={(event) => setCustomStartDate(event.target.value < MIN_CUSTOM_START_DATE ? MIN_CUSTOM_START_DATE : event.target.value)}
                 className="h-7 w-[118px] rounded-md border border-input bg-transparent px-1.5 text-[0.68rem] text-foreground"
                 aria-label={lang === "zh" ? "自定义开始日期" : "Custom start date"}
               />
