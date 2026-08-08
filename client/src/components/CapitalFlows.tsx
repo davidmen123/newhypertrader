@@ -78,7 +78,7 @@ export default function CapitalFlows({ accountId }: { accountId?: string }) {
               <tr>
                 <th>{label("时间", "Time")}</th>
                 <th>{label("类型", "Type")}</th>
-                <th className="text-right">{label("金额", "Amount")}</th>
+                <th style={{ textAlign: "right" }}>{label("金额", "Amount")}</th>
                 <th>{label("来源", "Source")}</th>
               </tr>
             </thead>
