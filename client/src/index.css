@@ -246,6 +246,11 @@
   border-color: rgb(31 107 79 / 65%);
   color: #111315;
 }
+.pnl-chart-range-pill {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+}
 .dark .pill-tab {
   border-color: rgb(255 255 255 / 18%);
   color: rgb(240 240 232 / 80%);

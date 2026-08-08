@@ -439,10 +439,10 @@ function SeriesToggle({
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-1.5 px-3 py-1 rounded-full transition-all"
+      className="pnl-chart-series-toggle flex items-center gap-1 px-2 py-0.5 rounded-full transition-all"
       style={{
-        fontSize: "0.68rem",
-        letterSpacing: "0.06em",
+        fontSize: "0.64rem",
+        letterSpacing: "0.04em",
         border: `1px solid ${active ? color : "var(--panel-border)"}`,
         background: active ? `${color}22` : "transparent",
         color: active ? color : "var(--text-soft)",
@@ -453,7 +453,7 @@ function SeriesToggle({
       <span
         style={{
           display: "inline-block",
-          width: 8, height: 8,
+          width: 6, height: 6,
           borderRadius: "50%",
           background: active ? color : "oklch(35% 0.02 200 / 60%)",
           flexShrink: 0,
@@ -494,8 +494,8 @@ function BenchmarkSeriesToggle({
       <button
         type="button"
         onClick={onToggle}
-        className="flex items-center gap-1.5 py-1 pl-3 pr-1"
-        style={{ fontSize: "0.68rem", letterSpacing: "0.06em" }}
+        className="flex items-center gap-1 py-0.5 pl-2 pr-0.5"
+        style={{ fontSize: "0.64rem", letterSpacing: "0.04em" }}
       >
         <span
           className="inline-block h-2 w-2 shrink-0 rounded-full"
@@ -508,7 +508,7 @@ function BenchmarkSeriesToggle({
           <button
             type="button"
             aria-label="选择对比指数"
-            className="flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:bg-foreground/5"
+          className="flex h-6 w-6 items-center justify-center rounded-full transition-colors hover:bg-foreground/5"
           >
             <ChevronDown size={11} />
           </button>
@@ -1013,31 +1013,31 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
       </div>
 
       {/* Controls row: time range + series toggles — stacks on mobile */}
-      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-4 mb-5 sm:mb-6">
+      <div className="flex flex-col sm:flex-row sm:flex-nowrap sm:items-center gap-2 sm:gap-2 mb-5 sm:mb-6 overflow-x-auto">
         {/* Time range */}
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.62rem" }}>
             {lang === "zh" ? "周期" : "Range"}
           </span>
-          <div className="flex gap-1">
+          <div className="flex shrink-0 gap-1">
             {(["7D", "30D", "90D", "MAX", "CUSTOM"] as const).map((r) => (
               <button
                 key={r}
                 onClick={() => setTimeRange(r)}
-                className={`pill-tab ${timeRange === r ? "active" : ""}`}
+                className={`pill-tab pnl-chart-range-pill ${timeRange === r ? "active" : ""}`}
               >
                 {r === "CUSTOM" ? (lang === "zh" ? "自定义" : "Custom") : r}
               </button>
             ))}
           </div>
           {timeRange === "CUSTOM" && (
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1.5">
               <input
                 type="date"
                 value={customStartDate}
                 max={customEndDate || undefined}
                 onChange={(event) => setCustomStartDate(event.target.value)}
-                className="h-8 rounded-md border border-input bg-transparent px-2 text-xs text-foreground"
+                className="h-7 w-[118px] rounded-md border border-input bg-transparent px-1.5 text-[0.68rem] text-foreground"
                 aria-label={lang === "zh" ? "自定义开始日期" : "Custom start date"}
               />
               <span className="text-xs text-muted-foreground">—</span>
@@ -1046,7 +1046,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
                 value={customEndDate}
                 min={customStartDate || undefined}
                 onChange={(event) => setCustomEndDate(event.target.value)}
-                className="h-8 rounded-md border border-input bg-transparent px-2 text-xs text-foreground"
+                className="h-7 w-[118px] rounded-md border border-input bg-transparent px-1.5 text-[0.68rem] text-foreground"
                 aria-label={lang === "zh" ? "自定义结束日期" : "Custom end date"}
               />
             </div>
@@ -1061,7 +1061,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
           <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.62rem" }}>
             {lang === "zh" ? "显示" : "Show"}
           </span>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex shrink-0 flex-nowrap gap-1.5">
             {SERIES.map((s) => s.key === "btcBenchmark" ? (
               <BenchmarkSeriesToggle
                 key={s.key}
@@ -1119,7 +1119,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
             setSelectedTrade(null);
             setShowReviewDetail(false);
           }}
-          className="text-xs tracking-widest rounded-full px-3 py-1 transition-colors"
+          className="shrink-0 rounded-full px-2 py-0.5 text-[0.68rem] tracking-wider transition-colors"
           style={{
             border: `1px solid ${reviewMode ? "rgb(92 211 184 / 62%)" : "var(--panel-border)"}`,
             color: reviewMode ? "rgb(92 211 184 / 92%)" : "var(--text-soft)",
