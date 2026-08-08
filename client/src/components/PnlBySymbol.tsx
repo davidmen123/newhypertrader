@@ -51,8 +51,8 @@ function TreemapContent(props: any) {
       <rect x={x} y={y} width={width} height={height} fill={fill} stroke="var(--background)" strokeWidth={3} rx={1} />
       {showLabel && row && (
         <>
-          <text x={centerX} y={centerY - (height >= 70 ? valueSize * 0.75 : 0)} textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize={titleSize} fontWeight={500}>{displaySymbol(row.symbol)}</text>
-          {height >= 70 && <text x={centerX} y={centerY + titleSize * 0.85} textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize={valueSize} fontWeight={400}>{signed(row.netPnl)} USDC</text>}
+          <text x={centerX} y={centerY - (height >= 70 ? valueSize * 0.75 : 0)} textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize={titleSize} fontWeight={400}>{displaySymbol(row.symbol)}</text>
+          {height >= 70 && <text x={centerX} y={centerY + titleSize * 0.85} textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize={valueSize} fontWeight={300}>{signed(row.netPnl)} USDC</text>}
         </>
       )}
     </g>
