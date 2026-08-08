@@ -843,7 +843,10 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
   const chartData = useMemo(() => {
     if (baseChartData.length === 0) return baseChartData;
     let rangeChartData = baseChartData;
-    if (startDate) {
+    // Only custom ranges should receive a synthetic start anchor. Standard
+    // ranges must begin at the first real account-value sample; otherwise a
+    // 90D/30D range can draw a flat line before the account history exists.
+    if (timeRange === "CUSTOM" && startDate) {
       const startTimestamp = parseUtc8Timestamp(`${startDate}T00:00:00+08:00`);
       if (baseChartData[0].timestamp > startTimestamp) {
         const firstPoint = baseChartData[0];
@@ -875,7 +878,7 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
       timestamp: parseUtc8Timestamp(`${day}T00:00:00+08:00`),
     }));
     return [...anchorPoints, ...rangeChartData].sort((a, b) => a.timestamp - b.timestamp);
-  }, [baseChartData, reviewMode, startDate, visibleReviewTrades]);
+  }, [baseChartData, reviewMode, startDate, timeRange, visibleReviewTrades]);
   const tradeMarkers = useMemo<TradeMarker[]>(() => {
     if (chartData.length === 0) return [];
     const tradesByDay = new Map<string, TradeFill[]>();
