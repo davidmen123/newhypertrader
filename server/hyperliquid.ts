@@ -1216,6 +1216,18 @@ function nearestHistoryValue(history: Array<[number, string]>, time: number) {
   return best[1];
 }
 
+function historyValueAtOrBefore(history: Array<[number, string]>, time: number) {
+  let best: [number, string] | null = null;
+  for (const row of history) {
+    if (row[0] > time) continue;
+    if (!best || row[0] > best[0]) best = row;
+  }
+  // If a range begins before the first PnL sample, use that first sample as
+  // the only available baseline rather than looking into the future for a
+  // later, nearer value.
+  return best?.[1] ?? history[0]?.[1] ?? null;
+}
+
 /**
  * Drops the zero-equity samples at the front of an account value series.
  *
@@ -1287,7 +1299,7 @@ export async function getHyperliquidPortfolioSnapshots(params: {
   };
 
   const rawPnlAt = (time: number, equity: string) =>
-    toNumber(nearestHistoryValue(pnlHistory, time) ?? toNumber(equity) - baseEquity);
+    toNumber(historyValueAtOrBefore(pnlHistory, time) ?? toNumber(equity) - baseEquity);
 
   // A bounded range (7D/30D/90D) rebases PnL to its first visible point, so the
   // curve answers "how did the account do over these days". A full-history range
