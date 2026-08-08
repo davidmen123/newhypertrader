@@ -38,6 +38,15 @@ function isDefaultAccountId(accountId: string | undefined) {
   return accountId == null || accountId.trim().toLowerCase() === DEFAULT_HYPERLIQUID_ACCOUNT_ID;
 }
 
+function canonicalPnlSymbol(symbol: string) {
+  const normalized = symbol.trim().toUpperCase();
+  const withoutVenue = normalized.includes(":")
+    ? normalized.slice(normalized.lastIndexOf(":") + 1)
+    : normalized;
+  const baseSymbol = withoutVenue.replace(/[-_:/.]?(?:PERP|USDT|USDC)$/i, "");
+  return baseSymbol || normalized;
+}
+
 /**
  * Resolves the account for this call and runs the reads inside its scope.
  *
@@ -579,10 +588,11 @@ export const hyperliquidRouter = router({
           fees: number;
         }>();
         const getRow = (symbol: string) => {
-          const existing = grouped.get(symbol);
+          const canonicalSymbol = canonicalPnlSymbol(symbol);
+          const existing = grouped.get(canonicalSymbol);
           if (existing) return existing;
-          const row = { symbol, realizedPnl: 0, unrealizedPnl: 0, fundingFee: 0, fees: 0 };
-          grouped.set(symbol, row);
+          const row = { symbol: canonicalSymbol, realizedPnl: 0, unrealizedPnl: 0, fundingFee: 0, fees: 0 };
+          grouped.set(canonicalSymbol, row);
           return row;
         };
 
