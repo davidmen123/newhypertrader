@@ -40,6 +40,7 @@ const SERIES = [
 ] as const;
 
 type SeriesKey = (typeof SERIES)[number]["key"];
+export type PnlDateRange = { startDate?: string; endDate?: string };
 // Hyperliquid launched in 2023, so this reaches back past any account's first
 // trade. Only the trade query needs a date spelled out: an absent start date means
 // "everything" to the PnL query but "the last 30 days" to the trade query.
@@ -530,7 +531,7 @@ function BenchmarkSeriesToggle({
 // ─── Main component ───────────────────────────────────────────────────────────
 // accountId selects which configured Hyperliquid account to chart. Left undefined
 // (the home page) it charts the default account.
-export default function PnlChart({ accountId }: { accountId?: string } = {}) {
+export default function PnlChart({ accountId, onDateRangeChange }: { accountId?: string; onDateRangeChange?: (range: PnlDateRange) => void } = {}) {
   const { lang } = useLang();
   const { theme } = useTheme();
   type TimeRange = "24H" | "30D" | "90D" | "MAX" | "CUSTOM";
@@ -577,6 +578,10 @@ export default function PnlChart({ accountId }: { accountId?: string } = {}) {
     return formatUtc8Date(d);
   }, [customStartDate, timeRange]);
   const endDate = timeRange === "CUSTOM" ? customEndDate || undefined : undefined;
+
+  useEffect(() => {
+    onDateRangeChange?.({ startDate, endDate });
+  }, [endDate, onDateRangeChange, startDate]);
 
   // Generous limit — actual filtering is done server-side by startDate
   const queryLimit = 1000;

@@ -11,6 +11,7 @@ type PnlBySymbolRow = {
   fees: number;
   netPnl: number;
 };
+type PnlDateRange = { startDate?: string; endDate?: string };
 
 const PROFIT = "oklch(58% 0.16 158)";
 const LOSS = "oklch(62% 0.16 25)";
@@ -76,10 +77,10 @@ function PnlTooltip({ active, payload, lang }: { active?: boolean; payload?: Arr
   );
 }
 
-export default function PnlBySymbol({ accountId }: { accountId?: string } = {}) {
+export default function PnlBySymbol({ accountId, dateRange }: { accountId?: string; dateRange?: PnlDateRange } = {}) {
   const { lang } = useLang();
   const { data = [], isLoading, isFetching, refetch } = trpc.hyperliquid.pnlBySymbol.useQuery(
-    { accountId },
+    { accountId, startDate: dateRange?.startDate, endDate: dateRange?.endDate },
     { refetchInterval: 120_000 },
   );
   const rows = data as PnlBySymbolRow[];
@@ -95,7 +96,9 @@ export default function PnlBySymbol({ accountId }: { accountId?: string } = {}) 
           </h2>
           <div className="mt-2" style={{ width: 40, height: 1, background: "rgb(215 187 114 / 62%)" }} />
           <div className="mt-2 text-xs text-muted-foreground/60">
-            {lang === "zh" ? "全周期净盈亏贡献 · 已实现 + 未实现 + 资金费 − 手续费" : "All-time PnL contribution · realized + unrealized + funding − fees"}
+            {lang === "zh"
+              ? `${dateRange?.startDate || dateRange?.endDate ? `${dateRange.startDate ?? "起始"} 至 ${dateRange.endDate ?? "今"}` : "全周期"}净盈亏贡献 · 已实现 + 未实现 + 资金费 − 手续费`
+              : `${dateRange?.startDate || dateRange?.endDate ? `${dateRange.startDate ?? "Start"} to ${dateRange.endDate ?? "Now"}` : "All-time"} PnL contribution · realized + unrealized + funding − fees`}
           </div>
         </div>
         <div className="flex items-center gap-3">

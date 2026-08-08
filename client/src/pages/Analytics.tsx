@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useTheme } from "@/contexts/ThemeContext";
 import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 import AccountOverview from "@/components/AccountOverview";
-import PnlChart from "@/components/PnlChart";
+import PnlChart, { type PnlDateRange } from "@/components/PnlChart";
 import PnlBySymbol from "@/components/PnlBySymbol";
 import PositionsTable from "@/components/PositionsTable";
 import TradeHistory from "@/components/TradeHistory";
@@ -679,6 +679,7 @@ const ACCOUNT_STORAGE_KEY = "analytics.hyperliquidAccountId";
 
 function AccountPnlManager() {
   const { data: accounts, isLoading, error } = trpc.hyperliquid.accounts.useQuery();
+  const [pnlDateRange, setPnlDateRange] = useState<PnlDateRange>({});
   const [storedId, setStoredId] = useState<string | null>(() => {
     try {
       return localStorage.getItem(ACCOUNT_STORAGE_KEY);
@@ -691,6 +692,10 @@ function AccountPnlManager() {
   // Fall back to the first account whenever the remembered id is gone from the
   // config, so a removed address can't leave the page reading nothing.
   const activeId = list.some((account) => account.id === storedId) ? storedId! : list[0]?.id;
+
+  useEffect(() => {
+    setPnlDateRange({});
+  }, [activeId]);
 
   const selectAccount = (id: string) => {
     setStoredId(id);
@@ -743,8 +748,8 @@ function AccountPnlManager() {
       <div key={activeId} className="space-y-5">
         <AccountOverview accountId={activeId} />
         <AccountRating accountId={activeId} />
-        <PnlChart accountId={activeId} />
-        <PnlBySymbol accountId={activeId} />
+        <PnlChart accountId={activeId} onDateRangeChange={setPnlDateRange} />
+        <PnlBySymbol accountId={activeId} dateRange={pnlDateRange} />
         <PositionsTable accountId={activeId} />
         <TradeHistory accountId={activeId} />
       </div>

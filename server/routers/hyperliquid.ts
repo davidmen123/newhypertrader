@@ -585,8 +585,12 @@ export const hyperliquidRouter = router({
     }))
     .query(async ({ ctx, input }) =>
       withAccount(ctx, input, async () => {
-        const startTime = input.startDate ? new Date(`${input.startDate}T00:00:00`).getTime() : 0;
-        const endTime = input.endDate ? new Date(`${input.endDate}T23:59:59`).getTime() : Date.now();
+        const startTime = input.startDate ? new Date(`${input.startDate}T00:00:00+08:00`).getTime() : 0;
+        const endTime = input.endDate ? new Date(`${input.endDate}T23:59:59+08:00`).getTime() : Date.now();
+        // Historical position snapshots are not available from the exchange.
+        // Do not attach today's unrealized PnL to a custom range that ends in
+        // the past; bounded ranges then remain based on the trades in that range.
+        const includeCurrentPositions = !input.endDate || endTime >= Date.now();
         const [history, positions] = await Promise.all([
           getHyperliquidTradeHistory({ startTime, endTime, limit: 10000, category: "ALL" }),
           getHyperliquidPositions(),
@@ -613,11 +617,13 @@ export const hyperliquidRouter = router({
           row.fundingFee += Number(trade.fundingFee) || 0;
           row.fees += (trade.feeDetail ?? []).reduce((sum, item) => sum + Math.abs(Number(item.fee) || 0), 0);
         }
-        for (const position of positions) {
-          const row = getRow(position.symbol);
-          row.unrealizedPnl += Number(position.unrealisedPnl) || 0;
-          // Open-position funding has not yet been assigned to a closing fill.
-          row.fundingFee += Number(position.fundingFee) || 0;
+        if (includeCurrentPositions) {
+          for (const position of positions) {
+            const row = getRow(position.symbol);
+            row.unrealizedPnl += Number(position.unrealisedPnl) || 0;
+            // Open-position funding has not yet been assigned to a closing fill.
+            row.fundingFee += Number(position.fundingFee) || 0;
+          }
         }
 
         const rows = Array.from(grouped.values()).map((row) => ({
