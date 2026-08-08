@@ -192,8 +192,8 @@ function build() {
       {
         version: "1.62.1",
         date: "2026-08-08",
-        zh: "损益历史及复盘模式增减字段优化",
-        en: "Optimized PnL history and review mode fields",
+        zh: "损益历史新增周期自定义，复盘模式字段与交易节点优化",
+        en: "Added custom PnL ranges and optimized review fields and trade nodes",
       },
     ].reverse();
   }
