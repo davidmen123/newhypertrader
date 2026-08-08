@@ -4,6 +4,7 @@ import { writeAdminKey } from "@/lib/adminKey";
 import { ArrowLeft, Clock, Globe, Info, Laptop, MapPin, Monitor, Moon, Plus, RefreshCw, Smartphone, Sun, Trash2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTheme } from "@/contexts/ThemeContext";
+import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 import AccountOverview from "@/components/AccountOverview";
 import PnlChart from "@/components/PnlChart";
 import PnlBySymbol from "@/components/PnlBySymbol";
@@ -106,6 +107,103 @@ function KpiTile({ label, value, sub, tooltip }: { label: string; value: string;
 
 function EmptyState() {
   return <div className="text-center py-10 text-muted-foreground/60 text-sm">暂无数据</div>;
+}
+
+function clampRating(value: number): number {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function rangeRating(value: number | null | undefined, low: number, high: number): number {
+  if (value == null || !Number.isFinite(value)) return 50;
+  return clampRating(20 + ((value - low) / (high - low)) * 80);
+}
+
+function RatingBar({ label, score, detail }: { label: string; score: number; detail: string }) {
+  const color = score >= 80 ? GREEN : score >= 60 ? GOLD : "oklch(62% 0.15 25)";
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-muted-foreground" style={{ fontSize: "0.72rem" }}>{label}</span>
+        <span className="num-display" style={{ color, fontSize: "0.72rem" }}>{score}</span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full" style={{ background: "var(--panel-border)" }}>
+        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${score}%`, background: color }} />
+      </div>
+      <div className="text-muted-foreground/55" style={{ fontSize: "0.61rem" }}>{detail}</div>
+    </div>
+  );
+}
+
+function AccountRating({ accountId }: { accountId?: string }) {
+  const { data: overview, isLoading: overviewLoading } = trpc.hyperliquid.accountOverview.useQuery(
+    { accountId },
+    { refetchInterval: 60_000 },
+  );
+  const { data: metrics, isLoading: metricsLoading } = trpc.hyperliquid.tradeMetrics.useQuery(
+    { accountId },
+    { refetchInterval: 60_000 },
+  );
+
+  if (overviewLoading || metricsLoading) {
+    return <Panel title="账户评级" sub="五维账户体检"><div className="py-10 text-center text-sm text-muted-foreground animate-pulse">计算账户评级中…</div></Panel>;
+  }
+  if (!overview || !metrics) return null;
+
+  const profitability = rangeRating(overview.annualizedReturnPct ?? overview.totalPnlPct, 0, 50);
+  const stability = overview.sharpeRatio != null
+    ? rangeRating(overview.sharpeRatio, 0, 2)
+    : rangeRating(overview.maxDrawdownPct != null ? -Math.abs(overview.maxDrawdownPct) : null, -20, 0);
+  const drawdown = overview.maxDrawdownPct == null ? null : Math.abs(overview.maxDrawdownPct);
+  const riskControl = drawdown == null
+    ? 50
+    : clampRating(100 - drawdown * 4 - Math.max(0, overview.marginUsageRatio || 0) * 2);
+  const winRate = metrics.winRate ?? null;
+  const winScore = winRate == null ? 50 : clampRating(winRate);
+  // Direct market-regime data is not yet persisted. Use trade quality as a
+  // conservative proxy and label it explicitly until benchmark alpha is added.
+  const marketAwareness = clampRating(
+    ((rangeRating(metrics.profitFactor, 0.5, 2) + rangeRating(metrics.plRatio, 0.5, 3)) / 2),
+  );
+  const dimensions = [
+    { key: "profitability", label: "盈利能力", score: profitability, detail: overview.annualizedReturnPct != null ? `年化收益 ${overview.annualizedReturnPct.toFixed(2)}%` : "依据累计收益率" },
+    { key: "stability", label: "稳定性", score: stability, detail: overview.sharpeRatio != null ? `夏普 ${overview.sharpeRatio.toFixed(2)}` : "依据回撤表现" },
+    { key: "risk", label: "风险控制", score: riskControl, detail: drawdown != null ? `最大回撤 ${drawdown.toFixed(2)}%` : "暂无回撤数据" },
+    { key: "winRate", label: "胜率", score: winScore, detail: winRate != null ? `完整交易胜率 ${winRate.toFixed(2)}%` : "暂无完整交易" },
+    { key: "market", label: "市场感知", score: marketAwareness, detail: "暂以盈利因子与盈亏比代理" },
+  ];
+  const overall = Math.round(dimensions.reduce((sum, item) => sum + item.score, 0) / dimensions.length);
+  const ratingLabel = overall >= 90 ? "优秀" : overall >= 80 ? "良好" : overall >= 70 ? "中等" : overall >= 60 ? "偏弱" : "需要改善";
+  const ratingColor = overall >= 80 ? GREEN : overall >= 60 ? GOLD : "oklch(62% 0.15 25)";
+  const radarData = dimensions.map((item) => ({ subject: item.label, score: item.score, fullMark: 100 }));
+
+  return (
+    <Panel title="账户评级" sub="五维账户体检 · 0–100 分">
+      <div className="grid gap-5 lg:grid-cols-[0.72fr_1fr_1.15fr] lg:items-center">
+        <div className="flex flex-col items-center justify-center rounded-lg px-4 py-6 text-center" style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}>
+          <div className="text-muted-foreground tracking-widest" style={{ fontSize: "0.62rem" }}>综合评分</div>
+          <div className="num-display mt-2" style={{ color: ratingColor, fontSize: "3.2rem", lineHeight: 1 }}>{overall}</div>
+          <div className="mt-2 rounded-full px-3 py-1" style={{ color: ratingColor, background: `${ratingColor}18`, border: `1px solid ${ratingColor}44`, fontSize: "0.72rem" }}>{ratingLabel}</div>
+          <div className="mt-4 text-muted-foreground/60" style={{ fontSize: "0.62rem" }}>基于当前账户历史数据</div>
+        </div>
+        <div className="h-[230px] min-w-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="68%">
+              <PolarGrid stroke="var(--panel-border)" />
+              <PolarAngleAxis dataKey="subject" tick={{ fill: "var(--text-soft)", fontSize: 11 }} />
+              <Radar name="账户评级" dataKey="score" stroke={GREEN} fill={GREEN} fillOpacity={0.2} strokeWidth={1.5} />
+              <RechartsTooltip formatter={(value) => [`${value} 分`, "评分"]} contentStyle={{ background: "var(--background)", border: "1px solid var(--panel-border)", borderRadius: 8, fontSize: 12 }} />
+            </RadarChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="space-y-4">
+          {dimensions.map((item) => <RatingBar key={item.key} label={item.label} score={item.score} detail={item.detail} />)}
+        </div>
+      </div>
+      <div className="mt-5 rounded-lg px-3 py-2.5 text-muted-foreground/60" style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)", fontSize: "0.62rem" }}>
+        评分为账户分析辅助指标，不代表收益承诺；市场感知当前为代理评分，待接入基准超额收益和不同市场阶段表现后再升级为直接评分。
+      </div>
+    </Panel>
+  );
 }
 
 function HBarRow({ label, value, pct, widthPct, color }: { label: string; value: string; pct: string; widthPct: number; color: string }) {
@@ -575,6 +673,7 @@ function AccountPnlManager() {
           previous account's numbers while the new ones load. */}
       <div key={activeId} className="space-y-5">
         <AccountOverview accountId={activeId} />
+        <AccountRating accountId={activeId} />
         <PnlChart accountId={activeId} />
         <PnlBySymbol accountId={activeId} />
         <PositionsTable accountId={activeId} />
