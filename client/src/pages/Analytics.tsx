@@ -7,6 +7,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 import AccountOverview from "@/components/AccountOverview";
 import CapitalFlows from "@/components/CapitalFlows";
+import DailyPnlCharts from "@/components/DailyPnlCharts";
 import PnlChart, { type PnlDateRange } from "@/components/PnlChart";
 import PnlBySymbol from "@/components/PnlBySymbol";
 import PositionsTable from "@/components/PositionsTable";
@@ -781,6 +782,7 @@ function AccountPnlManager() {
         <CapitalFlows accountId={activeId} />
         <AccountRating accountId={activeId} />
         <PnlChart accountId={activeId} onDateRangeChange={setPnlDateRange} />
+        <DailyPnlCharts accountId={activeId} />
         <PnlBySymbol accountId={activeId} dateRange={pnlDateRange} />
         <PositionsTable accountId={activeId} />
         <TradeHistory accountId={activeId} />
