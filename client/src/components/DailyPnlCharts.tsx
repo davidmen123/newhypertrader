@@ -137,12 +137,13 @@ export default function DailyPnlCharts({ accountId }: { accountId?: string }) {
     for (const row of rows) {
       if (row.time < selectedStart) previousPnl = row.pnl;
     }
-    let cumulative = 0;
     return selected.map(([day, row]) => {
       const dailyPnl = previousPnl == null ? 0 : row.pnl - previousPnl;
-      cumulative += dailyPnl;
       previousPnl = row.pnl;
-      return { day, dailyPnl, cumulativePnl: cumulative };
+      // totalPnl is Hyperliquid's account-level cumulative PnL with
+      // rebase=false. Keep it absolute so this chart remains aligned with
+      // AccountOverview, even when the user selects a bounded date range.
+      return { day, dailyPnl, cumulativePnl: row.pnl };
     });
   }, [endDate, history, startDate]);
 
