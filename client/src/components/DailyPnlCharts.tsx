@@ -9,6 +9,7 @@ type TradeRow = {
   symbol: string;
   createdTime: string;
   execPnl: string;
+  tradeSide?: string;
   fundingFee?: string;
   feeDetail?: Array<{ fee: string }>;
 };
@@ -48,6 +49,16 @@ function tradeNetPnl(trade: TradeRow) {
   const funding = Number(trade.fundingFee ?? 0) || 0;
   const fees = (trade.feeDetail ?? []).reduce((sum, item) => sum + Math.abs(Number(item.fee ?? 0) || 0), 0);
   return realized + funding - fees;
+}
+
+function isCompletedTrade(trade: TradeRow) {
+  const direction = String(trade.tradeSide ?? "").toLowerCase();
+  if (direction.includes("close")) return true;
+  // Spot fills do not always carry an explicit Close direction. Only accept
+  // them when the exchange reports a non-zero realized PnL; an opening fill
+  // with fees alone must not appear in the realized-PnL breakdown.
+  const isSpot = !/-PERP$/i.test(trade.symbol);
+  return isSpot && Math.abs(Number(trade.execPnl ?? 0) || 0) > 0.000001;
 }
 
 function PnlTooltip({ active, payload, label, cumulative, lang }: { active?: boolean; payload?: Array<{ value?: number }>; label?: string; cumulative?: boolean; lang: string }) {
@@ -144,6 +155,7 @@ export default function DailyPnlCharts({ accountId }: { accountId?: string }) {
     const grouped = new Map<string, number>();
     for (const trade of (tradeHistory?.trades ?? []) as TradeRow[]) {
       if (utc8Date(Number(trade.createdTime)) !== selectedDay) continue;
+      if (!isCompletedTrade(trade)) continue;
       const symbol = displaySymbol(trade.symbol) || trade.symbol;
       grouped.set(symbol, (grouped.get(symbol) ?? 0) + tradeNetPnl(trade));
     }
