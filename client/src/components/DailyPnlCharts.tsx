@@ -240,7 +240,7 @@ export default function DailyPnlCharts({ accountId }: { accountId?: string }) {
               <div className="h-[230px] min-w-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={selectedSymbolPnl} dataKey="absolutePnl" nameKey="symbol" cx="50%" cy="50%" innerRadius={48} outerRadius={86} paddingAngle={2} stroke="var(--background)" strokeWidth={2}>
+                    <Pie data={selectedSymbolPnl} dataKey="absolutePnl" nameKey="symbol" cx="50%" cy="50%" outerRadius={86} paddingAngle={2} stroke="var(--background)" strokeWidth={2}>
                       {selectedSymbolPnl.map((item) => <Cell key={item.symbol} fill={item.pnl >= 0 ? PROFIT : LOSS} />)}
                     </Pie>
                     <Tooltip content={<PieTooltip lang={lang} totalAbsPnl={selectedTotalAbsPnl} />} />
