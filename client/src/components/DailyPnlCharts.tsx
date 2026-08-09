@@ -156,8 +156,8 @@ export default function DailyPnlCharts({ accountId }: { accountId?: string }) {
   const selectedTotalAbsPnl = selectedSymbolPnl.reduce((sum, item) => sum + item.absolutePnl, 0);
 
   const labels = lang === "zh"
-    ? { daily: "每日账户盈亏", cumulative: "累计盈亏", range: "周期", noData: "该区间暂无每日盈亏数据" }
-    : { daily: "Daily Account PnL", cumulative: "Cumulative PnL", range: "Range", noData: "No daily PnL data for this range" };
+    ? { daily: "每日账户总盈亏", cumulative: "累计账户总盈亏", range: "周期", noData: "该区间暂无每日盈亏数据", dailyNote: "包含已实现盈亏、未实现盈亏变化及账户级费用/收入" }
+    : { daily: "Daily Total Account PnL", cumulative: "Cumulative Total Account PnL", range: "Range", noData: "No daily PnL data for this range", dailyNote: "Includes realized PnL, changes in unrealized PnL, and account-level fees/income" };
   const rangeOptions: Array<{ key: DailyRange; label: string }> = lang === "zh"
     ? [{ key: "24H", label: "24H" }, { key: "30D", label: "30D" }, { key: "90D", label: "90D" }, { key: "MAX", label: "MAX" }, { key: "CUSTOM", label: "自定义" }]
     : [{ key: "24H", label: "24H" }, { key: "30D", label: "30D" }, { key: "90D", label: "90D" }, { key: "MAX", label: "MAX" }, { key: "CUSTOM", label: "Custom" }];
@@ -168,6 +168,7 @@ export default function DailyPnlCharts({ accountId }: { accountId?: string }) {
         <div>
           <h2 className="text-xl font-light sm:text-2xl" style={{ fontFamily: "Cormorant Garamond, serif" }}>{lang === "zh" ? "每日盈亏" : "Daily PnL"}</h2>
           <div className="mt-2" style={{ width: 40, height: 1, background: "rgb(215 187 114 / 62%)" }} />
+          <div className="mt-2 text-muted-foreground/60" style={{ fontSize: "0.65rem" }}>{labels.dailyNote}</div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-muted-foreground tracking-widest" style={{ fontSize: "0.62rem" }}>{labels.range}</span>
@@ -228,6 +229,9 @@ export default function DailyPnlCharts({ accountId }: { accountId?: string }) {
               <div className="mt-1 text-lg font-light">{dayLabel(selectedDay)}</div>
             </div>
             <div className="text-xs text-muted-foreground/70">{lang === "zh" ? "鼠标悬停每日盈亏柱查看" : "Hover a daily PnL bar to switch day"}</div>
+          </div>
+          <div className="mb-4 text-xs text-muted-foreground/60">
+            {lang === "zh" ? "仅统计当日已平仓交易，未包含未平仓持仓的浮动盈亏，因此合计值可能与上方账户总盈亏不同。" : "Realized closed-trade PnL only; unrealized PnL from open positions is excluded, so the total may differ from the account PnL above."}
           </div>
           {selectedSymbolPnl.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground/60">{lang === "zh" ? "当日暂无已实现交易盈亏" : "No realized trade PnL for this day"}</div>
