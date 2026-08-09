@@ -119,6 +119,14 @@ export default function DailyPnlCharts({ accountId }: { accountId?: string }) {
     { staleTime: 60_000, refetchOnWindowFocus: false },
   );
   const points = useMemo<DailyPoint[]>(() => {
+    const allTimePnlByDay = new Map<string, number>();
+    for (const row of (accountHistory as PnlRow[])) {
+      const time = parseUtc8(row.date);
+      const pnl = Number(row.totalPnl);
+      if (Number.isFinite(time) && Number.isFinite(pnl)) {
+        allTimePnlByDay.set(utc8Date(time), pnl);
+      }
+    }
     const rows = (history as PnlRow[])
       .map((row) => ({ time: parseUtc8(row.date), day: utc8Date(parseUtc8(row.date)), pnl: Number(row.totalPnl) }))
       .filter((row) => Number.isFinite(row.time) && Number.isFinite(row.pnl))
@@ -140,12 +148,12 @@ export default function DailyPnlCharts({ accountId }: { accountId?: string }) {
     return selected.map(([day, row]) => {
       const dailyPnl = previousPnl == null ? 0 : row.pnl - previousPnl;
       previousPnl = row.pnl;
-      // totalPnl is Hyperliquid's account-level cumulative PnL with
-      // rebase=false. Keep it absolute so this chart remains aligned with
-      // AccountOverview, even when the user selects a bounded date range.
-      return { day, dailyPnl, cumulativePnl: row.pnl };
+      // Use the full-history series for the cumulative chart. A bounded
+      // request may be served from a shorter exchange window whose PnL is
+      // relative to that window; it must not redefine account-level history.
+      return { day, dailyPnl, cumulativePnl: allTimePnlByDay.get(day) ?? row.pnl };
     });
-  }, [endDate, history, startDate]);
+  }, [accountHistory, endDate, history, startDate]);
 
   useEffect(() => {
     if (selectedDay && !points.some((point) => point.day === selectedDay)) setSelectedDay(null);
