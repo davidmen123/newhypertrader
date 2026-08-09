@@ -1,11 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLang } from "@/contexts/LangContext";
-import { Bar, BarChart, CartesianGrid, Cell, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 type DailyRange = "24H" | "30D" | "90D" | "MAX" | "CUSTOM";
 type PnlRow = { date: string; totalPnl: string };
+type TradeRow = {
+  symbol: string;
+  createdTime: string;
+  execPnl: string;
+  fundingFee?: string;
+  feeDetail?: Array<{ fee: string }>;
+};
 type DailyPoint = { day: string; dailyPnl: number; cumulativePnl: number };
+type SymbolPnl = { symbol: string; pnl: number; absolutePnl: number };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PROFIT = "oklch(68% 0.15 145)";
@@ -28,6 +36,20 @@ function fmt(value: number) {
   return value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function displaySymbol(symbol: string) {
+  return symbol
+    .replace(/-PERP$/i, "")
+    .replace(/[-/]USDC$/i, "")
+    .replace(/[-/]USDT0?$/i, "");
+}
+
+function tradeNetPnl(trade: TradeRow) {
+  const realized = Number(trade.execPnl ?? 0) || 0;
+  const funding = Number(trade.fundingFee ?? 0) || 0;
+  const fees = (trade.feeDetail ?? []).reduce((sum, item) => sum + Math.abs(Number(item.fee ?? 0) || 0), 0);
+  return realized + funding - fees;
+}
+
 function PnlTooltip({ active, payload, label, cumulative, lang }: { active?: boolean; payload?: Array<{ value?: number }>; label?: string; cumulative?: boolean; lang: string }) {
   if (!active || !payload?.[0] || !label) return null;
   const value = Number(payload[0].value ?? 0);
@@ -40,9 +62,22 @@ function PnlTooltip({ active, payload, label, cumulative, lang }: { active?: boo
   );
 }
 
+function PieTooltip({ active, payload, lang, totalAbsPnl }: { active?: boolean; payload?: Array<{ payload?: SymbolPnl }>; lang: string; totalAbsPnl: number }) {
+  const item = payload?.[0]?.payload;
+  if (!active || !item) return null;
+  return (
+    <div className="rounded-lg border px-3 py-2 text-xs shadow-lg" style={{ background: "var(--background)", borderColor: "var(--panel-border)" }}>
+      <div className="mb-1 text-muted-foreground/70">{item.symbol}</div>
+      <div style={{ color: item.pnl >= 0 ? PROFIT : LOSS }}>{lang === "zh" ? "净盈亏" : "Net PnL"}: {item.pnl >= 0 ? "+" : ""}{fmt(item.pnl)} USDC</div>
+      <div className="mt-1 text-muted-foreground/70">{lang === "zh" ? "占比" : "Share"}: {totalAbsPnl > 0 ? (item.absolutePnl / totalAbsPnl * 100).toFixed(1) : "0.0"}%</div>
+    </div>
+  );
+}
+
 export default function DailyPnlCharts({ accountId }: { accountId?: string }) {
   const { lang } = useLang();
   const [range, setRange] = useState<DailyRange>("30D");
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [customStart, setCustomStart] = useState(() => utc8Date(Date.now() - 29 * DAY_MS));
   const [customEnd, setCustomEnd] = useState(() => utc8Date(Date.now()));
   const startDate = useMemo(() => {
@@ -67,6 +102,10 @@ export default function DailyPnlCharts({ accountId }: { accountId?: string }) {
   const { data: history = [], isLoading, isFetching, refetch } = trpc.hyperliquid.pnlHistory.useQuery(
     { accountId, startDate: queryStartDate, endDate, limit: 1000, rebase: false },
     { refetchInterval: 120_000 },
+  );
+  const { data: tradeHistory } = trpc.hyperliquid.tradeHistory.useQuery(
+    { accountId, startDate, endDate, category: "ALL", limit: 10000, allHistory: true },
+    { staleTime: 60_000, refetchOnWindowFocus: false },
   );
   const points = useMemo<DailyPoint[]>(() => {
     const rows = (history as PnlRow[])
@@ -95,6 +134,26 @@ export default function DailyPnlCharts({ accountId }: { accountId?: string }) {
       return { day, dailyPnl, cumulativePnl: cumulative };
     });
   }, [endDate, history, startDate]);
+
+  useEffect(() => {
+    if (selectedDay && !points.some((point) => point.day === selectedDay)) setSelectedDay(null);
+  }, [points, selectedDay]);
+
+  const selectedSymbolPnl = useMemo<SymbolPnl[]>(() => {
+    if (!selectedDay) return [];
+    const grouped = new Map<string, number>();
+    for (const trade of (tradeHistory?.trades ?? []) as TradeRow[]) {
+      if (utc8Date(Number(trade.createdTime)) !== selectedDay) continue;
+      const symbol = displaySymbol(trade.symbol) || trade.symbol;
+      grouped.set(symbol, (grouped.get(symbol) ?? 0) + tradeNetPnl(trade));
+    }
+    return Array.from(grouped.entries())
+      .map(([symbol, pnl]) => ({ symbol, pnl, absolutePnl: Math.abs(pnl) }))
+      .filter((item) => item.absolutePnl > 0.000001)
+      .sort((a, b) => b.absolutePnl - a.absolutePnl);
+  }, [selectedDay, tradeHistory?.trades]);
+
+  const selectedTotalAbsPnl = selectedSymbolPnl.reduce((sum, item) => sum + item.absolutePnl, 0);
 
   const labels = lang === "zh"
     ? { daily: "每日账户盈亏", cumulative: "累计盈亏", range: "周期", noData: "该区间暂无每日盈亏数据" }
@@ -132,14 +191,20 @@ export default function DailyPnlCharts({ accountId }: { accountId?: string }) {
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
           {[
-            { title: labels.daily, key: "dailyPnl" as const, cumulative: false },
+            { title: labels.daily, key: "dailyPnl" as const, cumulative: false, interactive: true },
             { title: labels.cumulative, key: "cumulativePnl" as const, cumulative: true },
           ].map((chart) => (
             <div key={chart.key} className="min-w-0">
               <div className="mb-2 text-muted-foreground/70" style={{ fontSize: "0.72rem" }}>{chart.title}</div>
               <div className="h-[280px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={points} margin={{ top: 8, right: 8, left: 4, bottom: 8 }}>
+                  <BarChart
+                    data={points}
+                    margin={{ top: 8, right: 8, left: 4, bottom: 8 }}
+                    onMouseMove={chart.interactive ? (state) => {
+                      if (state?.activeLabel) setSelectedDay(String(state.activeLabel));
+                    } : undefined}
+                  >
                     <CartesianGrid stroke="rgb(117 160 148 / 14%)" vertical={false} strokeDasharray="2 8" />
                     <XAxis dataKey="day" tickFormatter={dayLabel} tick={{ fill: "var(--text-soft)", fontSize: 10 }} tickLine={false} axisLine={{ stroke: "var(--panel-border)" }} minTickGap={28} />
                     <YAxis tick={{ fill: "var(--text-soft)", fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(value) => `${Math.round(value)}`} width={48} />
@@ -153,6 +218,47 @@ export default function DailyPnlCharts({ accountId }: { accountId?: string }) {
               </div>
             </div>
           ))}
+        </div>
+      )}
+      {selectedDay && (
+        <div className="mt-7 border-t border-border/30 pt-5">
+          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+            <div>
+              <div className="text-muted-foreground/70" style={{ fontSize: "0.68rem" }}>{lang === "zh" ? "当日交易盈亏分布" : "Daily Trade PnL Distribution"}</div>
+              <div className="mt-1 text-lg font-light">{dayLabel(selectedDay)}</div>
+            </div>
+            <div className="text-xs text-muted-foreground/70">{lang === "zh" ? "鼠标悬停每日盈亏柱查看" : "Hover a daily PnL bar to switch day"}</div>
+          </div>
+          {selectedSymbolPnl.length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground/60">{lang === "zh" ? "当日暂无已实现交易盈亏" : "No realized trade PnL for this day"}</div>
+          ) : (
+            <div className="grid items-center gap-6 lg:grid-cols-[minmax(220px,0.8fr)_minmax(260px,1.2fr)]">
+              <div className="h-[230px] min-w-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={selectedSymbolPnl} dataKey="absolutePnl" nameKey="symbol" cx="50%" cy="50%" innerRadius={48} outerRadius={86} paddingAngle={2} stroke="var(--background)" strokeWidth={2}>
+                      {selectedSymbolPnl.map((item) => <Cell key={item.symbol} fill={item.pnl >= 0 ? PROFIT : LOSS} />)}
+                    </Pie>
+                    <Tooltip content={<PieTooltip lang={lang} totalAbsPnl={selectedTotalAbsPnl} />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="space-y-2">
+                {selectedSymbolPnl.map((item) => (
+                  <div key={item.symbol} className="flex items-center justify-between gap-4 rounded-md border border-border/20 px-3 py-2 text-sm">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: item.pnl >= 0 ? PROFIT : LOSS }} />
+                      <span className="truncate">{item.symbol}</span>
+                    </div>
+                    <span className="num-display shrink-0" style={{ color: item.pnl >= 0 ? PROFIT : LOSS }}>{item.pnl >= 0 ? "+" : ""}{fmt(item.pnl)} USDC</span>
+                  </div>
+                ))}
+                <div className="border-t border-border/30 pt-2 text-right text-xs text-muted-foreground/70">
+                  {lang === "zh" ? "按盈亏绝对值占比" : "Sized by absolute PnL"}: {fmt(selectedTotalAbsPnl)} USDC
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </section>
