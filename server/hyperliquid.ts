@@ -584,6 +584,20 @@ export async function getHyperliquidOrderHistory(limit = 200) {
     .slice(0, limit)
     .map((entry) => {
       const order = entry.order ?? {};
+      const childOrders = Array.isArray(order.children)
+        ? order.children.filter((child): child is HyperliquidOpenOrder => Boolean(child && typeof child === "object"))
+        : [];
+      const childTrigger = childOrders.find((child) =>
+        Boolean(child.isTrigger) && Boolean(child.reduceOnly) && toNumber(child.triggerPx) > 0
+      );
+      const triggerPrice = toNumber(order.triggerPx) > 0
+        ? String(order.triggerPx)
+        : childTrigger?.triggerPx != null
+          ? String(childTrigger.triggerPx)
+          : "";
+      const triggerCondition = order.triggerCondition && String(order.triggerCondition).toLowerCase() !== "n/a"
+        ? String(order.triggerCondition)
+        : String(childTrigger?.triggerCondition ?? "");
       return {
         symbol: order.coin ? `${order.coin}-PERP` : "—",
         market: entry.dex ? String(entry.dex) : "default",
@@ -597,9 +611,9 @@ export async function getHyperliquidOrderHistory(limit = 200) {
         timestamp: String(order.timestamp ?? ""),
         reduceOnly: Boolean(order.reduceOnly),
         tif: order.tif ?? "",
-        triggerPrice: order.triggerPx != null ? String(order.triggerPx) : "",
-        triggerCondition: order.triggerCondition ?? "",
-        isTrigger: Boolean(order.isTrigger),
+        triggerPrice,
+        triggerCondition,
+        isTrigger: Boolean(order.isTrigger) || Boolean(childTrigger),
         status: entry.status ?? "",
         statusTimestamp: String(entry.statusTimestamp ?? ""),
       };
