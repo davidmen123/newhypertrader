@@ -588,16 +588,18 @@ export const hyperliquidRouter = router({
     .input(z.object({
       startDate: z.string().optional(),
       endDate: z.string().optional(),
+      startTime: z.number().optional(),
+      endTime: z.number().optional(),
       accountId: z.string().max(32).optional(),
     }))
     .query(async ({ ctx, input }) =>
       withAccount(ctx, input, async () => {
-        const startTime = input.startDate ? new Date(`${input.startDate}T00:00:00+08:00`).getTime() : 0;
-        const endTime = input.endDate ? new Date(`${input.endDate}T23:59:59+08:00`).getTime() : Date.now();
+        const startTime = input.startTime ?? (input.startDate ? new Date(`${input.startDate}T00:00:00+08:00`).getTime() : 0);
+        const endTime = input.endTime ?? (input.endDate ? new Date(`${input.endDate}T23:59:59+08:00`).getTime() : Date.now());
         // Historical position snapshots are not available from the exchange.
         // Do not attach today's unrealized PnL to a custom range that ends in
         // the past; bounded ranges then remain based on the trades in that range.
-        const includeCurrentPositions = !input.endDate || endTime >= Date.now();
+        const includeCurrentPositions = endTime >= Date.now();
         const [history, positions] = await Promise.all([
           getHyperliquidTradeHistory({ startTime, endTime, limit: 10000, category: "ALL" }),
           getHyperliquidPositions(),

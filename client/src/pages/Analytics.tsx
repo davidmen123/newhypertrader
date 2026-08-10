@@ -783,7 +783,7 @@ function AccountPnlManager() {
         <AccountRating accountId={activeId} />
         <PnlChart accountId={activeId} onDateRangeChange={setPnlDateRange} />
         <DailyPnlCharts accountId={activeId} />
-        <PnlBySymbol accountId={activeId} dateRange={pnlDateRange} />
+        <PnlBySymbol accountId={activeId} />
         <PositionsTable accountId={activeId} />
         <TradeHistory accountId={activeId} />
       </div>

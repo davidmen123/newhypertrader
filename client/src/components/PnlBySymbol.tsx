@@ -1,5 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import { useLang } from "@/contexts/LangContext";
+import { useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { ResponsiveContainer, Tooltip as ChartTooltip, Treemap } from "recharts";
 
@@ -11,7 +12,8 @@ type PnlBySymbolRow = {
   fees: number;
   netPnl: number;
 };
-type PnlDateRange = { startDate?: string; endDate?: string };
+type SymbolRange = "24H" | "7D" | "30D" | "CUSTOM";
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const PROFIT = "oklch(58% 0.16 158)";
 const LOSS = "oklch(62% 0.16 25)";
@@ -77,10 +79,37 @@ function PnlTooltip({ active, payload, lang }: { active?: boolean; payload?: Arr
   );
 }
 
-export default function PnlBySymbol({ accountId, dateRange }: { accountId?: string; dateRange?: PnlDateRange } = {}) {
+function utc8Date(time: number) {
+  return new Date(time + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+function utc8Start(value: string) {
+  return new Date(`${value}T00:00:00+08:00`).getTime();
+}
+
+function utc8End(value: string) {
+  return new Date(`${value}T23:59:59.999+08:00`).getTime();
+}
+
+export default function PnlBySymbol({ accountId }: { accountId?: string } = {}) {
   const { lang } = useLang();
+  const [range, setRange] = useState<SymbolRange>("30D");
+  const [customStart, setCustomStart] = useState(() => utc8Date(Date.now() - 29 * DAY_MS));
+  const [customEnd, setCustomEnd] = useState(() => utc8Date(Date.now()));
+  const queryRange = useMemo(() => {
+    if (range === "CUSTOM") {
+      return {
+        startTime: customStart ? utc8Start(customStart) : undefined,
+        endTime: customEnd ? utc8End(customEnd) : undefined,
+        label: customStart || customEnd ? `${customStart || "起始"} 至 ${customEnd || "今"}` : "自定义",
+      };
+    }
+    const endTime = Date.now();
+    const days = range === "24H" ? 1 : range === "7D" ? 7 : 30;
+    return { startTime: endTime - days * DAY_MS, endTime, label: range };
+  }, [customEnd, customStart, range]);
   const { data = [], isLoading, isFetching, refetch } = trpc.hyperliquid.pnlBySymbol.useQuery(
-    { accountId, startDate: dateRange?.startDate, endDate: dateRange?.endDate },
+    { accountId, startTime: queryRange.startTime, endTime: queryRange.endTime },
     { refetchInterval: 120_000 },
   );
   const rows = data as PnlBySymbolRow[];
@@ -89,7 +118,7 @@ export default function PnlBySymbol({ accountId, dateRange }: { accountId?: stri
 
   return (
     <section className="glass-card px-4 py-5 sm:px-8 sm:py-7 fade-in">
-      <div className="mb-5 flex items-center justify-between">
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-light sm:text-2xl" style={{ fontFamily: "Cormorant Garamond, serif" }}>
             {lang === "zh" ? "盈亏图谱" : "Symbol PnL"}
@@ -97,17 +126,30 @@ export default function PnlBySymbol({ accountId, dateRange }: { accountId?: stri
           <div className="mt-2" style={{ width: 40, height: 1, background: "rgb(215 187 114 / 62%)" }} />
           <div className="mt-2 text-xs text-muted-foreground/60">
             {lang === "zh"
-              ? `${dateRange?.startDate || dateRange?.endDate ? `${dateRange.startDate ?? "起始"} 至 ${dateRange.endDate ?? "今"}` : "全周期"}净盈亏贡献 · 已实现 + 未实现 + 资金费 − 手续费`
-              : `${dateRange?.startDate || dateRange?.endDate ? `${dateRange.startDate ?? "Start"} to ${dateRange.endDate ?? "Now"}` : "All-time"} PnL contribution · realized + unrealized + funding − fees`}
+              ? `${queryRange.label}净盈亏贡献 · 已实现 + 未实现 + 资金费 − 手续费`
+              : `${queryRange.label} PnL contribution · realized + unrealized + funding − fees`}
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <span className="text-muted-foreground tracking-widest" style={{ fontSize: "0.62rem" }}>{lang === "zh" ? "周期" : "Range"}</span>
+          {(["24H", "7D", "30D", "CUSTOM"] as SymbolRange[]).map((item) => (
+            <button key={item} type="button" onClick={() => setRange(item)} className={`pill-tab ${range === item ? "active" : ""}`} style={{ height: "1.75rem", padding: "0.25rem 0.7rem", fontSize: "0.64rem" }}>
+              {item === "CUSTOM" ? (lang === "zh" ? "自定义" : "Custom") : item}
+            </button>
+          ))}
           <span className="num-display text-xs text-muted-foreground">{signed(total)} USDC</span>
           <button type="button" onClick={() => refetch()} className="text-muted-foreground transition-colors hover:text-foreground" aria-label={lang === "zh" ? "刷新盈亏图谱" : "Refresh symbol PnL"}>
             <RefreshCw size={13} className={isFetching ? "animate-spin" : ""} />
           </button>
         </div>
       </div>
+      {range === "CUSTOM" && (
+        <div className="mb-5 flex flex-wrap items-center gap-2">
+          <input type="date" value={customStart} max={customEnd || undefined} onChange={(event) => setCustomStart(event.target.value)} className="h-7 w-[118px] rounded-md border border-input bg-transparent px-1.5 text-[0.68rem] text-foreground" aria-label={lang === "zh" ? "盈亏图谱开始日期" : "Symbol PnL start date"} />
+          <span className="text-xs text-muted-foreground">—</span>
+          <input type="date" value={customEnd} min={customStart || undefined} onChange={(event) => setCustomEnd(event.target.value)} className="h-7 w-[118px] rounded-md border border-input bg-transparent px-1.5 text-[0.68rem] text-foreground" aria-label={lang === "zh" ? "盈亏图谱结束日期" : "Symbol PnL end date"} />
+        </div>
+      )}
       {isLoading ? (
         <div className="flex h-[360px] items-center justify-center text-sm text-muted-foreground/60">{lang === "zh" ? "计算盈亏图谱中…" : "Calculating symbol PnL…"}</div>
       ) : chartData.length === 0 ? (
