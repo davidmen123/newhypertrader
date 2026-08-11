@@ -145,13 +145,30 @@ export default function DailyPnlCharts({ accountId }: { accountId?: string }) {
     for (const row of rows) {
       if (row.time < selectedStart) previousPnl = row.pnl;
     }
+    // The cumulative chart must reconcile with the daily chart. The exchange
+    // can return the selected range and all-time range on different sampling
+    // grids, so reading each chart's PnL independently can create impossible
+    // jumps (for example, a near-zero daily bar beside a -700 cumulative bar).
+    // Use the all-time series only for the anchor before the visible range,
+    // then carry the selected daily changes forward one day at a time.
+    const firstSelectedDay = selected[0]?.[0];
+    let cumulativePnl = 0;
+    if (firstSelectedDay) {
+      let hasAnchor = false;
+      allTimePnlByDay.forEach((pnl, day) => {
+        if (day < firstSelectedDay) {
+          cumulativePnl = pnl;
+          hasAnchor = true;
+        }
+      });
+      if (!hasAnchor) cumulativePnl = allTimePnlByDay.get(firstSelectedDay) ?? selected[0][1].pnl;
+    }
+
     return selected.map(([day, row]) => {
       const dailyPnl = previousPnl == null ? 0 : row.pnl - previousPnl;
       previousPnl = row.pnl;
-      // Use the full-history series for the cumulative chart. A bounded
-      // request may be served from a shorter exchange window whose PnL is
-      // relative to that window; it must not redefine account-level history.
-      return { day, dailyPnl, cumulativePnl: allTimePnlByDay.get(day) ?? row.pnl };
+      cumulativePnl += dailyPnl;
+      return { day, dailyPnl, cumulativePnl };
     });
   }, [accountHistory, endDate, history, startDate]);
 
