@@ -12,7 +12,7 @@ type PnlBySymbolRow = {
   fees: number;
   netPnl: number;
 };
-type SymbolRange = "24H" | "7D" | "30D" | "CUSTOM";
+type SymbolRange = "24H" | "7D" | "30D" | "MAX" | "CUSTOM";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const PROFIT = "oklch(58% 0.16 158)";
@@ -93,7 +93,7 @@ function utc8End(value: string) {
 
 export default function PnlBySymbol({ accountId }: { accountId?: string } = {}) {
   const { lang } = useLang();
-  const [range, setRange] = useState<SymbolRange>("30D");
+  const [range, setRange] = useState<SymbolRange>("MAX");
   const [customStart, setCustomStart] = useState(() => utc8Date(Date.now() - 29 * DAY_MS));
   const [customEnd, setCustomEnd] = useState(() => utc8Date(Date.now()));
   const queryRange = useMemo(() => {
@@ -104,6 +104,7 @@ export default function PnlBySymbol({ accountId }: { accountId?: string } = {}) 
         label: customStart || customEnd ? `${customStart || "起始"} 至 ${customEnd || "今"}` : "自定义",
       };
     }
+    if (range === "MAX") return { startTime: undefined, endTime: undefined, label: "MAX" };
     const endTime = Date.now();
     const days = range === "24H" ? 1 : range === "7D" ? 7 : 30;
     return { startTime: endTime - days * DAY_MS, endTime, label: range };
@@ -132,7 +133,7 @@ export default function PnlBySymbol({ accountId }: { accountId?: string } = {}) 
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <span className="text-muted-foreground tracking-widest" style={{ fontSize: "0.62rem" }}>{lang === "zh" ? "周期" : "Range"}</span>
-          {(["24H", "7D", "30D", "CUSTOM"] as SymbolRange[]).map((item) => (
+          {(["24H", "7D", "30D", "MAX", "CUSTOM"] as SymbolRange[]).map((item) => (
             <button key={item} type="button" onClick={() => setRange(item)} className={`pill-tab ${range === item ? "active" : ""}`} style={{ height: "1.75rem", padding: "0.25rem 0.7rem", fontSize: "0.64rem" }}>
               {item === "CUSTOM" ? (lang === "zh" ? "自定义" : "Custom") : item}
             </button>
