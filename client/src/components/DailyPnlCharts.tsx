@@ -119,14 +119,6 @@ export default function DailyPnlCharts({ accountId }: { accountId?: string }) {
     { staleTime: 60_000, refetchOnWindowFocus: false },
   );
   const points = useMemo<DailyPoint[]>(() => {
-    const allTimePnlByDay = new Map<string, number>();
-    for (const row of (accountHistory as PnlRow[])) {
-      const time = parseUtc8(row.date);
-      const pnl = Number(row.totalPnl);
-      if (Number.isFinite(time) && Number.isFinite(pnl)) {
-        allTimePnlByDay.set(utc8Date(time), pnl);
-      }
-    }
     const rows = (history as PnlRow[])
       .map((row) => ({ time: parseUtc8(row.date), day: utc8Date(parseUtc8(row.date)), pnl: Number(row.totalPnl) }))
       .filter((row) => Number.isFinite(row.time) && Number.isFinite(row.pnl))
@@ -145,24 +137,12 @@ export default function DailyPnlCharts({ accountId }: { accountId?: string }) {
     for (const row of rows) {
       if (row.time < selectedStart) previousPnl = row.pnl;
     }
-    // The cumulative chart must reconcile with the daily chart. The exchange
-    // can return the selected range and all-time range on different sampling
-    // grids, so reading each chart's PnL independently can create impossible
-    // jumps (for example, a near-zero daily bar beside a -700 cumulative bar).
-    // Use the all-time series only for the anchor before the visible range,
-    // then carry the selected daily changes forward one day at a time.
-    const firstSelectedDay = selected[0]?.[0];
+    // The cumulative chart represents the selected period, not the account's
+    // all-time PnL. Reset at the period boundary and accumulate only the daily
+    // account PnL shown in the left chart. This keeps period changes such as
+    // 30D/90D/custom intuitive and prevents pre-period history from leaking
+    // into the first cumulative bar.
     let cumulativePnl = 0;
-    if (firstSelectedDay) {
-      let hasAnchor = false;
-      allTimePnlByDay.forEach((pnl, day) => {
-        if (day < firstSelectedDay) {
-          cumulativePnl = pnl;
-          hasAnchor = true;
-        }
-      });
-      if (!hasAnchor) cumulativePnl = allTimePnlByDay.get(firstSelectedDay) ?? selected[0][1].pnl;
-    }
 
     return selected.map(([day, row]) => {
       const dailyPnl = previousPnl == null ? 0 : row.pnl - previousPnl;
@@ -170,7 +150,7 @@ export default function DailyPnlCharts({ accountId }: { accountId?: string }) {
       cumulativePnl += dailyPnl;
       return { day, dailyPnl, cumulativePnl };
     });
-  }, [accountHistory, endDate, history, startDate]);
+  }, [endDate, history, startDate]);
 
   useEffect(() => {
     if (selectedDay && !points.some((point) => point.day === selectedDay)) setSelectedDay(null);
