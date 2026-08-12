@@ -255,7 +255,7 @@ export default function TradeHistory({ accountId, showTotalTurnover = false }: {
               <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.6rem" }}>
                 {t("总成交额", "Total Turnover")}
               </span>
-              <div className="num-display" style={{ fontSize: "0.78rem" }}>{fmt(totalTurnover, 2)} USDC</div>
+              <div className="num-display" style={{ fontSize: "0.78rem" }}>{fmt(totalTurnover, 0)}</div>
             </div>
           )}
           <div>
