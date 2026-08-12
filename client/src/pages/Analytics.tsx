@@ -785,7 +785,7 @@ function AccountPnlManager() {
         <DailyPnlCharts accountId={activeId} />
         <PnlBySymbol accountId={activeId} />
         <PositionsTable accountId={activeId} />
-        <TradeHistory accountId={activeId} />
+        <TradeHistory accountId={activeId} showTotalTurnover />
       </div>
     </div>
   );
