@@ -77,7 +77,7 @@ function closeMethodColor(method: string | null | undefined) {
 
 const PAGE_SIZE = 15;
 
-export default function TradeHistory({ accountId }: { accountId?: string } = {}) {
+export default function TradeHistory({ accountId, showTotalTurnover = false }: { accountId?: string; showTotalTurnover?: boolean } = {}) {
   const { lang } = useLang();
   const t = (zh: string, en: string) => (lang === "zh" ? zh : en);
   const [category, setCategory] = useState<Category>("ALL");
@@ -114,6 +114,11 @@ export default function TradeHistory({ accountId }: { accountId?: string } = {})
   const pageTrades = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   const totalFees = filtered.reduce((sum, trade) => {
     return sum + (trade.feeDetail ?? []).reduce((feeSum, item) => feeSum + Math.abs(num(item.fee)), 0);
+  }, 0);
+  const totalTurnover = filtered.reduce((sum, trade) => {
+    const reportedValue = num(trade.execValue);
+    const calculatedValue = Math.abs(num(trade.execPrice) * num(trade.execQty));
+    return sum + Math.abs(reportedValue || calculatedValue);
   }, 0);
   const totalPnl = filtered.reduce((sum, trade) => sum + num(trade.execPnl), 0);
   const totalFunding = num((data as { totalFundingUsdc?: number } | undefined)?.totalFundingUsdc);
@@ -245,6 +250,14 @@ export default function TradeHistory({ accountId }: { accountId?: string } = {})
             </span>
             <div className="num-display" style={{ fontSize: "0.78rem" }}>{filtered.length}</div>
           </div>
+          {showTotalTurnover && (
+            <div>
+              <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.6rem" }}>
+                {t("总成交额", "Total Turnover")}
+              </span>
+              <div className="num-display" style={{ fontSize: "0.78rem" }}>{fmt(totalTurnover, 2)} USDC</div>
+            </div>
+          )}
           <div>
             <span className="text-muted-foreground tracking-widest uppercase" style={{ fontSize: "0.6rem" }}>
               {t("手续费", "Fees")}

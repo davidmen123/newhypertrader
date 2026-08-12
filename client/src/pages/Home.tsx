@@ -341,7 +341,7 @@ export default function Home() {
 
           {/* 6. Trade History — default collapsed */}
           <CollapsibleSection label={lang === "zh" ? "历史成交" : "Trade History"} defaultOpen={false}>
-            <TradeHistory />
+            <TradeHistory showTotalTurnover />
           </CollapsibleSection>
 
           {/* 7. Order History — default collapsed */}
