@@ -892,11 +892,22 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
     // explicit anchor for each missing day so the node is part of the x-axis
     // even when the exchange returns sparse equity snapshots.
     const firstPoint = rangeChartData[0];
-    const anchorPoints = missingTradeDays.map((day) => ({
-      ...firstPoint,
-      date: `${day}T00:00:00+08:00`,
-      timestamp: parseUtc8Timestamp(`${day}T00:00:00+08:00`),
-    }));
+    const anchorPoints = missingTradeDays.map((day) => {
+      const timestamp = parseUtc8Timestamp(`${day}T00:00:00+08:00`);
+      // Hyperliquid's all-time equity history is sparse. A missing trade day
+      // must carry forward the latest real equity sample; cloning the first
+      // visible point made the curve repeatedly collapse back to its starting
+      // value between genuine weekly samples.
+      const previousPoint = rangeChartData.reduce<ChartPoint | null>((latest, candidate) => {
+        if (candidate.timestamp > timestamp) return latest;
+        return latest == null || candidate.timestamp > latest.timestamp ? candidate : latest;
+      }, null) ?? firstPoint;
+      return {
+        ...previousPoint,
+        date: `${day}T00:00:00+08:00`,
+        timestamp,
+      };
+    });
     return [...anchorPoints, ...rangeChartData].sort((a, b) => a.timestamp - b.timestamp);
   }, [baseChartData, reviewMode, startDate, timeRange, visibleReviewTrades]);
   const tradeMarkers = useMemo<TradeMarker[]>(() => {
