@@ -1,6 +1,7 @@
 import { trpc } from "@/lib/trpc";
 import { useLang } from "@/contexts/LangContext";
-import { RefreshCw, Info } from "lucide-react";
+import { Fragment, useState } from "react";
+import { ChevronDown, RefreshCw, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type HyperliquidPosition = {
@@ -59,6 +60,7 @@ function pnlColor(value: string | number | null | undefined) {
 export default function PositionsTable({ accountId }: { accountId?: string } = {}) {
   const { tr, lang } = useLang();
   const t = (zh: string, en: string) => (lang === "zh" ? zh : en);
+  const [expandedPosition, setExpandedPosition] = useState<string | null>(null);
   const { data, isLoading, error, refetch, isFetching } = trpc.hyperliquid.positions.useQuery(
     { accountId },
     { refetchInterval: 15_000 }
@@ -116,8 +118,8 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
             </div>
           </div>
 
-          <div className="hidden sm:block overflow-x-auto">
-            <table className="minimal-table min-w-[1320px] [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap [&_td]:align-middle">
+          <div className="hidden lg:block overflow-hidden">
+            <table className="minimal-table [&_th]:whitespace-nowrap [&_td]:align-middle">
               <thead>
                 <tr>
                   <th>{t("市场", "Market")}</th>
@@ -138,82 +140,76 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                     </span>
                   </th>
                   <th>{t("数量", "Size")}</th>
-                  <th>
-                    <span className="inline-flex items-center gap-1">
-                      {t("仓位价值", "Position Value")}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="text-muted-foreground/60 cursor-help" style={{ width: "12px", height: "12px" }} />
-                        </TooltipTrigger>
-                        <TooltipContent className="text-xs" style={{ fontSize: "0.7rem" }}>
-                          {t("显示当前的持仓市值（数量*标记价）", "Position value at current mark price")}
-                        </TooltipContent>
-                      </Tooltip>
-                    </span>
-                  </th>
                   <th>{t("均价", "Avg Price")}</th>
                   <th>{t("标记价", "Mark")}</th>
-                  <th>{t("止盈 / 止损", "Take Profit / Stop Loss")}</th>
-                  <th>
-                    <span className="inline-flex items-center gap-1">
-                      {t("保证金", "Margin")}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="text-muted-foreground/60 cursor-help" style={{ width: "12px", height: "12px" }} />
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-64 text-xs" style={{ fontSize: "0.7rem" }}>
-                          {t(
-                            "显示保证金金额及全仓/逐仓模式。",
-                            "Shows margin and cross/isolated mode."
-                          )}
-                        </TooltipContent>
-                      </Tooltip>
-                    </span>
-                  </th>
                   <th>{t("盈亏（ROE）", "PnL (ROE)")}</th>
-                  <th>{t("资金费", "Funding")}</th>
-                  <th>{t("强平价", "Liq.")}</th>
+                  <th className="text-right">{t("详情", "Details")}</th>
                 </tr>
               </thead>
               <tbody>
                 {positions.map((p) => {
                   const isLong = p.posSide === "long";
+                  const positionKey = `${p.category}-${p.symbol}-${p.posSide}`;
+                  const isExpanded = expandedPosition === positionKey;
                   return (
-                    <tr key={`${p.category}-${p.symbol}-${p.posSide}`}>
-                      <td className="text-foreground font-medium">{p.symbol}</td>
-                      <td>
-                        <span className={`${isLong ? "text-profit" : "text-loss"} whitespace-nowrap`}>
-                          {isLong ? t("多", "Long") : t("空", "Short")}
-                          {leverageLabel(p.leverage) ? ` · ${leverageLabel(p.leverage)}` : ""}
-                        </span>
-                      </td>
-                      <td>{fmt(p.total, 2)}</td>
-                      <td>{fmt(p.positionValue, 2)}</td>
-                      <td>{fmt(p.avgPrice, 2)}</td>
-                      <td>{fmt(p.markPrice, 2)}</td>
-                      <td>{p.takeProfitPrice || "—"} / {p.stopLossPrice || "—"}</td>
-                      <td>
-                        {fmt(p.marginUsed, 2)}{" "}
-                        <span className="text-muted-foreground whitespace-nowrap" style={{ fontSize: "0.58rem" }}>
-                          {p.marginMode === "isolated" ? t("逐仓", "Isolated") : t("全仓", "Cross")}
-                        </span>
-                      </td>
-                      <td className={pnlColor(p.unrealisedPnl)}>
-                        <span className="whitespace-nowrap">{signed(p.unrealisedPnl, 2)}</span>
-                        <span className="ml-1 whitespace-nowrap" style={{ fontSize: "0.68rem" }}>
-                          ({signed(num(p.profitRate) * 100, 2)}%)
-                        </span>
-                      </td>
-                      <td className={pnlColor(p.fundingFee)}>{signed(p.fundingFee, 2)}</td>
-                      <td>{num(p.liquidationPrice) > 0 ? fmt(p.liquidationPrice, 2) : "—"}</td>
-                    </tr>
+                    <Fragment key={positionKey}>
+                      <tr>
+                        <td className="whitespace-nowrap text-foreground font-medium">{p.symbol}</td>
+                        <td>
+                          <span className={`${isLong ? "text-profit" : "text-loss"} whitespace-nowrap`}>
+                            {isLong ? t("多", "Long") : t("空", "Short")}
+                            {leverageLabel(p.leverage) ? ` · ${leverageLabel(p.leverage)}` : ""}
+                          </span>
+                        </td>
+                        <td className="whitespace-nowrap">{fmt(p.total, 2)}</td>
+                        <td className="whitespace-nowrap">{fmt(p.avgPrice, 2)}</td>
+                        <td className="whitespace-nowrap">{fmt(p.markPrice, 2)}</td>
+                        <td className={pnlColor(p.unrealisedPnl)}>
+                          <span className="whitespace-nowrap">{signed(p.unrealisedPnl, 2)}</span>
+                          <span className="ml-1 whitespace-nowrap" style={{ fontSize: "0.68rem" }}>
+                            ({signed(num(p.profitRate) * 100, 2)}%)
+                          </span>
+                        </td>
+                        <td className="text-right">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedPosition(isExpanded ? null : positionKey)}
+                            className="inline-flex items-center gap-1 rounded-md border border-border/40 px-2 py-1 text-muted-foreground transition-colors hover:text-foreground"
+                            aria-expanded={isExpanded}
+                          >
+                            <span style={{ fontSize: "0.65rem" }}>{isExpanded ? t("收起", "Less") : t("展开", "More")}</span>
+                            <ChevronDown size={12} className={`transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                          </button>
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr>
+                          <td colSpan={7} className="!px-4 !py-4" style={{ background: "var(--surface-subtle)" }}>
+                            <div className="grid grid-cols-5 gap-6">
+                              {[
+                                { label: t("仓位价值", "Position Value"), value: fmt(p.positionValue, 2) },
+                                { label: t("止盈 / 止损", "Take Profit / Stop Loss"), value: `${p.takeProfitPrice || "—"} / ${p.stopLossPrice || "—"}` },
+                                { label: t("保证金", "Margin"), value: `${fmt(p.marginUsed, 2)} · ${p.marginMode === "isolated" ? t("逐仓", "Isolated") : t("全仓", "Cross")}` },
+                                { label: t("资金费", "Funding"), value: signed(p.fundingFee, 2), color: pnlColor(p.fundingFee) },
+                                { label: t("强平价", "Liquidation Price"), value: num(p.liquidationPrice) > 0 ? fmt(p.liquidationPrice, 2) : "—" },
+                              ].map((item) => (
+                                <div key={item.label} className="min-w-0">
+                                  <div className="text-muted-foreground" style={{ fontFamily: "Inter, sans-serif", fontSize: "0.6rem", letterSpacing: "0.1em" }}>{item.label}</div>
+                                  <div className={`mt-1 break-words ${item.color ?? "text-foreground"}`} style={{ fontSize: "0.75rem" }}>{item.value}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   );
                 })}
               </tbody>
             </table>
           </div>
 
-          <div className="sm:hidden flex flex-col gap-2">
+          <div className="lg:hidden flex flex-col gap-2">
             {positions.map((p) => {
               const isLong = p.posSide === "long";
               const leverage = leverageLabel(p.leverage);
