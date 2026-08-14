@@ -117,52 +117,58 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
           </div>
 
           <div className="hidden sm:block overflow-x-auto">
-            <table className="minimal-table">
+            <table className="minimal-table min-w-[1320px] [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap [&_td]:align-middle">
               <thead>
                 <tr>
                   <th>{t("市场", "Market")}</th>
-                  <th className="flex items-center gap-1">
-                    {t("方向", "Side")}
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="text-muted-foreground/60 cursor-help" style={{ width: "12px", height: "12px" }} />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-64 text-xs" style={{ fontSize: "0.7rem" }}>
-                        {t(
-                          "显示持仓方向及交易所设置的杠杆倍数；杠杆倍数不代表实际单笔风险。",
-                          "Shows position side and configured leverage. Leverage does not equal the actual risk per trade."
-                        )}
-                      </TooltipContent>
-                    </Tooltip>
+                  <th>
+                    <span className="inline-flex items-center gap-1">
+                      {t("方向", "Side")}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="text-muted-foreground/60 cursor-help" style={{ width: "12px", height: "12px" }} />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-64 text-xs" style={{ fontSize: "0.7rem" }}>
+                          {t(
+                            "显示持仓方向及交易所设置的杠杆倍数；杠杆倍数不代表实际单笔风险。",
+                            "Shows position side and configured leverage. Leverage does not equal the actual risk per trade."
+                          )}
+                        </TooltipContent>
+                      </Tooltip>
+                    </span>
                   </th>
                   <th>{t("数量", "Size")}</th>
-                  <th className="flex items-center gap-1">
-                    {t("仓位价值", "Position Value")}
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="text-muted-foreground/60 cursor-help" style={{ width: "12px", height: "12px" }} />
-                      </TooltipTrigger>
-                      <TooltipContent className="text-xs" style={{ fontSize: "0.7rem" }}>
-                        {t("显示当前的持仓市值（数量*标记价）", "Position value at current mark price")}
-                      </TooltipContent>
-                    </Tooltip>
+                  <th>
+                    <span className="inline-flex items-center gap-1">
+                      {t("仓位价值", "Position Value")}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="text-muted-foreground/60 cursor-help" style={{ width: "12px", height: "12px" }} />
+                        </TooltipTrigger>
+                        <TooltipContent className="text-xs" style={{ fontSize: "0.7rem" }}>
+                          {t("显示当前的持仓市值（数量*标记价）", "Position value at current mark price")}
+                        </TooltipContent>
+                      </Tooltip>
+                    </span>
                   </th>
                   <th>{t("均价", "Avg Price")}</th>
                   <th>{t("标记价", "Mark")}</th>
                   <th>{t("止盈 / 止损", "Take Profit / Stop Loss")}</th>
-                  <th className="flex items-center gap-1">
-                    {t("保证金", "Margin")}
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="text-muted-foreground/60 cursor-help" style={{ width: "12px", height: "12px" }} />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-64 text-xs" style={{ fontSize: "0.7rem" }}>
-                        {t(
-                          "显示保证金金额及全仓/逐仓模式。",
-                          "Shows margin and cross/isolated mode."
-                        )}
-                      </TooltipContent>
-                    </Tooltip>
+                  <th>
+                    <span className="inline-flex items-center gap-1">
+                      {t("保证金", "Margin")}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="text-muted-foreground/60 cursor-help" style={{ width: "12px", height: "12px" }} />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-64 text-xs" style={{ fontSize: "0.7rem" }}>
+                          {t(
+                            "显示保证金金额及全仓/逐仓模式。",
+                            "Shows margin and cross/isolated mode."
+                          )}
+                        </TooltipContent>
+                      </Tooltip>
+                    </span>
                   </th>
                   <th>{t("盈亏（ROE）", "PnL (ROE)")}</th>
                   <th>{t("资金费", "Funding")}</th>
