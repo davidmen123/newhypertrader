@@ -164,6 +164,11 @@ function getTradeMeta(trade: TradeFill): { action: "买入" | "卖出"; childLab
   return { action, childLabel };
 }
 
+function tradeActionLabel(action: "买入" | "卖出", lang: string) {
+  if (lang === "zh") return action === "买入" ? "买入/做多" : "卖出/做空";
+  return action === "买入" ? "Buy / Long" : "Sell / Short";
+}
+
 function formatTradeTime(createdTime: string) {
   const timestamp = Number(createdTime);
   if (!Number.isFinite(timestamp)) return "—";
@@ -1193,14 +1198,18 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
               <>
                 点击净值曲线上的交易节点（
                 <i className="inline-block mx-0.5 h-2 w-2 rounded-full align-middle" style={{ background: "oklch(68% 0.15 145)" }} />
+                买入/做多
                 <i className="inline-block mx-0.5 h-2 w-2 rounded-full align-middle" style={{ background: "oklch(62% 0.15 25)" }} />
+                卖出/做空
                 ）悬停查看摘要，点击“查看详情”展开复盘；同日有多笔交易时，可在详情区切换；K 线支持 1h、4h、1d、1w，EMA20 仅作辅助参考。
               </>
             ) : (
               <>
                 Click a trade node on the equity curve (
                 <i className="inline-block mx-0.5 h-2 w-2 rounded-full align-middle" style={{ background: "oklch(68% 0.15 145)" }} />
+                Buy / Long
                 <i className="inline-block mx-0.5 h-2 w-2 rounded-full align-middle" style={{ background: "oklch(62% 0.15 25)" }} />
+                Sell / Short
                 ) to preview a summary on hover; click “View Details” to expand the review. Switch between same-day trades in the detail panel. Candles support 1h, 4h, 1d and 1w, with EMA20 as a reference.
               </>
             )}
@@ -1483,7 +1492,7 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
                     <span className="truncate text-foreground font-medium" style={{ fontSize: "0.78rem" }}>{hoveredTradePreview.marker.trade.symbol}</span>
                     <span className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>
                       <i className="inline-block mr-1.5 h-2 w-2 rounded-full align-middle" style={{ background: hoveredTradePreview.marker.action === "买入" ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)" }} />
-                      {hoveredTradePreview.marker.action}
+                      {tradeActionLabel(hoveredTradePreview.marker.action, lang)}
                     </span>
                       <span className="text-foreground" style={{ fontSize: "0.78rem" }}>成交价：{Number(hoveredTradePreview.marker.trade.execPrice).toLocaleString("en-US", { maximumFractionDigits: 2 })}</span>
                     <span className="whitespace-nowrap text-muted-foreground" style={{ fontSize: "0.68rem" }}>成交时间：{formatTradeTime(hoveredTradePreview.marker.trade.createdTime)}</span>
@@ -1539,7 +1548,7 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
                   >
                     <div className="flex items-center gap-2 text-foreground" style={{ fontSize: "0.7rem" }}>
                       <span className="inline-block w-2 h-2 rounded-full" style={{ background: meta.action === "买入" ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)" }} />
-                      {meta.action} · {trade.symbol}
+                      {tradeActionLabel(meta.action, lang)} · {trade.symbol}
                     </div>
                     <div className="text-muted-foreground/60 mt-1" style={{ fontSize: "0.62rem" }}>
                       {new Date(Number(trade.createdTime)).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} · 盈亏 {Number(trade.execPnl) >= 0 ? "+" : ""}{Number(trade.execPnl).toLocaleString("en-US", { maximumFractionDigits: 2 })}
