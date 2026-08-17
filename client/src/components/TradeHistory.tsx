@@ -23,6 +23,16 @@ type HyperliquidFill = {
   execPnl: string;
   fundingFee?: string;
   closeMethod?: string;
+  trendContext?: {
+    status: "ready" | "insufficient";
+    entryDirection: "long" | "short";
+    oneDayTrend?: "up" | "down" | "range";
+    fourHourTrend?: "up" | "down" | "range";
+    ema20DistanceAtr?: number;
+    ema20SlopePct?: number;
+    relation?: "strong_trend" | "trend" | "mixed" | "strong_counter" | "counter" | "unclear";
+    entryStyle?: "pullback" | "chasing" | "normal" | "bottom_fishing" | "top_picking" | "unclear";
+  };
 };
 
 function num(value: string | number | null | undefined) {
@@ -77,7 +87,15 @@ function closeMethodColor(method: string | null | undefined) {
 
 const PAGE_SIZE = 15;
 
-export default function TradeHistory({ accountId, showTotalTurnover = false }: { accountId?: string; showTotalTurnover?: boolean } = {}) {
+export default function TradeHistory({
+  accountId,
+  showTotalTurnover = false,
+  showTrendContext = false,
+}: {
+  accountId?: string;
+  showTotalTurnover?: boolean;
+  showTrendContext?: boolean;
+} = {}) {
   const { lang } = useLang();
   const t = (zh: string, en: string) => (lang === "zh" ? zh : en);
   const [category, setCategory] = useState<Category>("ALL");
@@ -94,6 +112,7 @@ export default function TradeHistory({ accountId, showTotalTurnover = false }: {
       endDate: endDate || undefined,
       limit: loadAllHistory ? 10000 : 100,
       allHistory: loadAllHistory,
+      includeTrendContext: showTrendContext,
       accountId,
     },
     { refetchInterval: 120_000 }
@@ -142,6 +161,86 @@ export default function TradeHistory({ accountId, showTotalTurnover = false }: {
     if (type === "start") setStartDate(value);
     else setEndDate(value);
     setPage(0);
+  };
+
+  const trendStateLabel = (state: "up" | "down" | "range" | undefined) => {
+    if (state === "up") return t("上涨", "Uptrend");
+    if (state === "down") return t("下跌", "Downtrend");
+    return t("震荡", "Range");
+  };
+
+  const trendDisplay = (trade: HyperliquidFill) => {
+    const context = trade.trendContext;
+    if (!context) return null;
+    if (context.status === "insufficient") {
+      return { label: t("数据不足", "Insufficient"), color: "var(--text-soft)", conclusion: t("开仓前历史K线不足，未进行趋势判断。", "Insufficient completed candles before entry; no trend classification was made.") };
+    }
+    const relationLabels = {
+      strong_trend: t("强顺势", "Strong trend"),
+      trend: t("顺势", "With trend"),
+      mixed: t("4H逆势 · 日线顺势", "4H counter · 1D aligned"),
+      strong_counter: t("强逆势", "Strong counter"),
+      counter: t("逆势", "Countertrend"),
+      unclear: t("震荡", "Range"),
+    } as const;
+    const styleLabels = {
+      pullback: t("回踩", "Pullback"),
+      chasing: context.entryDirection === "long" ? t("追涨", "Chasing long") : t("追空", "Chasing short"),
+      normal: t("常规入场", "Regular entry"),
+      bottom_fishing: t("抄底", "Bottom fishing"),
+      top_picking: t("摸顶", "Top picking"),
+      unclear: t("方向不明", "Unclear"),
+    } as const;
+    const relation = context.relation ?? "unclear";
+    const style = context.entryStyle ?? "unclear";
+    const label = relation === "mixed"
+      ? relationLabels.mixed
+      : `${relationLabels[relation]} · ${styleLabels[style]}`;
+    const color = relation === "strong_trend" || relation === "trend"
+      ? "oklch(62% 0.13 145)"
+      : relation === "strong_counter" || relation === "counter"
+        ? "oklch(62% 0.15 25)"
+        : relation === "mixed"
+          ? "oklch(68% 0.13 65)"
+          : "var(--text-soft)";
+    const conclusion = relation === "mixed"
+      ? t("开仓方向与4H趋势相反，但与日线趋势一致。", "Entry opposed the 4H trend but aligned with the daily trend.")
+      : (relation === "strong_trend" || relation === "trend") && style === "chasing"
+        ? t("方向顺势，但入场位置距离4H EMA20较远。", "Direction aligned with trend, but entry was extended from the 4H EMA20.")
+        : relation === "strong_trend" || relation === "trend"
+          ? t("开仓方向与4H趋势一致。", "Entry direction aligned with the 4H trend.")
+          : relation === "strong_counter" || relation === "counter"
+            ? t("开仓方向与4H趋势相反。", "Entry direction opposed the 4H trend.")
+            : t("开仓时4H趋势条件相互冲突，暂不判定顺逆势。", "The 4H trend conditions conflicted at entry, so no directional classification was made.");
+    return { label, color, conclusion };
+  };
+
+  const TrendContextCell = ({ trade, mobile = false }: { trade: HyperliquidFill; mobile?: boolean }) => {
+    const display = trendDisplay(trade);
+    if (!display) return <span style={{ color: "var(--text-soft)" }}>—</span>;
+    const context = trade.trendContext!;
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="cursor-help whitespace-nowrap" style={{ color: display.color, fontSize: mobile ? "0.68rem" : "0.66rem" }}>
+            {display.label}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-[300px] space-y-1.5 p-3" style={{ fontSize: "0.68rem" }}>
+          {context.status === "ready" && (
+            <>
+              <div>{t("1D趋势", "1D trend")}：<span className="text-foreground">{trendStateLabel(context.oneDayTrend)}</span></div>
+              <div>{t("4H趋势", "4H trend")}：<span className="text-foreground">{trendStateLabel(context.fourHourTrend)}</span></div>
+              <div>{t("入场方向", "Entry side")}：<span className="text-foreground">{context.entryDirection === "long" ? t("做多", "Long") : t("做空", "Short")}</span></div>
+              <div>{t("距4H EMA20", "Distance to 4H EMA20")}：<span className="text-foreground">{signed(context.ema20DistanceAtr, 2)} ATR</span></div>
+              <div>{t("EMA20斜率", "EMA20 slope")}：<span className="text-foreground">{signed(context.ema20SlopePct, 2)}%</span></div>
+            </>
+          )}
+          <div className="pt-1" style={{ borderTop: "1px solid var(--panel-border)" }}>{t("结论", "Conclusion")}：{display.conclusion}</div>
+          <div className="text-muted-foreground">{t("仅使用开仓前已完成K线，不使用未来数据。", "Uses only candles completed before entry; no future data.")}</div>
+        </TooltipContent>
+      </Tooltip>
+    );
   };
 
   return (
@@ -309,6 +408,7 @@ export default function TradeHistory({ accountId, showTotalTurnover = false }: {
                     { label: t("方向", "Side"), key: "side" },
                     { label: t("开平", "Open/Close"), key: "openclose" },
                     { label: t("平仓方式", "Close Method"), key: "closemethod", tooltip: t("预设止损/止盈：提前设置的条件单/委托单;主动平仓：手动干预的方式进行市价止盈/止损", "Preset SL/TP: Pre-set conditional orders; Manual Close: Manual market exit") },
+                    ...(showTrendContext ? [{ label: t("趋势/入场", "Trend/Entry"), key: "trendentry", tooltip: t("依据首次开仓前已完成的1D与4H K线、EMA20/EMA50排列、EMA20斜率及ATR距离判断。仅用于复盘归因，不代表确定的亏损原因。", "Classified from completed 1D/4H candles before the first entry, EMA20/EMA50 alignment, EMA20 slope and ATR distance. Intended for review, not as definitive causation.") }] : []),
                     { label: t("数量", "Qty"), key: "qty" },
                     { label: t("成交价", "Price"), key: "price" },
                     { label: t("成交额", "Value"), key: "value" },
@@ -356,6 +456,7 @@ export default function TradeHistory({ accountId, showTotalTurnover = false }: {
                       <td className="py-2 pr-4" style={{ color: isBuy ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)", fontSize: "0.7rem", fontWeight: 600 }}>{isBuy ? t("买入", "Buy") : t("卖出", "Sell")}</td>
                       <td className="py-2 pr-4" style={{ fontSize: "0.68rem", color: "var(--text-soft)" }}>{trade.tradeSide || "—"}</td>
                       <td className="py-2 pr-4" style={{ fontSize: "0.68rem", color: closeMethodColor(trade.closeMethod), whiteSpace: "nowrap" }}>{closeMethodLabel(trade.closeMethod, lang)}</td>
+                      {showTrendContext && <td className="py-2 pr-4"><TrendContextCell trade={trade} /></td>}
                       <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execQty, 2)}</td>
                       <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execPrice, 2)}</td>
                       <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execValue, 2)}</td>
@@ -388,6 +489,7 @@ export default function TradeHistory({ accountId, showTotalTurnover = false }: {
                     <span>{t("价格", "Price")}: {fmt(trade.execPrice, 2)}</span>
                     <span>{t("数量", "Qty")}: {fmt(trade.execQty, 2)}</span>
                     <span style={{ color: closeMethodColor(trade.closeMethod) }}>{t("平仓方式", "Close")}: {closeMethodLabel(trade.closeMethod, lang)}</span>
+                    {showTrendContext && <span>{t("趋势/入场", "Trend/Entry")}: <TrendContextCell trade={trade} mobile /></span>}
                     {num(trade.execPnl) !== 0 && <span style={{ color: pnlColor(trade.execPnl) }}>PnL: {signed(trade.execPnl, 2)}</span>}
                     {num(trade.fundingFee) !== 0 && <span style={{ color: pnlColor(trade.fundingFee) }}>{t("资金费", "Funding")}: {signed(trade.fundingFee, 2)}</span>}
                   </div>

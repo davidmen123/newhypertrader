@@ -1619,6 +1619,7 @@ export async function getHyperliquidTradeHistory(params: {
   endTime?: number;
   limit?: number;
   category?: "ALL" | "PERP" | "SPOT";
+  includeEntryMetadata?: boolean;
 }) {
   const [fills, fundingUpdates, orderHistory, spotPairMap] = await Promise.all([
     getHyperliquidFills(params.startTime, params.endTime),
@@ -1626,8 +1627,76 @@ export async function getHyperliquidTradeHistory(params: {
     getHyperliquidOrderHistory(1000).catch(() => []),
     getHyperliquidSpotPairMap().catch(() => new Map<string, string>()),
   ]);
+  // A date-filtered close can belong to a position opened before the selected
+  // range. Fetch the earlier fills only for the analytics trend classification
+  // so that the close still resolves to its real first entry.
+  const entryMetadataFills = params.includeEntryMetadata && (params.startTime ?? 0) > 0
+    ? await getHyperliquidFills(0, params.endTime ?? Date.now()).catch(() => fills)
+    : fills;
   const fundingByClose = allocateFundingToClosingFills(fills, fundingUpdates);
   const ordersById = new Map(orderHistory.map((order) => [order.orderId, order]));
+  const fillGroupKey = (fill: HyperliquidFill) => {
+    const side = fill.side === "B" ? "buy" : "sell";
+    const timeBucket = Math.floor(fill.time / 1000);
+    const orderKey = fill.oid != null && fill.oid !== ""
+      ? String(fill.oid)
+      : `${fill.hash ?? ""}-${timeBucket}`;
+    return [
+      fill.coin,
+      orderKey,
+      side,
+      fill.dir ?? "",
+      fill.crossed ? "market" : "limit",
+    ].join("|");
+  };
+  type TradeEntryMeta = { entryTime: number; entryPrice: number; entryDirection: "long" | "short" };
+  const entryMetaByGroupKey = new Map<string, TradeEntryMeta>();
+  const activeEntries = new Map<string, TradeEntryMeta>();
+  const tolerance = 0.00000001;
+  const chronologicalFills = (
+    entryMetadataFills.length > 1 && entryMetadataFills[0].time > entryMetadataFills[entryMetadataFills.length - 1].time
+      ? entryMetadataFills.slice().reverse()
+      : entryMetadataFills.slice()
+  ).sort((a, b) => a.time - b.time);
+
+  // Attach every reducing/closing fill to the first fill of that position
+  // cycle. This metadata is later used by /analytics to evaluate the market
+  // state at entry; it must never be inferred from the exit candle.
+  for (const fill of chronologicalFills) {
+    const direction = String(fill.dir ?? "").toLowerCase();
+    if (direction.includes("spot dust conversion") || direction.includes("dust conversion")) continue;
+    const start = toNumber(fill.startPosition);
+    const end = start + signedFillSize(fill);
+    const startsFlat = Math.abs(start) <= tolerance;
+    const endsFlat = Math.abs(end) <= tolerance;
+    const flipsSide = !startsFlat && !endsFlat && Math.sign(start) !== Math.sign(end);
+    const reducesPosition = !startsFlat && (
+      endsFlat ||
+      flipsSide ||
+      (Math.sign(start) === Math.sign(end) && Math.abs(end) < Math.abs(start))
+    );
+
+    if (reducesPosition) {
+      const entry = activeEntries.get(fill.coin);
+      if (entry) entryMetaByGroupKey.set(fillGroupKey(fill), entry);
+    }
+
+    if (startsFlat && !endsFlat) {
+      activeEntries.set(fill.coin, {
+        entryTime: fill.time,
+        entryPrice: toNumber(fill.px),
+        entryDirection: end > 0 ? "long" : "short",
+      });
+    } else if (endsFlat) {
+      activeEntries.delete(fill.coin);
+    } else if (flipsSide) {
+      activeEntries.set(fill.coin, {
+        entryTime: fill.time,
+        entryPrice: toNumber(fill.px),
+        entryDirection: end > 0 ? "long" : "short",
+      });
+    }
+  }
   const grouped = new Map<string, {
     fill: HyperliquidFill;
     qty: number;
@@ -1644,18 +1713,7 @@ export async function getHyperliquidTradeHistory(params: {
     if (fillDirection.includes("spot dust conversion") || fillDirection.includes("dust conversion")) {
       continue;
     }
-    const side = fill.side === "B" ? "buy" : "sell";
-    const timeBucket = Math.floor(fill.time / 1000);
-    const orderKey = fill.oid != null && fill.oid !== ""
-      ? String(fill.oid)
-      : `${fill.hash ?? ""}-${timeBucket}`;
-    const key = [
-      fill.coin,
-      orderKey,
-      side,
-      fill.dir ?? "",
-      fill.crossed ? "market" : "limit",
-    ].join("|");
+    const key = fillGroupKey(fill);
     const qty = toNumber(fill.sz);
     const value = toNumber(fill.px) * qty;
     const current = grouped.get(key);
@@ -1678,8 +1736,8 @@ export async function getHyperliquidTradeHistory(params: {
     }
   }
 
-  const mapped = Array.from(grouped.values())
-    .map((group) => {
+  const mapped = Array.from(grouped.entries())
+    .map(([groupKey, group]) => {
       const fill = group.fill;
       const side = fill.side === "B" ? "buy" : "sell";
       const price = group.qty > 0 ? group.value / group.qty : toNumber(fill.px);
@@ -1713,6 +1771,7 @@ export async function getHyperliquidTradeHistory(params: {
         if (isPresetTrigger) return "preset_trigger";
         return "active_close";
       })();
+      const entryMeta = isClosingTrade ? entryMetaByGroupKey.get(groupKey) : undefined;
       return {
         execId: fill.hash ? `${fill.hash}-${orderId}-${group.latestTime}` : `${fill.coin}-${orderId}-${group.latestTime}`,
         orderId,
@@ -1733,6 +1792,9 @@ export async function getHyperliquidTradeHistory(params: {
           ? String(fundingByClose.get(`${fill.coin}|${orderId}|${group.latestTime}`) ?? 0)
           : "",
         closeMethod,
+        entryTime: entryMeta?.entryTime,
+        entryPrice: entryMeta?.entryPrice,
+        entryDirection: entryMeta?.entryDirection,
         triggerPrice: toNumber(historicalOrder?.triggerPrice) > 0 ? String(historicalOrder?.triggerPrice) : "",
         isRPI: "false",
       };

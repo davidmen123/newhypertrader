@@ -23,7 +23,7 @@ import {
   calculateRoundTripTradeMetrics,
 } from "../hyperliquid.js";
 import { getPnlSnapshots, getTradeReview, getTradeReviews, upsertPnlSnapshot, upsertTradeReview } from "../db.js";
-import { seriesIndicators } from "../indicators.js";
+import { computeEmaLast, seriesIndicators } from "../indicators.js";
 import {
   DEFAULT_HYPERLIQUID_ACCOUNT_ID,
   isDefaultHyperliquidAccount,
@@ -351,6 +351,150 @@ function sampleEveryN(values: number[], n: number): number[] {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+type EntryTrendState = "up" | "down" | "range";
+type TrendHistoryTrade = {
+  category: string;
+  symbol: string;
+  entryTime?: number;
+  entryPrice?: number;
+  entryDirection?: "long" | "short";
+};
+
+function completedCandlesBefore(
+  candles: Awaited<ReturnType<typeof getHyperliquidCandles>>,
+  entryTime: number,
+  intervalMs: number,
+) {
+  return candles
+    .filter((candle) => {
+      const start = Number(candle.t ?? 0);
+      const close = Number(candle.T ?? (start + intervalMs));
+      return Number.isFinite(start) && start > 0 && close <= entryTime;
+    })
+    .slice()
+    .sort((a, b) => Number(a.t ?? 0) - Number(b.t ?? 0));
+}
+
+function entryTrendSnapshot(
+  candles: Awaited<ReturnType<typeof getHyperliquidCandles>>,
+  entryTime: number,
+  intervalMs: number,
+) {
+  const completed = completedCandlesBefore(candles, entryTime, intervalMs);
+  const closes = completed.map((candle) => Number(candle.c)).filter((value) => Number.isFinite(value) && value > 0);
+  const ema20 = computeEmaLast(closes, 20);
+  const ema50 = computeEmaLast(closes, 50);
+  const ema20ThreeBarsAgo = computeEmaLast(closes.slice(0, -3), 20);
+  const lastClose = closes[closes.length - 1];
+  if (ema20 == null || ema50 == null || ema20ThreeBarsAgo == null || lastClose == null) return null;
+
+  const ema20SlopePct = ema20ThreeBarsAgo > 0 ? ((ema20 / ema20ThreeBarsAgo) - 1) * 100 : 0;
+  const trend: EntryTrendState = lastClose > ema20 && ema20 > ema50 && ema20SlopePct > 0
+    ? "up"
+    : lastClose < ema20 && ema20 < ema50 && ema20SlopePct < 0
+      ? "down"
+      : "range";
+
+  return { trend, ema20, ema20SlopePct, completed };
+}
+
+function atr14(candles: ReturnType<typeof completedCandlesBefore>) {
+  if (candles.length < 15) return null;
+  const ranges: number[] = [];
+  for (let index = 1; index < candles.length; index += 1) {
+    const high = Number(candles[index].h);
+    const low = Number(candles[index].l);
+    const previousClose = Number(candles[index - 1].c);
+    if (![high, low, previousClose].every(Number.isFinite)) continue;
+    ranges.push(Math.max(high - low, Math.abs(high - previousClose), Math.abs(low - previousClose)));
+  }
+  const recent = ranges.slice(-14);
+  if (recent.length < 14) return null;
+  return recent.reduce((sum, value) => sum + value, 0) / recent.length;
+}
+
+async function attachEntryTrendContexts<T extends TrendHistoryTrade>(trades: T[]) {
+  const eligible = trades.filter((trade) =>
+    trade.category === "PERP" &&
+    Number.isFinite(trade.entryTime) &&
+    Number(trade.entryTime) > 0 &&
+    Number.isFinite(trade.entryPrice) &&
+    Number(trade.entryPrice) > 0 &&
+    (trade.entryDirection === "long" || trade.entryDirection === "short")
+  );
+  if (eligible.length === 0) return trades;
+
+  const byCoin = new Map<string, T[]>();
+  for (const trade of eligible) {
+    const coin = trade.symbol.replace(/-PERP$/i, "");
+    const rows = byCoin.get(coin) ?? [];
+    rows.push(trade);
+    byCoin.set(coin, rows);
+  }
+
+  const candleSets = new Map<string, { fourHour: Awaited<ReturnType<typeof getHyperliquidCandles>>; oneDay: Awaited<ReturnType<typeof getHyperliquidCandles>> }>();
+  await Promise.all(Array.from(byCoin.entries()).map(async ([coin, rows]) => {
+    const entryTimes = rows.map((trade) => Number(trade.entryTime));
+    const firstEntry = Math.min(...entryTimes);
+    const lastEntry = Math.max(...entryTimes);
+    const [fourHour, oneDay] = await Promise.all([
+      getHyperliquidCandles({ coin, interval: "4h", startTime: Math.max(0, firstEntry - 30 * DAY_MS), endTime: lastEntry }).catch(() => []),
+      getHyperliquidCandles({ coin, interval: "1d", startTime: Math.max(0, firstEntry - 80 * DAY_MS), endTime: lastEntry }).catch(() => []),
+    ]);
+    candleSets.set(coin, { fourHour, oneDay });
+  }));
+
+  return trades.map((trade) => {
+    if (!eligible.includes(trade)) return trade;
+    const coin = trade.symbol.replace(/-PERP$/i, "");
+    const candleSet = candleSets.get(coin);
+    const entryTime = Number(trade.entryTime);
+    const entryPrice = Number(trade.entryPrice);
+    const entryDirection = trade.entryDirection as "long" | "short";
+    const fourHour = candleSet ? entryTrendSnapshot(candleSet.fourHour, entryTime, 4 * 60 * 60 * 1000) : null;
+    const oneDay = candleSet ? entryTrendSnapshot(candleSet.oneDay, entryTime, DAY_MS) : null;
+    const atr = fourHour ? atr14(fourHour.completed) : null;
+    if (!fourHour || !oneDay || atr == null || atr <= 0) {
+      return { ...trade, trendContext: { status: "insufficient" as const, entryDirection } };
+    }
+
+    const distanceAtr = (entryPrice - fourHour.ema20) / atr;
+    const fourHourAligned = entryDirection === "long" ? fourHour.trend === "up" : fourHour.trend === "down";
+    const fourHourCounter = entryDirection === "long" ? fourHour.trend === "down" : fourHour.trend === "up";
+    const oneDayAligned = entryDirection === "long" ? oneDay.trend === "up" : oneDay.trend === "down";
+    const oneDayCounter = entryDirection === "long" ? oneDay.trend === "down" : oneDay.trend === "up";
+    const relation = fourHourAligned
+      ? (oneDayAligned ? "strong_trend" : "trend")
+      : fourHourCounter
+        ? (oneDayAligned ? "mixed" : oneDayCounter ? "strong_counter" : "counter")
+        : "unclear";
+    const directionalDistance = entryDirection === "long" ? distanceAtr : -distanceAtr;
+    const entryStyle = fourHourAligned
+      ? directionalDistance > 1.5
+        ? "chasing"
+        : directionalDistance >= -0.25 && directionalDistance <= 0.75
+          ? "pullback"
+          : "normal"
+      : fourHourCounter
+        ? entryDirection === "long" ? "bottom_fishing" : "top_picking"
+        : "unclear";
+
+    return {
+      ...trade,
+      trendContext: {
+        status: "ready" as const,
+        entryDirection,
+        oneDayTrend: oneDay.trend,
+        fourHourTrend: fourHour.trend,
+        ema20DistanceAtr: distanceAtr,
+        ema20SlopePct: fourHour.ema20SlopePct,
+        relation,
+        entryStyle,
+      },
+    };
+  });
+}
+
 // Which series to build per ticker. 4H comes from Hyperliquid's native 4h
 // candles (BTC / NAS100) or, for gold, aggregated from Yahoo 1h bars.
 // Session-based indices are 1D-only.
@@ -568,11 +712,12 @@ export const hyperliquidRouter = router({
         endDate: z.string().optional(),
         limit: z.number().min(1).max(10000).default(10000),
         allHistory: z.boolean().default(false),
+        includeTrendContext: z.boolean().default(false),
         accountId: z.string().max(32).optional(),
       })
     )
     .query(async ({ ctx, input }) =>
-      withAccount(ctx, input, () => {
+      withAccount(ctx, input, async () => {
         const hasDateFilter = Boolean(input.startDate || input.endDate);
         const startTime = hasDateFilter
           ? (input.startDate ? new Date(`${input.startDate}T00:00:00+08:00`).getTime() : 0)
@@ -580,7 +725,15 @@ export const hyperliquidRouter = router({
         const endTime = hasDateFilter
           ? (input.endDate ? new Date(`${input.endDate}T23:59:59+08:00`).getTime() : Date.now())
           : input.allHistory ? Date.now() : undefined;
-        return getHyperliquidTradeHistory({ startTime, endTime, limit: input.limit, category: input.category });
+        const history = await getHyperliquidTradeHistory({
+          startTime,
+          endTime,
+          limit: input.limit,
+          category: input.category,
+          includeEntryMetadata: input.includeTrendContext,
+        });
+        if (!input.includeTrendContext) return history;
+        return { ...history, trades: await attachEntryTrendContexts(history.trades) };
       })
     ),
 
