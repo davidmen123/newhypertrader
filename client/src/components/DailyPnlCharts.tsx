@@ -137,12 +137,12 @@ export default function DailyPnlCharts({ accountId }: { accountId?: string }) {
     for (const row of rows) {
       if (row.time < selectedStart) previousPnl = row.pnl;
     }
-    // The cumulative chart represents the selected period, not the account's
-    // all-time PnL. Reset at the period boundary and accumulate only the daily
-    // account PnL shown in the left chart. This keeps period changes such as
-    // 30D/90D/custom intuitive and prevents pre-period history from leaking
-    // into the first cumulative bar.
-    let cumulativePnl = 0;
+    // Bounded ranges represent performance within the selected period and
+    // therefore reset to zero. MAX is different: the first funded snapshot can
+    // already contain historical PnL, so it must seed the cumulative series or
+    // the chart will omit that opening loss/profit and disagree with the account
+    // overview's all-time total PnL.
+    let cumulativePnl = range === "MAX" ? selected[0]?.[1].pnl ?? 0 : 0;
 
     return selected.map(([day, row]) => {
       const dailyPnl = previousPnl == null ? 0 : row.pnl - previousPnl;
@@ -150,7 +150,7 @@ export default function DailyPnlCharts({ accountId }: { accountId?: string }) {
       cumulativePnl += dailyPnl;
       return { day, dailyPnl, cumulativePnl };
     });
-  }, [endDate, history, startDate]);
+  }, [endDate, history, range, startDate]);
 
   useEffect(() => {
     if (selectedDay && !points.some((point) => point.day === selectedDay)) setSelectedDay(null);
