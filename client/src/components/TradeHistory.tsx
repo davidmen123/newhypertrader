@@ -236,24 +236,26 @@ export default function TradeHistory({
         <TooltipContent className="max-w-[300px] space-y-1.5 p-3" style={{ fontSize: "0.68rem" }}>
           {context.status === "ready" && (
             <>
-              <div>{t("1D趋势", "1D trend")}：<span>{trendStateLabel(context.oneDayTrend)}</span></div>
-              <div>{t("4H趋势", "4H trend")}：<span>{trendStateLabel(context.fourHourTrend)}</span></div>
-              <div>{t("入场方向", "Entry side")}：<span>{context.entryDirection === "long" ? t("做多", "Long") : t("做空", "Short")}</span></div>
-              <div>{t("距4H EMA20", "Distance to 4H EMA20")}：<span>
+              <div>{t("1D趋势", "1D trend")}：{trendStateLabel(context.oneDayTrend)}</div>
+              <div>{t("4H趋势", "4H trend")}：{trendStateLabel(context.fourHourTrend)}</div>
+              <div>{t("入场方向", "Entry side")}：{context.entryDirection === "long" ? t("做多", "Long") : t("做空", "Short")}</div>
+              <div>
+                {t("距4H EMA20", "Distance to 4H EMA20")}：
                 {context.ema20DistanceAtr != null
                   ? `${signed(context.ema20DistanceAtr, 2)} ATR`
                   : `${signed(context.ema20DistancePct, 2)}%`}
-              </span></div>
-              <div>{t("EMA20斜率", "EMA20 slope")}：<span>{signed(context.ema20SlopePct, 2)}%</span></div>
-              <div>{t("判断口径", "Basis")}：<span>
+              </div>
+              <div>{t("EMA20斜率", "EMA20 slope")}：{signed(context.ema20SlopePct, 2)}%</div>
+              <div>
+                {t("判断口径", "Basis")}：
                 {context.basis === "multi_timeframe"
                   ? t("1D＋4H完整判断", "Full 1D + 4H")
                   : context.basis === "one_day_ema20_fallback"
                     ? t("4H完整＋1D EMA20简化判断", "Full 4H + simplified 1D EMA20")
-                  : context.basis === "four_hour"
-                    ? t("1D不足，采用4H判断", "4H fallback; 1D unavailable")
-                    : t("采用4H EMA20＋斜率简化判断", "Simplified 4H EMA20 + slope")}
-              </span></div>
+                    : context.basis === "four_hour"
+                      ? t("1D不足，采用4H判断", "4H fallback; 1D unavailable")
+                      : t("采用4H EMA20＋斜率简化判断", "Simplified 4H EMA20 + slope")}
+              </div>
             </>
           )}
           <div className="pt-1" style={{ borderTop: "1px solid var(--panel-border)" }}>{t("结论", "Conclusion")}：{display.conclusion}</div>
