@@ -25,11 +25,14 @@ type HyperliquidFill = {
   closeMethod?: string;
   trendContext?: {
     status: "ready" | "insufficient";
-    entryDirection: "long" | "short";
+    reason?: "entry_history" | "four_hour_history";
+    entryDirection?: "long" | "short";
     oneDayTrend?: "up" | "down" | "range";
     fourHourTrend?: "up" | "down" | "range";
     ema20DistanceAtr?: number;
+    ema20DistancePct?: number;
     ema20SlopePct?: number;
+    basis?: "multi_timeframe" | "one_day_ema20_fallback" | "four_hour" | "ema20_fallback";
     relation?: "strong_trend" | "trend" | "mixed" | "strong_counter" | "counter" | "unclear";
     entryStyle?: "pullback" | "chasing" | "normal" | "bottom_fishing" | "top_picking" | "unclear";
   };
@@ -166,14 +169,18 @@ export default function TradeHistory({
   const trendStateLabel = (state: "up" | "down" | "range" | undefined) => {
     if (state === "up") return t("上涨", "Uptrend");
     if (state === "down") return t("下跌", "Downtrend");
-    return t("震荡", "Range");
+    if (state === "range") return t("震荡", "Range");
+    return t("历史不足", "Unavailable");
   };
 
   const trendDisplay = (trade: HyperliquidFill) => {
     const context = trade.trendContext;
     if (!context) return null;
     if (context.status === "insufficient") {
-      return { label: t("数据不足", "Insufficient"), color: "var(--text-soft)", conclusion: t("开仓前历史K线不足，未进行趋势判断。", "Insufficient completed candles before entry; no trend classification was made.") };
+      const conclusion = context.reason === "entry_history"
+        ? t("交易所返回的历史成交不足以还原该轮持仓的首次开仓，不能可靠判断。", "The exchange fill history cannot reconstruct this position's first entry reliably.")
+        : t("开仓前连最低要求的4H EMA20历史也不足，不能可靠判断。", "There are not enough completed 4H candles even for the minimum EMA20 fallback.");
+      return { label: t("无法判断", "Unavailable"), color: "var(--text-soft)", conclusion };
     }
     const relationLabels = {
       strong_trend: t("强顺势", "Strong trend"),
@@ -232,8 +239,21 @@ export default function TradeHistory({
               <div>{t("1D趋势", "1D trend")}：<span className="text-foreground">{trendStateLabel(context.oneDayTrend)}</span></div>
               <div>{t("4H趋势", "4H trend")}：<span className="text-foreground">{trendStateLabel(context.fourHourTrend)}</span></div>
               <div>{t("入场方向", "Entry side")}：<span className="text-foreground">{context.entryDirection === "long" ? t("做多", "Long") : t("做空", "Short")}</span></div>
-              <div>{t("距4H EMA20", "Distance to 4H EMA20")}：<span className="text-foreground">{signed(context.ema20DistanceAtr, 2)} ATR</span></div>
+              <div>{t("距4H EMA20", "Distance to 4H EMA20")}：<span className="text-foreground">
+                {context.ema20DistanceAtr != null
+                  ? `${signed(context.ema20DistanceAtr, 2)} ATR`
+                  : `${signed(context.ema20DistancePct, 2)}%`}
+              </span></div>
               <div>{t("EMA20斜率", "EMA20 slope")}：<span className="text-foreground">{signed(context.ema20SlopePct, 2)}%</span></div>
+              <div>{t("判断口径", "Basis")}：<span className="text-foreground">
+                {context.basis === "multi_timeframe"
+                  ? t("1D＋4H完整判断", "Full 1D + 4H")
+                  : context.basis === "one_day_ema20_fallback"
+                    ? t("4H完整＋1D EMA20简化判断", "Full 4H + simplified 1D EMA20")
+                  : context.basis === "four_hour"
+                    ? t("1D不足，采用4H判断", "4H fallback; 1D unavailable")
+                    : t("采用4H EMA20＋斜率简化判断", "Simplified 4H EMA20 + slope")}
+              </span></div>
             </>
           )}
           <div className="pt-1" style={{ borderTop: "1px solid var(--panel-border)" }}>{t("结论", "Conclusion")}：{display.conclusion}</div>
@@ -398,7 +418,7 @@ export default function TradeHistory({
       ) : (
         <>
           <div className="hidden sm:block overflow-x-auto">
-            <table className="w-full" style={{ borderCollapse: "collapse" }}>
+            <table className="w-full" style={{ borderCollapse: "collapse", minWidth: showTrendContext ? 1420 : 1220 }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--panel-border)" }}>
                   {[
@@ -408,7 +428,7 @@ export default function TradeHistory({
                     { label: t("方向", "Side"), key: "side" },
                     { label: t("开平", "Open/Close"), key: "openclose" },
                     { label: t("平仓方式", "Close Method"), key: "closemethod", tooltip: t("预设止损/止盈：提前设置的条件单/委托单;主动平仓：手动干预的方式进行市价止盈/止损", "Preset SL/TP: Pre-set conditional orders; Manual Close: Manual market exit") },
-                    ...(showTrendContext ? [{ label: t("趋势/入场", "Trend/Entry"), key: "trendentry", tooltip: t("依据首次开仓前已完成的1D与4H K线、EMA20/EMA50排列、EMA20斜率及ATR距离判断。仅用于复盘归因，不代表确定的亏损原因。", "Classified from completed 1D/4H candles before the first entry, EMA20/EMA50 alignment, EMA20 slope and ATR distance. Intended for review, not as definitive causation.") }] : []),
+                    ...(showTrendContext ? [{ label: t("趋势/入场", "Trend/Entry"), key: "trendentry", tooltip: t("优先依据首次开仓前已完成的1D与4H K线、EMA20/EMA50排列、EMA20斜率及ATR距离判断；长周期数据不足时自动降级为4H口径。仅用于复盘归因，不代表确定的亏损原因。", "Uses completed 1D/4H candles before the first entry, EMA20/EMA50 alignment, EMA20 slope and ATR distance; automatically falls back to a 4H basis when longer history is unavailable. Intended for review, not definitive causation.") }] : []),
                     { label: t("数量", "Qty"), key: "qty" },
                     { label: t("成交价", "Price"), key: "price" },
                     { label: t("成交额", "Value"), key: "value" },
@@ -418,20 +438,22 @@ export default function TradeHistory({
                   ].map((h) => (
                     <th
                       key={h.key}
-                      className={`text-left pb-2 pr-4 ${h.tooltip ? "flex items-center gap-1" : ""}`}
-                      style={{ fontSize: "0.6rem", color: "var(--text-soft)", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 500 }}
+                      className="text-left pb-2 pr-4 align-middle"
+                      style={{ fontSize: "0.6rem", color: "var(--text-soft)", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 500, whiteSpace: "nowrap" }}
                     >
-                      {h.label}
-                      {h.tooltip && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="text-muted-foreground/60 cursor-help" style={{ width: "12px", height: "12px" }} />
-                          </TooltipTrigger>
-                          <TooltipContent className="text-xs" style={{ fontSize: "0.7rem" }}>
-                            {h.tooltip}
-                          </TooltipContent>
-                        </Tooltip>
-                      )}
+                      <span className="inline-flex items-center gap-1">
+                        {h.label}
+                        {h.tooltip && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="text-muted-foreground/60 cursor-help shrink-0" style={{ width: "12px", height: "12px" }} />
+                            </TooltipTrigger>
+                            <TooltipContent className="text-xs" style={{ fontSize: "0.7rem" }}>
+                              {h.tooltip}
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </span>
                     </th>
                   ))}
                 </tr>

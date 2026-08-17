@@ -355,6 +355,8 @@ type EntryTrendState = "up" | "down" | "range";
 type TrendHistoryTrade = {
   category: string;
   symbol: string;
+  tradeSide?: string;
+  closeMethod?: string;
   entryTime?: number;
   entryPrice?: number;
   entryDirection?: "long" | "short";
@@ -386,16 +388,19 @@ function entryTrendSnapshot(
   const ema50 = computeEmaLast(closes, 50);
   const ema20ThreeBarsAgo = computeEmaLast(closes.slice(0, -3), 20);
   const lastClose = closes[closes.length - 1];
-  if (ema20 == null || ema50 == null || ema20ThreeBarsAgo == null || lastClose == null) return null;
+  if (ema20 == null || ema20ThreeBarsAgo == null || lastClose == null) return null;
 
   const ema20SlopePct = ema20ThreeBarsAgo > 0 ? ((ema20 / ema20ThreeBarsAgo) - 1) * 100 : 0;
-  const trend: EntryTrendState = lastClose > ema20 && ema20 > ema50 && ema20SlopePct > 0
+  // Prefer the full EMA20/EMA50 stack. Newly listed markets may not yet have
+  // 50 completed bars; in that case price vs EMA20 plus its slope is a useful,
+  // explicitly lower-confidence fallback rather than discarding the trade.
+  const trend: EntryTrendState = lastClose > ema20 && (ema50 == null || ema20 > ema50) && ema20SlopePct > 0
     ? "up"
-    : lastClose < ema20 && ema20 < ema50 && ema20SlopePct < 0
+    : lastClose < ema20 && (ema50 == null || ema20 < ema50) && ema20SlopePct < 0
       ? "down"
       : "range";
 
-  return { trend, ema20, ema20SlopePct, completed };
+  return { trend, ema20, ema20SlopePct, hasEma50: ema50 != null, completed };
 }
 
 function atr14(candles: ReturnType<typeof completedCandlesBefore>) {
@@ -414,15 +419,26 @@ function atr14(candles: ReturnType<typeof completedCandlesBefore>) {
 }
 
 async function attachEntryTrendContexts<T extends TrendHistoryTrade>(trades: T[]) {
+  const closingPerps = trades.filter((trade) =>
+    trade.category === "PERP" && (
+      Boolean(trade.closeMethod) || String(trade.tradeSide ?? "").toLowerCase().includes("close")
+    )
+  );
+  const closingSet = new Set(closingPerps);
   const eligible = trades.filter((trade) =>
-    trade.category === "PERP" &&
+    closingSet.has(trade) &&
     Number.isFinite(trade.entryTime) &&
     Number(trade.entryTime) > 0 &&
     Number.isFinite(trade.entryPrice) &&
     Number(trade.entryPrice) > 0 &&
     (trade.entryDirection === "long" || trade.entryDirection === "short")
   );
-  if (eligible.length === 0) return trades;
+  const eligibleSet = new Set(eligible);
+  if (eligible.length === 0) {
+    return trades.map((trade) => closingSet.has(trade)
+      ? { ...trade, trendContext: { status: "insufficient" as const, reason: "entry_history" as const } }
+      : trade);
+  }
 
   const byCoin = new Map<string, T[]>();
   for (const trade of eligible) {
@@ -445,7 +461,11 @@ async function attachEntryTrendContexts<T extends TrendHistoryTrade>(trades: T[]
   }));
 
   return trades.map((trade) => {
-    if (!eligible.includes(trade)) return trade;
+    if (!eligibleSet.has(trade)) {
+      return closingSet.has(trade)
+        ? { ...trade, trendContext: { status: "insufficient" as const, reason: "entry_history" as const } }
+        : trade;
+    }
     const coin = trade.symbol.replace(/-PERP$/i, "");
     const candleSet = candleSets.get(coin);
     const entryTime = Number(trade.entryTime);
@@ -454,25 +474,26 @@ async function attachEntryTrendContexts<T extends TrendHistoryTrade>(trades: T[]
     const fourHour = candleSet ? entryTrendSnapshot(candleSet.fourHour, entryTime, 4 * 60 * 60 * 1000) : null;
     const oneDay = candleSet ? entryTrendSnapshot(candleSet.oneDay, entryTime, DAY_MS) : null;
     const atr = fourHour ? atr14(fourHour.completed) : null;
-    if (!fourHour || !oneDay || atr == null || atr <= 0) {
-      return { ...trade, trendContext: { status: "insufficient" as const, entryDirection } };
+    if (!fourHour) {
+      return { ...trade, trendContext: { status: "insufficient" as const, reason: "four_hour_history" as const, entryDirection } };
     }
 
-    const distanceAtr = (entryPrice - fourHour.ema20) / atr;
+    const distanceAtr = atr != null && atr > 0 ? (entryPrice - fourHour.ema20) / atr : null;
+    const distancePct = fourHour.ema20 > 0 ? ((entryPrice / fourHour.ema20) - 1) * 100 : null;
     const fourHourAligned = entryDirection === "long" ? fourHour.trend === "up" : fourHour.trend === "down";
     const fourHourCounter = entryDirection === "long" ? fourHour.trend === "down" : fourHour.trend === "up";
-    const oneDayAligned = entryDirection === "long" ? oneDay.trend === "up" : oneDay.trend === "down";
-    const oneDayCounter = entryDirection === "long" ? oneDay.trend === "down" : oneDay.trend === "up";
+    const oneDayAligned = oneDay != null && (entryDirection === "long" ? oneDay.trend === "up" : oneDay.trend === "down");
+    const oneDayCounter = oneDay != null && (entryDirection === "long" ? oneDay.trend === "down" : oneDay.trend === "up");
     const relation = fourHourAligned
       ? (oneDayAligned ? "strong_trend" : "trend")
       : fourHourCounter
         ? (oneDayAligned ? "mixed" : oneDayCounter ? "strong_counter" : "counter")
         : "unclear";
-    const directionalDistance = entryDirection === "long" ? distanceAtr : -distanceAtr;
+    const directionalDistance = distanceAtr == null ? null : entryDirection === "long" ? distanceAtr : -distanceAtr;
     const entryStyle = fourHourAligned
-      ? directionalDistance > 1.5
+      ? directionalDistance != null && directionalDistance > 1.5
         ? "chasing"
-        : directionalDistance >= -0.25 && directionalDistance <= 0.75
+        : directionalDistance != null && directionalDistance >= -0.25 && directionalDistance <= 0.75
           ? "pullback"
           : "normal"
       : fourHourCounter
@@ -484,10 +505,18 @@ async function attachEntryTrendContexts<T extends TrendHistoryTrade>(trades: T[]
       trendContext: {
         status: "ready" as const,
         entryDirection,
-        oneDayTrend: oneDay.trend,
+        oneDayTrend: oneDay?.trend,
         fourHourTrend: fourHour.trend,
-        ema20DistanceAtr: distanceAtr,
+        ema20DistanceAtr: distanceAtr ?? undefined,
+        ema20DistancePct: distancePct ?? undefined,
         ema20SlopePct: fourHour.ema20SlopePct,
+        basis: oneDay?.hasEma50 && fourHour.hasEma50 && distanceAtr != null
+          ? "multi_timeframe"
+          : oneDay && fourHour.hasEma50
+            ? "one_day_ema20_fallback"
+          : fourHour.hasEma50
+            ? "four_hour"
+            : "ema20_fallback",
         relation,
         entryStyle,
       },
