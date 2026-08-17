@@ -236,16 +236,16 @@ export default function TradeHistory({
         <TooltipContent className="max-w-[300px] space-y-1.5 p-3" style={{ fontSize: "0.68rem" }}>
           {context.status === "ready" && (
             <>
-              <div>{t("1D趋势", "1D trend")}：<span className="text-foreground">{trendStateLabel(context.oneDayTrend)}</span></div>
-              <div>{t("4H趋势", "4H trend")}：<span className="text-foreground">{trendStateLabel(context.fourHourTrend)}</span></div>
-              <div>{t("入场方向", "Entry side")}：<span className="text-foreground">{context.entryDirection === "long" ? t("做多", "Long") : t("做空", "Short")}</span></div>
-              <div>{t("距4H EMA20", "Distance to 4H EMA20")}：<span className="text-foreground">
+              <div>{t("1D趋势", "1D trend")}：<span>{trendStateLabel(context.oneDayTrend)}</span></div>
+              <div>{t("4H趋势", "4H trend")}：<span>{trendStateLabel(context.fourHourTrend)}</span></div>
+              <div>{t("入场方向", "Entry side")}：<span>{context.entryDirection === "long" ? t("做多", "Long") : t("做空", "Short")}</span></div>
+              <div>{t("距4H EMA20", "Distance to 4H EMA20")}：<span>
                 {context.ema20DistanceAtr != null
                   ? `${signed(context.ema20DistanceAtr, 2)} ATR`
                   : `${signed(context.ema20DistancePct, 2)}%`}
               </span></div>
-              <div>{t("EMA20斜率", "EMA20 slope")}：<span className="text-foreground">{signed(context.ema20SlopePct, 2)}%</span></div>
-              <div>{t("判断口径", "Basis")}：<span className="text-foreground">
+              <div>{t("EMA20斜率", "EMA20 slope")}：<span>{signed(context.ema20SlopePct, 2)}%</span></div>
+              <div>{t("判断口径", "Basis")}：<span>
                 {context.basis === "multi_timeframe"
                   ? t("1D＋4H完整判断", "Full 1D + 4H")
                   : context.basis === "one_day_ema20_fallback"
