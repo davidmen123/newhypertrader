@@ -417,7 +417,7 @@ export default function TradeHistory({
         </div>
       ) : (
         <>
-          <div className="hidden sm:block overflow-x-auto">
+          <div className="positions-table-scrollbar hidden sm:block overflow-x-scroll">
             <table className="w-full" style={{ borderCollapse: "collapse", minWidth: showTrendContext ? 1420 : 1220 }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--panel-border)" }}>
