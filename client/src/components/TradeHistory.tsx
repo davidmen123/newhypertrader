@@ -429,8 +429,8 @@ export default function TradeHistory({
                     { label: t("市场", "Market"), key: "market" },
                     { label: t("方向", "Side"), key: "side" },
                     { label: t("开平", "Open/Close"), key: "openclose" },
-                    { label: t("平仓方式", "Close Method"), key: "closemethod", tooltip: t("预设止损/止盈：提前设置的条件单/委托单;主动平仓：手动干预的方式进行市价止盈/止损", "Preset SL/TP: Pre-set conditional orders; Manual Close: Manual market exit") },
                     ...(showTrendContext ? [{ label: t("趋势/入场", "Trend/Entry"), key: "trendentry", tooltip: t("优先依据首次开仓前已完成的1D与4H K线、EMA20/EMA50排列、EMA20斜率及ATR距离判断；长周期数据不足时自动降级为4H口径。仅用于复盘归因，不代表确定的亏损原因。", "Uses completed 1D/4H candles before the first entry, EMA20/EMA50 alignment, EMA20 slope and ATR distance; automatically falls back to a 4H basis when longer history is unavailable. Intended for review, not definitive causation.") }] : []),
+                    { label: t("平仓方式", "Close Method"), key: "closemethod", tooltip: t("预设止损/止盈：提前设置的条件单/委托单;主动平仓：手动干预的方式进行市价止盈/止损", "Preset SL/TP: Pre-set conditional orders; Manual Close: Manual market exit") },
                     { label: t("数量", "Qty"), key: "qty" },
                     { label: t("成交价", "Price"), key: "price" },
                     { label: t("成交额", "Value"), key: "value" },
@@ -479,8 +479,8 @@ export default function TradeHistory({
                       <td className="py-2 pr-4" style={{ fontSize: "0.68rem", color: "var(--text-soft)" }}>{trade.category}</td>
                       <td className="py-2 pr-4" style={{ color: isBuy ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)", fontSize: "0.7rem", fontWeight: 600 }}>{isBuy ? t("买入", "Buy") : t("卖出", "Sell")}</td>
                       <td className="py-2 pr-4" style={{ fontSize: "0.68rem", color: "var(--text-soft)" }}>{trade.tradeSide || "—"}</td>
-                      <td className="py-2 pr-4" style={{ fontSize: "0.68rem", color: closeMethodColor(trade.closeMethod), whiteSpace: "nowrap" }}>{closeMethodLabel(trade.closeMethod, lang)}</td>
                       {showTrendContext && <td className="py-2 pr-4"><TrendContextCell trade={trade} /></td>}
+                      <td className="py-2 pr-4" style={{ fontSize: "0.68rem", color: closeMethodColor(trade.closeMethod), whiteSpace: "nowrap" }}>{closeMethodLabel(trade.closeMethod, lang)}</td>
                       <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execQty, 2)}</td>
                       <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execPrice, 2)}</td>
                       <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execValue, 2)}</td>
@@ -512,8 +512,8 @@ export default function TradeHistory({
                     <span>{trade.category}</span>
                     <span>{t("价格", "Price")}: {fmt(trade.execPrice, 2)}</span>
                     <span>{t("数量", "Qty")}: {fmt(trade.execQty, 2)}</span>
-                    <span style={{ color: closeMethodColor(trade.closeMethod) }}>{t("平仓方式", "Close")}: {closeMethodLabel(trade.closeMethod, lang)}</span>
                     {showTrendContext && <span>{t("趋势/入场", "Trend/Entry")}: <TrendContextCell trade={trade} mobile /></span>}
+                    <span style={{ color: closeMethodColor(trade.closeMethod) }}>{t("平仓方式", "Close")}: {closeMethodLabel(trade.closeMethod, lang)}</span>
                     {num(trade.execPnl) !== 0 && <span style={{ color: pnlColor(trade.execPnl) }}>PnL: {signed(trade.execPnl, 2)}</span>}
                     {num(trade.fundingFee) !== 0 && <span style={{ color: pnlColor(trade.fundingFee) }}>{t("资金费", "Funding")}: {signed(trade.fundingFee, 2)}</span>}
                   </div>

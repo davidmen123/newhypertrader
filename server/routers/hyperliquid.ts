@@ -355,8 +355,11 @@ type EntryTrendState = "up" | "down" | "range";
 type TrendHistoryTrade = {
   category: string;
   symbol: string;
+  side?: string;
   tradeSide?: string;
   closeMethod?: string;
+  createdTime?: string;
+  execPrice?: string;
   entryTime?: number;
   entryPrice?: number;
   entryDirection?: "long" | "short";
@@ -419,23 +422,37 @@ function atr14(candles: ReturnType<typeof completedCandlesBefore>) {
 }
 
 async function attachEntryTrendContexts<T extends TrendHistoryTrade>(trades: T[]) {
-  const closingPerps = trades.filter((trade) =>
-    trade.category === "PERP" && (
-      Boolean(trade.closeMethod) || String(trade.tradeSide ?? "").toLowerCase().includes("close")
-    )
-  );
-  const closingSet = new Set(closingPerps);
-  const eligible = trades.filter((trade) =>
-    closingSet.has(trade) &&
-    Number.isFinite(trade.entryTime) &&
-    Number(trade.entryTime) > 0 &&
-    Number.isFinite(trade.entryPrice) &&
-    Number(trade.entryPrice) > 0 &&
-    (trade.entryDirection === "long" || trade.entryDirection === "short")
-  );
+  const openingPerps = trades.filter((trade) => {
+    const tradeSide = String(trade.tradeSide ?? "").toLowerCase();
+    return trade.category === "PERP" && tradeSide.includes("open") && !tradeSide.includes("close");
+  });
+  const openingSet = new Set(openingPerps);
+  const entryMetadata = (trade: T) => {
+    const tradeSide = String(trade.tradeSide ?? "").toLowerCase();
+    const entryDirection: "long" | "short" | undefined = tradeSide.includes("long")
+      ? "long"
+      : tradeSide.includes("short")
+        ? "short"
+        : trade.side === "buy"
+          ? "long"
+          : trade.side === "sell"
+            ? "short"
+            : undefined;
+    return {
+      entryTime: Number(trade.createdTime),
+      entryPrice: Number(trade.execPrice),
+      entryDirection,
+    };
+  };
+  const eligible = openingPerps.filter((trade) => {
+    const entry = entryMetadata(trade);
+    return Number.isFinite(entry.entryTime) && entry.entryTime > 0 &&
+      Number.isFinite(entry.entryPrice) && entry.entryPrice > 0 &&
+      entry.entryDirection != null;
+  });
   const eligibleSet = new Set(eligible);
   if (eligible.length === 0) {
-    return trades.map((trade) => closingSet.has(trade)
+    return trades.map((trade) => openingSet.has(trade)
       ? { ...trade, trendContext: { status: "insufficient" as const, reason: "entry_history" as const } }
       : trade);
   }
@@ -450,7 +467,7 @@ async function attachEntryTrendContexts<T extends TrendHistoryTrade>(trades: T[]
 
   const candleSets = new Map<string, { fourHour: Awaited<ReturnType<typeof getHyperliquidCandles>>; oneDay: Awaited<ReturnType<typeof getHyperliquidCandles>> }>();
   await Promise.all(Array.from(byCoin.entries()).map(async ([coin, rows]) => {
-    const entryTimes = rows.map((trade) => Number(trade.entryTime));
+    const entryTimes = rows.map((trade) => entryMetadata(trade).entryTime);
     const firstEntry = Math.min(...entryTimes);
     const lastEntry = Math.max(...entryTimes);
     const [fourHour, oneDay] = await Promise.all([
@@ -462,15 +479,17 @@ async function attachEntryTrendContexts<T extends TrendHistoryTrade>(trades: T[]
 
   return trades.map((trade) => {
     if (!eligibleSet.has(trade)) {
-      return closingSet.has(trade)
+      return openingSet.has(trade)
         ? { ...trade, trendContext: { status: "insufficient" as const, reason: "entry_history" as const } }
         : trade;
     }
     const coin = trade.symbol.replace(/-PERP$/i, "");
     const candleSet = candleSets.get(coin);
-    const entryTime = Number(trade.entryTime);
-    const entryPrice = Number(trade.entryPrice);
-    const entryDirection = trade.entryDirection as "long" | "short";
+    const { entryTime, entryPrice, entryDirection } = entryMetadata(trade) as {
+      entryTime: number;
+      entryPrice: number;
+      entryDirection: "long" | "short";
+    };
     const fourHour = candleSet ? entryTrendSnapshot(candleSet.fourHour, entryTime, 4 * 60 * 60 * 1000) : null;
     const oneDay = candleSet ? entryTrendSnapshot(candleSet.oneDay, entryTime, DAY_MS) : null;
     const atr = fourHour ? atr14(fourHour.completed) : null;
@@ -759,7 +778,6 @@ export const hyperliquidRouter = router({
           endTime,
           limit: input.limit,
           category: input.category,
-          includeEntryMetadata: input.includeTrendContext,
         });
         if (!input.includeTrendContext) return history;
         return { ...history, trades: await attachEntryTrendContexts(history.trades) };

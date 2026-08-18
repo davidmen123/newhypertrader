@@ -77,8 +77,22 @@ type TradeFill = {
   execQty: string;
   createdTime: string;
   execPnl: string;
+  tradeSide?: string;
   closeMethod?: string;
   triggerPrice?: string;
+  trendContext?: {
+    status: "ready" | "insufficient";
+    reason?: "entry_history" | "four_hour_history";
+    entryDirection?: "long" | "short";
+    oneDayTrend?: "up" | "down" | "range";
+    fourHourTrend?: "up" | "down" | "range";
+    ema20DistanceAtr?: number;
+    ema20DistancePct?: number;
+    ema20SlopePct?: number;
+    basis?: "multi_timeframe" | "one_day_ema20_fallback" | "four_hour" | "ema20_fallback";
+    relation?: "strong_trend" | "trend" | "mixed" | "strong_counter" | "counter" | "unclear";
+    entryStyle?: "pullback" | "chasing" | "normal" | "bottom_fishing" | "top_picking" | "unclear";
+  };
 };
 
 type TradeMarker = ChartPoint & {
@@ -167,6 +181,53 @@ function getTradeMeta(trade: TradeFill): { action: "买入" | "卖出"; childLab
 function tradeActionLabel(action: "买入" | "卖出", lang: string) {
   if (lang === "zh") return action === "买入" ? "买入/做多" : "卖出/做空";
   return action === "买入" ? "Buy / Long" : "Sell / Short";
+}
+
+function trendStateLabel(state: "up" | "down" | "range" | undefined, lang: string) {
+  if (state === "up") return lang === "zh" ? "上涨" : "Uptrend";
+  if (state === "down") return lang === "zh" ? "下跌" : "Downtrend";
+  if (state === "range") return lang === "zh" ? "震荡" : "Range";
+  return lang === "zh" ? "历史不足" : "Unavailable";
+}
+
+function getTrendContextDisplay(trade: TradeFill, lang: string) {
+  const context = trade.trendContext;
+  if (!context) return null;
+  if (context.status === "insufficient") {
+    return {
+      label: lang === "zh" ? "无法判断" : "Unavailable",
+      color: "var(--text-soft)",
+      conclusion: context.reason === "entry_history"
+        ? (lang === "zh" ? "开仓信息不足，无法可靠判断。" : "Entry information is insufficient for a reliable classification.")
+        : (lang === "zh" ? "开仓前4H历史不足，无法可靠判断。" : "There is insufficient 4H history before entry."),
+    };
+  }
+  const relationLabels = lang === "zh"
+    ? { strong_trend: "强顺势", trend: "顺势", mixed: "4H逆势 · 日线顺势", strong_counter: "强逆势", counter: "逆势", unclear: "震荡" }
+    : { strong_trend: "Strong trend", trend: "With trend", mixed: "4H counter · 1D aligned", strong_counter: "Strong counter", counter: "Countertrend", unclear: "Range" };
+  const styleLabels = lang === "zh"
+    ? { pullback: "回踩", chasing: context.entryDirection === "long" ? "追涨" : "追空", normal: "常规入场", bottom_fishing: "抄底", top_picking: "摸顶", unclear: "方向不明" }
+    : { pullback: "Pullback", chasing: context.entryDirection === "long" ? "Chasing long" : "Chasing short", normal: "Regular entry", bottom_fishing: "Bottom fishing", top_picking: "Top picking", unclear: "Unclear" };
+  const relation = context.relation ?? "unclear";
+  const style = context.entryStyle ?? "unclear";
+  const label = relation === "mixed" ? relationLabels.mixed : `${relationLabels[relation]} · ${styleLabels[style]}`;
+  const color = relation === "strong_trend" || relation === "trend"
+    ? "oklch(62% 0.13 145)"
+    : relation === "strong_counter" || relation === "counter"
+      ? "oklch(62% 0.15 25)"
+      : relation === "mixed"
+        ? "oklch(68% 0.13 65)"
+        : "var(--text-soft)";
+  const conclusion = relation === "mixed"
+    ? (lang === "zh" ? "开仓方向与4H趋势相反，但与日线趋势一致。" : "Entry opposed the 4H trend but aligned with the daily trend.")
+    : (relation === "strong_trend" || relation === "trend") && style === "chasing"
+      ? (lang === "zh" ? "方向顺势，但入场位置距离4H EMA20较远。" : "Direction aligned with trend, but entry was extended from the 4H EMA20.")
+      : relation === "strong_trend" || relation === "trend"
+        ? (lang === "zh" ? "开仓方向与4H趋势一致。" : "Entry direction aligned with the 4H trend.")
+        : relation === "strong_counter" || relation === "counter"
+          ? (lang === "zh" ? "开仓方向与4H趋势相反。" : "Entry direction opposed the 4H trend.")
+          : (lang === "zh" ? "开仓时4H趋势条件相互冲突，暂不判定顺逆势。" : "The 4H conditions conflicted at entry, so no directional classification was made.");
+  return { label, color, conclusion };
 }
 
 function formatTradeTime(createdTime: string) {
@@ -649,7 +710,7 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
   const reviewTradeStartDate = reviewMode ? undefined : (startDate ?? FULL_HISTORY_START_DATE);
   const reviewTradeEndDate = reviewMode ? undefined : endDate;
   const { data: tradeHistory } = trpc.hyperliquid.tradeHistory.useQuery(
-    { startDate: reviewTradeStartDate, endDate: reviewTradeEndDate, limit: 10000, allHistory: true, accountId },
+    { startDate: reviewTradeStartDate, endDate: reviewTradeEndDate, limit: 10000, allHistory: true, includeTrendContext: reviewMode, accountId },
     { refetchInterval: 120_000 }
   );
   const { data: reviewPnlHistory } = trpc.hyperliquid.pnlHistory.useQuery(
@@ -716,6 +777,7 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
     { enabled: selectedTrade != null && !selectedTrade.trade.closeMethod, refetchInterval: 10_000 }
   );
   const visibleReview = review?.status === "published" ? review : null;
+  const selectedTrendDisplay = selectedTrade ? getTrendContextDisplay(selectedTrade.trade, lang) : null;
   const canAutoReadSelectedTrade = selectedTrade != null && Number(selectedTrade.trade.createdTime) >= REVIEW_AUTO_READ_FROM;
   const selectedStopOrder = selectedTrade && !selectedTrade.trade.closeMethod
     ? openOrders?.find((order) => {
@@ -942,6 +1004,13 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
       const existing = grouped.get(groupKey);
       if (existing) {
         existing.trades.push(trade);
+        // A day/action marker can combine an opening fill with a reducing fill.
+        // Prefer the opening fill as the marker representative so entry context
+        // is available from the chart without attaching it to the exit.
+        if (trade.trendContext && !existing.trade.trendContext) {
+          existing.trade = trade;
+          existing.childLabel = childLabel;
+        }
         return;
       }
       const marker = {
@@ -1482,7 +1551,7 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
                     zIndex: 20,
                     width: 190,
                     left: `clamp(8px, ${hoveredTradePreview.x + 12}px, calc(100% - 198px))`,
-                    top: `clamp(8px, ${hoveredTradePreview.y + 12}px, calc(100% - 150px))`,
+                    top: `clamp(8px, ${hoveredTradePreview.y + 12}px, calc(100% - 174px))`,
                     background: "var(--surface-subtle)",
                     border: "1px solid rgb(92 211 184 / 42%)",
                     boxShadow: "0 12px 28px rgb(0 0 0 / 22%)",
@@ -1496,6 +1565,14 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
                     </span>
                       <span className="text-foreground" style={{ fontSize: "0.78rem" }}>成交价：{Number(hoveredTradePreview.marker.trade.execPrice).toLocaleString("en-US", { maximumFractionDigits: 2 })}</span>
                     <span className="whitespace-nowrap text-muted-foreground" style={{ fontSize: "0.68rem" }}>成交时间：{formatTradeTime(hoveredTradePreview.marker.trade.createdTime)}</span>
+                    {(() => {
+                      const trend = getTrendContextDisplay(hoveredTradePreview.marker.trade, lang);
+                      return trend ? (
+                        <span className="whitespace-nowrap" style={{ color: trend.color, fontSize: "0.68rem" }}>
+                          {lang === "zh" ? "趋势/入场" : "Trend/Entry"}：{trend.label}
+                        </span>
+                      ) : null;
+                    })()}
                   </div>
                   <button
                     onClick={() => openTradeDetails(hoveredTradePreview.marker)}
@@ -1592,6 +1669,31 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
               emaColor={theme === "dark" ? "#fff" : "#111"}
             />
           </div>
+          {selectedTrendDisplay && (
+            <div className="rounded-lg p-3 mb-5" style={{ background: "var(--background)", border: "1px solid var(--panel-border)" }}>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <span className="text-muted-foreground" style={{ fontSize: "0.68rem", letterSpacing: "0.08em" }}>
+                  {lang === "zh" ? "趋势/入场" : "Trend/Entry"}
+                </span>
+                <span style={{ color: selectedTrendDisplay.color, fontSize: "0.72rem" }}>{selectedTrendDisplay.label}</span>
+              </div>
+              {selectedTrade.trade.trendContext?.status === "ready" && (
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 text-muted-foreground" style={{ fontSize: "0.66rem" }}>
+                  <span>{lang === "zh" ? "1D趋势" : "1D trend"}：<b className="font-normal text-foreground">{trendStateLabel(selectedTrade.trade.trendContext.oneDayTrend, lang)}</b></span>
+                  <span>{lang === "zh" ? "4H趋势" : "4H trend"}：<b className="font-normal text-foreground">{trendStateLabel(selectedTrade.trade.trendContext.fourHourTrend, lang)}</b></span>
+                  <span>{lang === "zh" ? "入场方向" : "Entry side"}：<b className="font-normal text-foreground">{selectedTrade.trade.trendContext.entryDirection === "long" ? (lang === "zh" ? "做多" : "Long") : (lang === "zh" ? "做空" : "Short")}</b></span>
+                  <span>{lang === "zh" ? "距4H EMA20" : "Distance to 4H EMA20"}：<b className="font-normal text-foreground">{selectedTrade.trade.trendContext.ema20DistanceAtr != null ? `${formatSigned(selectedTrade.trade.trendContext.ema20DistanceAtr)} ATR` : `${formatSigned(selectedTrade.trade.trendContext.ema20DistancePct ?? Number.NaN)}%`}</b></span>
+                  <span>{lang === "zh" ? "EMA20斜率" : "EMA20 slope"}：<b className="font-normal text-foreground">{formatSigned(selectedTrade.trade.trendContext.ema20SlopePct ?? Number.NaN)}%</b></span>
+                </div>
+              )}
+              <div className="mt-3 pt-2 text-foreground" style={{ borderTop: "1px solid var(--panel-border)", fontSize: "0.68rem" }}>
+                {lang === "zh" ? "结论" : "Conclusion"}：{selectedTrendDisplay.conclusion}
+              </div>
+              <div className="mt-1 text-muted-foreground/60" style={{ fontSize: "0.62rem" }}>
+                {lang === "zh" ? "仅使用开仓前已完成K线，不使用未来数据。" : "Uses only candles completed before entry; no future data."}
+              </div>
+            </div>
+          )}
           {selectedTrade.trade.closeMethod ? (
             <>
               <div className="grid grid-cols-3 gap-2 mb-4">
