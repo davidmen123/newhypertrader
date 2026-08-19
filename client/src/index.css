@@ -224,15 +224,14 @@
   background: rgb(255 255 255 / 6%);
 }
 
-/* Keep the wide positions table discoverably scrollable on desktop. */
+/* The compact positions table scrolls only when its container is genuinely
+   narrower than the table, rather than forcing a desktop scrollbar. */
 .positions-table-scrollbar {
-  scrollbar-gutter: stable;
-  scrollbar-width: auto;
+  scrollbar-width: thin;
   scrollbar-color: rgb(117 160 148 / 58%) rgb(117 160 148 / 12%);
-  padding-bottom: 0.35rem;
 }
 .positions-table-scrollbar::-webkit-scrollbar {
-  height: 9px;
+  height: 7px;
 }
 .positions-table-scrollbar::-webkit-scrollbar-track {
   background: rgb(117 160 148 / 12%);
@@ -247,6 +246,15 @@
 .positions-table-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgb(117 160 148 / 78%);
   background-clip: padding-box;
+}
+.positions-compact-table th {
+  padding: 0.45rem 0.6rem;
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+}
+.positions-compact-table td {
+  padding: 0.62rem 0.6rem;
+  font-size: 0.72rem;
 }
 
 /* Trade history fits naturally on wide screens and scrolls only when its

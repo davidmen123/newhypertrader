@@ -43,10 +43,6 @@ function num(value: string | number | null | undefined) {
   return Number.isFinite(n) ? n : 0;
 }
 
-function displayToken(value: string | null | undefined) {
-  return String(value ?? "").trim().toUpperCase() === "USDT0" ? "USDT" : (value ?? "");
-}
-
 function fmt(value: string | number | null | undefined, decimals = 2) {
   const n = num(value);
   return n.toLocaleString("en-US", {
@@ -482,7 +478,7 @@ export default function TradeHistory({
                       <td className="py-2 pr-3 num-display whitespace-nowrap" style={{ fontSize: "0.7rem" }}>{fmt(trade.execQty, 2)}</td>
                       <td className="py-2 pr-3 num-display whitespace-nowrap" style={{ fontSize: "0.7rem" }}>{fmt(trade.execPrice, 2)}</td>
                       <td className="py-2 pr-3 num-display whitespace-nowrap" style={{ fontSize: "0.7rem" }}>{fmt(trade.execValue, 0)}</td>
-                      <td className="py-2 pr-3 num-display whitespace-nowrap" style={{ fontSize: "0.66rem", color: "var(--text-soft)" }}>{fee ? `${fmt(fee.fee, 2)} ${displayToken(fee.feeCoin)}` : "—"}</td>
+                      <td className="py-2 pr-3 num-display whitespace-nowrap" style={{ fontSize: "0.66rem", color: "var(--text-soft)" }}>{fee ? fmt(fee.fee, 2) : "—"}</td>
                       <td className="py-2 pr-3 num-display whitespace-nowrap" style={{ fontSize: "0.7rem", color: pnlColor(trade.fundingFee) }}>{num(trade.fundingFee) !== 0 ? signed(trade.fundingFee, 2) : "—"}</td>
                       <td className="py-2 num-display whitespace-nowrap" style={{ fontSize: "0.7rem", color: pnlColor(pnl) }}>{pnl !== 0 ? signed(pnl, 2) : "—"}</td>
                     </tr>

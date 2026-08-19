@@ -116,8 +116,8 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
             </div>
           </div>
 
-          <div className="positions-table-scrollbar hidden sm:block overflow-x-scroll">
-            <table className="minimal-table min-w-[1320px] [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap [&_td]:align-middle">
+          <div className="positions-table-scrollbar hidden sm:block overflow-x-auto">
+            <table className="minimal-table positions-compact-table min-w-[1120px] [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap [&_td]:align-middle">
               <thead>
                 <tr>
                   <th>{t("市场", "Market")}</th>
@@ -184,11 +184,11 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                       <td>
                         <span className={`${isLong ? "text-profit" : "text-loss"} whitespace-nowrap`}>
                           {isLong ? t("多", "Long") : t("空", "Short")}
-                          {leverageLabel(p.leverage) ? ` · ${leverageLabel(p.leverage)}` : ""}
+                          {leverageLabel(p.leverage)}
                         </span>
                       </td>
                       <td>{fmt(p.total, 2)}</td>
-                      <td>{fmt(p.positionValue, 2)}</td>
+                      <td>{fmt(p.positionValue, 0)}</td>
                       <td>{fmt(p.avgPrice, 2)}</td>
                       <td>{fmt(p.markPrice, 2)}</td>
                       <td>{p.takeProfitPrice || "—"} / {p.stopLossPrice || "—"}</td>
@@ -229,7 +229,7 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                       <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("市场", "Market")}</div>
                       <div className="mt-1 truncate font-medium text-foreground" style={{ fontSize: "0.9rem" }}>{p.symbol}</div>
                       <div className={`mt-0.5 ${isLong ? "text-profit" : "text-loss"}`} style={{ fontSize: "0.68rem" }}>
-                        {isLong ? t("多", "Long") : t("空", "Short")}{leverage ? ` · ${leverage}` : ""}
+                        {isLong ? t("多", "Long") : t("空", "Short")}{leverage}
                       </div>
                     </div>
                     <div className="min-w-0">
@@ -263,7 +263,7 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
 
                     <div>
                       <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("仓位价值", "Position Value")}</div>
-                      <div className="num-display mt-1" style={{ fontSize: "0.84rem" }}>{fmt(p.positionValue, 2)}</div>
+                      <div className="num-display mt-1" style={{ fontSize: "0.84rem" }}>{fmt(p.positionValue, 0)}</div>
                       <div className="text-muted-foreground" style={{ fontSize: "0.62rem" }}>USDC</div>
                     </div>
                     <div>
