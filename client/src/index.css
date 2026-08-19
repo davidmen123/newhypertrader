@@ -256,6 +256,11 @@
   padding: 0.62rem 0.6rem;
   font-size: 0.72rem;
 }
+.positions-compact-table th:nth-child(-n + 2),
+.positions-compact-table td:nth-child(-n + 2) {
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
+}
 
 /* Trade history fits naturally on wide screens and scrolls only when its
    container becomes narrower than the compact table. */

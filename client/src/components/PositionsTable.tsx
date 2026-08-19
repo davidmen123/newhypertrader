@@ -117,7 +117,7 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
           </div>
 
           <div className="positions-table-scrollbar hidden sm:block overflow-x-auto">
-            <table className="minimal-table positions-compact-table min-w-[1120px] [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap [&_td]:align-middle">
+            <table className="minimal-table positions-compact-table min-w-[1040px] [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap [&_td]:align-middle">
               <thead>
                 <tr>
                   <th>{t("市场", "Market")}</th>
@@ -184,7 +184,7 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                       <td>
                         <span className={`${isLong ? "text-profit" : "text-loss"} whitespace-nowrap`}>
                           {isLong ? t("多", "Long") : t("空", "Short")}
-                          {leverageLabel(p.leverage)}
+                          {leverageLabel(p.leverage) ? ` ${leverageLabel(p.leverage)}` : ""}
                         </span>
                       </td>
                       <td>{fmt(p.total, 2)}</td>
@@ -229,7 +229,7 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                       <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("市场", "Market")}</div>
                       <div className="mt-1 truncate font-medium text-foreground" style={{ fontSize: "0.9rem" }}>{p.symbol}</div>
                       <div className={`mt-0.5 ${isLong ? "text-profit" : "text-loss"}`} style={{ fontSize: "0.68rem" }}>
-                        {isLong ? t("多", "Long") : t("空", "Short")}{leverage}
+                        {isLong ? t("多", "Long") : t("空", "Short")}{leverage ? ` ${leverage}` : ""}
                       </div>
                     </div>
                     <div className="min-w-0">
