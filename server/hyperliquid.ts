@@ -1559,12 +1559,50 @@ interface HyperliquidFundingUpdate {
 // negative = paid.
 export async function getHyperliquidFundingHistory(startTime = 0, endTime = Date.now()) {
   const user = assertAddress();
-  return callInfo<HyperliquidFundingUpdate[]>({
-    type: "userFunding",
-    user,
-    startTime,
-    endTime,
+  let cursor = startTime;
+  let pageEnd = endTime;
+  const updates: HyperliquidFundingUpdate[] = [];
+
+  // userFunding is capped per response. Accounts with frequent funding events
+  // (especially HIP-3 markets) can exceed the cap in only a few days, so a
+  // single request silently omits the newest events and leaves recent closing
+  // fills without their funding attribution.
+  for (let page = 0; page < 100 && cursor <= pageEnd; page += 1) {
+    const batch = await callInfo<HyperliquidFundingUpdate[]>({
+      type: "userFunding",
+      user,
+      startTime: cursor,
+      endTime: pageEnd,
+    });
+    if (batch.length === 0) break;
+    updates.push(...batch);
+    if (batch.length < 500) break;
+
+    const times = batch.map((update) => Number(update.time)).filter(Number.isFinite);
+    const oldestTime = Math.min(...times);
+    const newestTime = Math.max(...times);
+    if (!Number.isFinite(oldestTime) || !Number.isFinite(newestTime)) break;
+    const reverseChronological = Number(batch[0]?.time) > Number(batch[batch.length - 1]?.time);
+    if (reverseChronological) {
+      pageEnd = oldestTime - 1;
+    } else {
+      cursor = newestTime + 1;
+    }
+  }
+
+  const unique = new Map<string, HyperliquidFundingUpdate>();
+  updates.forEach((update) => {
+    const delta = update.delta;
+    const key = [
+      update.time ?? "",
+      delta?.coin ?? "",
+      delta?.usdc ?? "",
+      delta?.szi ?? "",
+      delta?.fundingRate ?? "",
+    ].join("|");
+    unique.set(key, update);
   });
+  return Array.from(unique.values()).sort((a, b) => Number(a.time ?? 0) - Number(b.time ?? 0));
 }
 
 function fundingAllocationKey(fill: HyperliquidFill) {
