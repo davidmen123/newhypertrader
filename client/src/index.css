@@ -249,6 +249,26 @@
   background-clip: padding-box;
 }
 
+/* Trade history fits naturally on wide screens and scrolls only when its
+   container becomes narrower than the compact table. */
+.trade-history-table-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(117 160 148 / 58%) rgb(117 160 148 / 12%);
+}
+.trade-history-table-scrollbar::-webkit-scrollbar {
+  height: 7px;
+}
+.trade-history-table-scrollbar::-webkit-scrollbar-track {
+  background: rgb(117 160 148 / 12%);
+  border-radius: 999px;
+}
+.trade-history-table-scrollbar::-webkit-scrollbar-thumb {
+  background: rgb(117 160 148 / 58%);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
 /* Pill tab */
 .pill-tab {
   padding: 0.35rem 1.1rem;

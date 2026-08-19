@@ -419,14 +419,13 @@ export default function TradeHistory({
         </div>
       ) : (
         <>
-          <div className="positions-table-scrollbar hidden sm:block overflow-x-scroll">
-            <table className="w-full" style={{ borderCollapse: "collapse", minWidth: showTrendContext ? 1420 : 1220 }}>
+          <div className="trade-history-table-scrollbar overflow-x-auto">
+            <table className="w-full" style={{ borderCollapse: "collapse", minWidth: showTrendContext ? 1080 : 900 }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--panel-border)" }}>
                   {[
                     { label: t("时间", "Time"), key: "time" },
                     { label: t("交易对", "Symbol"), key: "symbol" },
-                    { label: t("市场", "Market"), key: "market" },
                     { label: t("方向", "Side"), key: "side" },
                     { label: t("开平", "Open/Close"), key: "openclose" },
                     ...(showTrendContext ? [{ label: t("趋势/入场", "Trend/Entry"), key: "trendentry", tooltip: t("优先依据首次开仓前已完成的1D与4H K线、EMA20/EMA50排列、EMA20斜率及ATR距离判断；长周期数据不足时自动降级为4H口径。仅用于复盘归因，不代表确定的亏损原因。", "Uses completed 1D/4H candles before the first entry, EMA20/EMA50 alignment, EMA20 slope and ATR distance; automatically falls back to a 4H basis when longer history is unavailable. Intended for review, not definitive causation.") }] : []),
@@ -440,7 +439,7 @@ export default function TradeHistory({
                   ].map((h) => (
                     <th
                       key={h.key}
-                      className="text-left pb-2 pr-4 align-middle"
+                      className="text-left pb-2 pr-3 align-middle"
                       style={{ fontSize: "0.6rem", color: "var(--text-soft)", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 500, whiteSpace: "nowrap" }}
                     >
                       <span className="inline-flex items-center gap-1">
@@ -474,52 +473,23 @@ export default function TradeHistory({
                         background: index % 2 === 0 ? "transparent" : "var(--surface-hover)",
                       }}
                     >
-                      <td className="py-2 pr-4" style={{ fontSize: "0.68rem", color: "var(--text-soft)", fontFamily: "DM Mono, monospace", whiteSpace: "nowrap" }}>{fmtTime(trade.createdTime)}</td>
-                      <td className="py-2 pr-4 text-foreground font-medium" style={{ fontSize: "0.72rem" }}>{trade.symbol}</td>
-                      <td className="py-2 pr-4" style={{ fontSize: "0.68rem", color: "var(--text-soft)" }}>{trade.category}</td>
-                      <td className="py-2 pr-4" style={{ color: isBuy ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)", fontSize: "0.7rem", fontWeight: 600 }}>{isBuy ? t("买入", "Buy") : t("卖出", "Sell")}</td>
-                      <td className="py-2 pr-4" style={{ fontSize: "0.68rem", color: "var(--text-soft)" }}>{trade.tradeSide || "—"}</td>
-                      {showTrendContext && <td className="py-2 pr-4"><TrendContextCell trade={trade} /></td>}
-                      <td className="py-2 pr-4" style={{ fontSize: "0.68rem", color: closeMethodColor(trade.closeMethod), whiteSpace: "nowrap" }}>{closeMethodLabel(trade.closeMethod, lang)}</td>
-                      <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execQty, 2)}</td>
-                      <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execPrice, 2)}</td>
-                      <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem" }}>{fmt(trade.execValue, 2)}</td>
-                      <td className="py-2 pr-4 num-display" style={{ fontSize: "0.68rem", color: "var(--text-soft)" }}>{fee ? `${fmt(fee.fee, 2)} ${displayToken(fee.feeCoin)}` : "—"}</td>
-                      <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem", color: pnlColor(trade.fundingFee) }}>{num(trade.fundingFee) !== 0 ? signed(trade.fundingFee, 2) : "—"}</td>
-                      <td className="py-2 pr-4 num-display" style={{ fontSize: "0.72rem", color: pnlColor(pnl) }}>{pnl !== 0 ? signed(pnl, 2) : "—"}</td>
+                      <td className="py-2 pr-3" style={{ fontSize: "0.68rem", color: "var(--text-soft)", fontFamily: "DM Mono, monospace", whiteSpace: "nowrap" }}>{fmtTime(trade.createdTime)}</td>
+                      <td className="py-2 pr-3 text-foreground font-medium whitespace-nowrap" style={{ fontSize: "0.7rem" }}>{trade.symbol}</td>
+                      <td className="py-2 pr-3 whitespace-nowrap" style={{ color: isBuy ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)", fontSize: "0.68rem", fontWeight: 600 }}>{isBuy ? t("买入", "Buy") : t("卖出", "Sell")}</td>
+                      <td className="py-2 pr-3 whitespace-nowrap" style={{ fontSize: "0.66rem", color: "var(--text-soft)" }}>{trade.tradeSide || "—"}</td>
+                      {showTrendContext && <td className="py-2 pr-3"><TrendContextCell trade={trade} /></td>}
+                      <td className="py-2 pr-3" style={{ fontSize: "0.66rem", color: closeMethodColor(trade.closeMethod), whiteSpace: "nowrap" }}>{closeMethodLabel(trade.closeMethod, lang)}</td>
+                      <td className="py-2 pr-3 num-display whitespace-nowrap" style={{ fontSize: "0.7rem" }}>{fmt(trade.execQty, 2)}</td>
+                      <td className="py-2 pr-3 num-display whitespace-nowrap" style={{ fontSize: "0.7rem" }}>{fmt(trade.execPrice, 2)}</td>
+                      <td className="py-2 pr-3 num-display whitespace-nowrap" style={{ fontSize: "0.7rem" }}>{fmt(trade.execValue, 0)}</td>
+                      <td className="py-2 pr-3 num-display whitespace-nowrap" style={{ fontSize: "0.66rem", color: "var(--text-soft)" }}>{fee ? `${fmt(fee.fee, 2)} ${displayToken(fee.feeCoin)}` : "—"}</td>
+                      <td className="py-2 pr-3 num-display whitespace-nowrap" style={{ fontSize: "0.7rem", color: pnlColor(trade.fundingFee) }}>{num(trade.fundingFee) !== 0 ? signed(trade.fundingFee, 2) : "—"}</td>
+                      <td className="py-2 num-display whitespace-nowrap" style={{ fontSize: "0.7rem", color: pnlColor(pnl) }}>{pnl !== 0 ? signed(pnl, 2) : "—"}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
-          </div>
-
-          <div className="sm:hidden flex flex-col gap-2">
-            {pageTrades.map((trade, index) => {
-              const isBuy = trade.side === "buy";
-              return (
-                <div
-                  key={`${trade.execId}-${index}`}
-                  className="rounded-lg px-4 py-3"
-                  style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}
-                >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-medium">{trade.symbol}</span>
-                    <span style={{ fontSize: "0.62rem", color: "var(--text-soft)", fontFamily: "DM Mono, monospace" }}>{fmtTime(trade.createdTime)}</span>
-                  </div>
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <span style={{ color: isBuy ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)", fontWeight: 600 }}>{isBuy ? t("买入", "Buy") : t("卖出", "Sell")}</span>
-                    <span>{trade.category}</span>
-                    <span>{t("价格", "Price")}: {fmt(trade.execPrice, 2)}</span>
-                    <span>{t("数量", "Qty")}: {fmt(trade.execQty, 2)}</span>
-                    {showTrendContext && <span>{t("趋势/入场", "Trend/Entry")}: <TrendContextCell trade={trade} mobile /></span>}
-                    <span style={{ color: closeMethodColor(trade.closeMethod) }}>{t("平仓方式", "Close")}: {closeMethodLabel(trade.closeMethod, lang)}</span>
-                    {num(trade.execPnl) !== 0 && <span style={{ color: pnlColor(trade.execPnl) }}>PnL: {signed(trade.execPnl, 2)}</span>}
-                    {num(trade.fundingFee) !== 0 && <span style={{ color: pnlColor(trade.fundingFee) }}>{t("资金费", "Funding")}: {signed(trade.fundingFee, 2)}</span>}
-                  </div>
-                </div>
-              );
-            })}
           </div>
 
           <div className="flex items-center justify-between mt-4 pt-3" style={{ borderTop: "1px solid var(--panel-border)" }}>
