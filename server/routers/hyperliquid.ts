@@ -946,6 +946,7 @@ export const hyperliquidRouter = router({
     )
     .query(async ({ ctx, input }) =>
       withAccount(ctx, input, async () => {
+        let portfolioError: unknown;
         try {
           const portfolioRows = await getHyperliquidPortfolioSnapshots({
             startDate: input.startDate,
@@ -955,13 +956,20 @@ export const hyperliquidRouter = router({
           });
           if (portfolioRows.length > 0) return portfolioRows;
         } catch (error) {
+          portfolioError = error;
           console.warn("[Hyperliquid] Failed to read portfolio history, falling back to local snapshots:", error);
         }
 
         // The local pnl_snapshots table is not account-scoped — it only ever
         // recorded the default account, so other accounts must return empty
         // rather than borrow someone else's equity curve.
-        if (!isDefaultHyperliquidAccount()) return [];
+        if (!isDefaultHyperliquidAccount()) {
+          // A temporary upstream failure is not the same as an account with no
+          // history. Surface the error so the client retries instead of caching
+          // a false empty state for the secondary analytics account.
+          if (portfolioError) throw portfolioError;
+          return [];
+        }
 
         const rows = await getPnlSnapshots({
           currency: "USDC",

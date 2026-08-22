@@ -656,7 +656,7 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
   // a global hard-coded date would incorrectly constrain a secondary account.
   const { data: accountHistory = [] } = trpc.hyperliquid.pnlHistory.useQuery(
     { accountId, limit: queryLimit, rebase: false },
-    { staleTime: 60_000, refetchOnWindowFocus: false },
+    { enabled: timeRange === "CUSTOM", staleTime: 60_000, refetchOnWindowFocus: false },
   );
   const earliestAccountDate = useMemo(() => {
     const first = accountHistory[0]?.date;
@@ -675,7 +675,7 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
 
   const { data, isLoading, error, refetch, isFetching } = trpc.hyperliquid.pnlHistory.useQuery(
     { startDate, endDate, limit: queryLimit, accountId, rebase: !isFullHistory },
-    { refetchInterval: 60_000 }
+    { refetchInterval: 60_000, refetchOnWindowFocus: false, retry: 2 }
   );
   const externalBenchmark = selectedBenchmark === "btc" ? "sp500" : selectedBenchmark;
   const { data: benchmarkHistory = [], isFetching: isBenchmarkFetching, refetch: refetchBenchmark } = trpc.hyperliquid.benchmarkHistory.useQuery(
@@ -711,7 +711,7 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
   const reviewTradeEndDate = reviewMode ? undefined : endDate;
   const { data: tradeHistory } = trpc.hyperliquid.tradeHistory.useQuery(
     { startDate: reviewTradeStartDate, endDate: reviewTradeEndDate, limit: 10000, allHistory: true, includeTrendContext: reviewMode, accountId },
-    { refetchInterval: 120_000 }
+    { enabled: reviewMode, refetchInterval: 120_000, refetchOnWindowFocus: false }
   );
   const { data: reviewPnlHistory } = trpc.hyperliquid.pnlHistory.useQuery(
     { startDate: FULL_HISTORY_START_DATE, limit: 10000, accountId, rebase: false },

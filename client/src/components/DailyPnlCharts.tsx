@@ -101,7 +101,7 @@ export default function DailyPnlCharts({ accountId }: { accountId?: string }) {
   const queryStartDate = startDate ? utc8Date(parseUtc8(`${startDate} 00:00`) - DAY_MS) : undefined;
   const { data: accountHistory = [] } = trpc.hyperliquid.pnlHistory.useQuery(
     { accountId, limit: 1000, rebase: false },
-    { staleTime: 60_000, refetchOnWindowFocus: false },
+    { enabled: range === "CUSTOM", staleTime: 60_000, refetchOnWindowFocus: false },
   );
   const earliestDate = accountHistory[0]?.date ? utc8Date(parseUtc8(accountHistory[0].date)) : undefined;
   useEffect(() => {
@@ -110,13 +110,13 @@ export default function DailyPnlCharts({ accountId }: { accountId?: string }) {
     if (customEnd < earliestDate) setCustomEnd(utc8Date(Date.now()));
   }, [customEnd, customStart, earliestDate]);
 
-  const { data: history = [], isLoading, isFetching, refetch } = trpc.hyperliquid.pnlHistory.useQuery(
+  const { data: history = [], isLoading, isFetching, error, refetch } = trpc.hyperliquid.pnlHistory.useQuery(
     { accountId, startDate: queryStartDate, endDate, limit: 1000, rebase: false },
-    { refetchInterval: 120_000 },
+    { refetchInterval: 120_000, refetchOnWindowFocus: false, retry: 2 },
   );
   const { data: tradeHistory } = trpc.hyperliquid.tradeHistory.useQuery(
-    { accountId, startDate, endDate, category: "ALL", limit: 10000, allHistory: true },
-    { staleTime: 60_000, refetchOnWindowFocus: false },
+    { accountId, startDate: selectedDay ?? undefined, endDate: selectedDay ?? undefined, category: "ALL", limit: 10000, allHistory: true },
+    { enabled: selectedDay != null, staleTime: 60_000, refetchOnWindowFocus: false },
   );
   const points = useMemo<DailyPoint[]>(() => {
     const rows = (history as PnlRow[])
@@ -205,6 +205,13 @@ export default function DailyPnlCharts({ accountId }: { accountId?: string }) {
       )}
       {isLoading ? (
         <div className="py-16 text-center text-sm text-muted-foreground animate-pulse">{lang === "zh" ? "加载每日盈亏中…" : "Loading daily PnL…"}</div>
+      ) : error ? (
+        <div className="py-16 text-center text-sm text-muted-foreground">
+          <div>{lang === "zh" ? "历史数据暂时读取失败" : "Historical data is temporarily unavailable"}</div>
+          <button type="button" onClick={() => refetch()} className="mt-3 underline underline-offset-4 hover:text-foreground">
+            {lang === "zh" ? "重新加载" : "Retry"}
+          </button>
+        </div>
       ) : points.length === 0 ? (
         <div className="py-16 text-center text-sm text-muted-foreground/60">{labels.noData}</div>
       ) : (

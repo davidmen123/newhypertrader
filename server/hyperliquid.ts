@@ -292,6 +292,23 @@ export interface HyperliquidPortfolioWindow {
 
 export type HyperliquidPortfolio = Array<[string, HyperliquidPortfolioWindow]>;
 
+const PORTFOLIO_CACHE_TTL_MS = 30_000;
+const PORTFOLIO_STALE_TTL_MS = 10 * 60_000;
+const CANDLE_CACHE_TTL_MS = 60_000;
+
+type PortfolioCacheEntry = {
+  data?: HyperliquidPortfolio;
+  fetchedAt?: number;
+  inFlight?: Promise<HyperliquidPortfolio>;
+};
+
+const portfolioCache = new Map<string, PortfolioCacheEntry>();
+const candleCache = new Map<string, { data?: HyperliquidCandle[]; fetchedAt?: number; inFlight?: Promise<HyperliquidCandle[]> }>();
+
+function hasPortfolioHistory(portfolio: HyperliquidPortfolio) {
+  return portfolio.some(([, window]) => (window.accountValueHistory?.length ?? 0) > 0);
+}
+
 export interface HyperliquidCandle {
   T?: number;
   c: string;
@@ -826,7 +843,60 @@ export async function getHyperliquidBtcPrice() {
 
 export async function getHyperliquidPortfolio() {
   const user = assertAddress();
-  return callInfo<HyperliquidPortfolio>({ type: "portfolio", user });
+  const now = Date.now();
+  const cached = portfolioCache.get(user);
+  if (cached?.data && cached.fetchedAt && now - cached.fetchedAt < PORTFOLIO_CACHE_TTL_MS) {
+    return cached.data;
+  }
+  if (cached?.inFlight) return cached.inFlight;
+
+  const request = (async () => {
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const portfolio = await callInfo<HyperliquidPortfolio>({ type: "portfolio", user });
+        if (!Array.isArray(portfolio)) throw new Error("Hyperliquid returned an invalid portfolio response");
+        // An active account occasionally receives an empty portfolio payload.
+        // Retry once before accepting it as a genuinely empty account.
+        if (!hasPortfolioHistory(portfolio) && attempt === 0) continue;
+        if (
+          !hasPortfolioHistory(portfolio)
+          && cached?.data
+          && cached.fetchedAt
+          && Date.now() - cached.fetchedAt < PORTFOLIO_STALE_TTL_MS
+          && hasPortfolioHistory(cached.data)
+        ) {
+          return cached.data;
+        }
+        portfolioCache.set(user, { data: portfolio, fetchedAt: Date.now() });
+        return portfolio;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    if (
+      cached?.data
+      && cached.fetchedAt
+      && Date.now() - cached.fetchedAt < PORTFOLIO_STALE_TTL_MS
+      && hasPortfolioHistory(cached.data)
+    ) {
+      console.warn("[Hyperliquid] Portfolio refresh failed; serving recent cached history:", lastError);
+      return cached.data;
+    }
+    throw lastError instanceof Error ? lastError : new Error("Hyperliquid portfolio request failed");
+  })();
+
+  portfolioCache.set(user, { ...cached, inFlight: request });
+  try {
+    return await request;
+  } finally {
+    const current = portfolioCache.get(user);
+    if (current?.inFlight === request) {
+      const { inFlight: _inFlight, ...rest } = current;
+      portfolioCache.set(user, rest);
+    }
+  }
 }
 
 export function getLatestHyperliquidPortfolioEquity(portfolio: HyperliquidPortfolio) {
@@ -1186,10 +1256,35 @@ export async function getHyperliquidCandles(params: {
   startTime: number;
   endTime: number;
 }) {
-  return callInfo<HyperliquidCandle[]>({
+  const key = JSON.stringify(params);
+  const cached = candleCache.get(key);
+  if (cached?.data && cached.fetchedAt && Date.now() - cached.fetchedAt < CANDLE_CACHE_TTL_MS) {
+    return cached.data;
+  }
+  if (cached?.inFlight) return cached.inFlight;
+
+  const request = callInfo<HyperliquidCandle[]>({
     type: "candleSnapshot",
     req: params,
+  }).then((data) => {
+    if (!Array.isArray(data)) throw new Error("Hyperliquid returned an invalid candle response");
+    candleCache.set(key, { data, fetchedAt: Date.now() });
+    return data;
+  }).catch((error) => {
+    if (cached?.data) return cached.data;
+    throw error;
   });
+
+  candleCache.set(key, { ...cached, inFlight: request });
+  try {
+    return await request;
+  } finally {
+    const current = candleCache.get(key);
+    if (current?.inFlight === request) {
+      const { inFlight: _inFlight, ...rest } = current;
+      candleCache.set(key, rest);
+    }
+  }
 }
 
 // Pick the finest-grained portfolio window whose history actually covers the
