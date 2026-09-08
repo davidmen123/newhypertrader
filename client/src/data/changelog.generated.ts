@@ -14,6 +14,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.63.0",
+    "date": "2026-09-08",
+    "zh": "仓位明细中优化排序及增加观察仓标签",
+    "en": "Optimized position sorting and added observation-position labels"
+  },
+  {
     "version": "1.62.1",
     "date": "2026-08-08",
     "zh": "损益历史新增周期自定义，复盘模式字段与交易节点优化",

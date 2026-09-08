@@ -183,8 +183,9 @@ function build() {
   }
 
   // Keep the public changelog aligned with the user's deployed baseline. All
-  // internal releases after 1.62.0 are intentionally consolidated into one
-  // release entry until the next public release is explicitly chosen.
+  // internal releases after 1.62.0 are intentionally consolidated into
+  // explicitly approved public releases instead of exposing every small
+  // implementation commit as a separate version.
   const baselineIndex = entries.findIndex((entry) => entry.version === "1.62.0");
   if (baselineIndex >= 0) {
     return [
@@ -194,6 +195,12 @@ function build() {
         date: "2026-08-08",
         zh: "损益历史新增周期自定义，复盘模式字段与交易节点优化",
         en: "Added custom PnL ranges and optimized review fields and trade nodes",
+      },
+      {
+        version: "1.63.0",
+        date: "2026-09-08",
+        zh: "仓位明细中优化排序及增加观察仓标签",
+        en: "Optimized position sorting and added observation-position labels",
       },
     ].reverse();
   }
