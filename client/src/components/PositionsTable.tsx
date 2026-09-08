@@ -232,13 +232,15 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                           {p.marginMode === "isolated" ? t("逐仓", "Isolated") : t("全仓", "Cross")}
                         </span>
                       </td>
-                      <td className={pnlColor(p.unrealisedPnl)}>
-                        <span className="whitespace-nowrap">{signed(p.unrealisedPnl, 2)}</span>
-                        <span className="ml-1 whitespace-nowrap" style={{ fontSize: "0.68rem" }}>
-                          ({signed(num(p.profitRate) * 100, 2)}%)
+                      <td>
+                        <span className={`inline-flex items-baseline whitespace-nowrap ${pnlColor(p.unrealisedPnl)}`}>
+                          <span>{signed(p.unrealisedPnl, 2)}</span>
+                          <span className="ml-1" style={{ fontSize: "0.68rem" }}>
+                            ({signed(num(p.profitRate) * 100, 2)}%)
+                          </span>
                         </span>
                       </td>
-                      <td className={pnlColor(p.fundingFee)}>{signed(p.fundingFee, 2)}</td>
+                      <td><span className={pnlColor(p.fundingFee)}>{signed(p.fundingFee, 2)}</span></td>
                       <td>{num(p.liquidationPrice) > 0 ? fmt(p.liquidationPrice, 2) : "—"}</td>
                     </tr>
                   );
