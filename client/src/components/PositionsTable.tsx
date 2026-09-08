@@ -56,6 +56,33 @@ function pnlColor(value: string | number | null | undefined) {
   return "text-muted-foreground";
 }
 
+function isObservationPosition(value: string | number | null | undefined) {
+  const positionValue = Math.abs(num(value));
+  return positionValue > 0 && positionValue < 50;
+}
+
+function ObservationPositionTag({ lang }: { lang: string }) {
+  const isZh = lang === "zh";
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          tabIndex={0}
+          className="inline-flex cursor-help items-center rounded-full border border-amber-500/30 bg-amber-500/8 px-1.5 py-0.5 text-amber-600 dark:text-amber-400"
+          style={{ fontSize: "0.56rem", lineHeight: 1 }}
+        >
+          {isZh ? "观察仓" : "Watch"}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-64 text-xs" style={{ fontSize: "0.7rem" }}>
+        {isZh
+          ? "仓位价值低于 50 USDC，可能为观察性仓位；仅按仓位规模识别，不代表后续一定加仓。"
+          : "Position value is below 50 USDC. It may be an observational position; this label is based only on size and does not imply a future increase."}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 export default function PositionsTable({ accountId }: { accountId?: string } = {}) {
   const { tr, lang } = useLang();
   const t = (zh: string, en: string) => (lang === "zh" ? zh : en);
@@ -64,7 +91,9 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
     { refetchInterval: 15_000 }
   );
 
-  const positions = ((data ?? []) as HyperliquidPosition[]).filter((p) => Math.abs(num(p.total)) > 0);
+  const positions = ((data ?? []) as HyperliquidPosition[])
+    .filter((p) => Math.abs(num(p.total)) > 0)
+    .sort((a, b) => Math.abs(num(b.positionValue)) - Math.abs(num(a.positionValue)));
   const totalUnrealized = positions.reduce((sum, p) => sum + num(p.unrealisedPnl), 0);
   const totalFundingFee = positions.reduce((sum, p) => sum + num(p.fundingFee), 0);
 
@@ -188,7 +217,12 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                         </span>
                       </td>
                       <td>{fmt(p.total, 2)}</td>
-                      <td>{fmt(p.positionValue, 0)}</td>
+                      <td>
+                        <span className="inline-flex items-center gap-1.5">
+                          <span>{fmt(p.positionValue, 0)}</span>
+                          {isObservationPosition(p.positionValue) && <ObservationPositionTag lang={lang} />}
+                        </span>
+                      </td>
                       <td>{fmt(p.avgPrice, 2)}</td>
                       <td>{fmt(p.markPrice, 2)}</td>
                       <td>{p.takeProfitPrice || "—"} / {p.stopLossPrice || "—"}</td>
@@ -263,7 +297,10 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
 
                     <div>
                       <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("仓位价值", "Position Value")}</div>
-                      <div className="num-display mt-1" style={{ fontSize: "0.84rem" }}>{fmt(p.positionValue, 0)}</div>
+                      <div className="num-display mt-1 flex items-center gap-1.5" style={{ fontSize: "0.84rem" }}>
+                        <span>{fmt(p.positionValue, 0)}</span>
+                        {isObservationPosition(p.positionValue) && <ObservationPositionTag lang={lang} />}
+                      </div>
                       <div className="text-muted-foreground" style={{ fontSize: "0.62rem" }}>USDC</div>
                     </div>
                     <div>
