@@ -21,6 +21,8 @@ type HyperliquidPosition = {
   liquidationPrice: string;
   takeProfitPrice: string;
   stopLossPrice: string;
+  takeProfitTargets?: Array<{ price: string; size: string }>;
+  stopLossTargets?: Array<{ price: string; size: string }>;
   profitRate: string;
   updatedTime: string;
 };
@@ -83,6 +85,95 @@ function ObservationPositionTag({ lang }: { lang: string }) {
   );
 }
 
+type PositionTarget = { price: string; size: string };
+
+function normalizedTargets(targets: PositionTarget[] | undefined, legacyPrices: string, positionSize: string) {
+  if (targets?.length) return targets.filter((target) => num(target.price) > 0);
+  return legacyPrices
+    .split("/")
+    .map((price) => price.trim())
+    .filter((price) => num(price) > 0)
+    .map((price) => ({ price, size: positionSize }));
+}
+
+function ProjectedTarget({
+  position,
+  target,
+  kind,
+  accountEquity,
+  lang,
+}: {
+  position: HyperliquidPosition;
+  target: PositionTarget;
+  kind: "takeProfit" | "stopLoss";
+  accountEquity: number;
+  lang: string;
+}) {
+  const isZh = lang === "zh";
+  const entry = num(position.avgPrice);
+  const price = num(target.price);
+  const positionSize = Math.abs(num(position.total));
+  const targetSize = Math.min(Math.abs(num(target.size)) || positionSize, positionSize);
+  const pnl = (position.posSide === "long" ? price - entry : entry - price) * targetSize;
+  const equityPct = accountEquity > 0 ? (pnl / accountEquity) * 100 : null;
+  const tone = pnl > 0 ? "text-profit" : pnl < 0 ? "text-loss" : "text-muted-foreground";
+  const targetTone = kind === "takeProfit" ? "text-profit" : "text-loss";
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span tabIndex={0} className={`cursor-help border-b border-dashed border-current ${targetTone}`}>
+          {target.price}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className="w-64 space-y-1.5 p-3" style={{ fontSize: "0.68rem" }}>
+        <div className="font-medium">
+          {kind === "takeProfit" ? (isZh ? "止盈目标" : "Take-profit target") : (isZh ? "止损目标" : "Stop-loss target")}
+          <span className="ml-2 num-display">{target.price}</span>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <span className="opacity-70">{pnl >= 0 ? (isZh ? "预计盈利" : "Projected profit") : (isZh ? "预计亏损" : "Projected loss")}</span>
+          <span className={`num-display ${tone}`}>{signed(pnl, 2)} USDC</span>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <span className="opacity-70">{isZh ? "占当前账户净值" : "Of current equity"}</span>
+          <span className={`num-display ${tone}`}>{equityPct == null ? "—" : `${signed(equityPct, 2)}%`}</span>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <span className="opacity-70">{isZh ? "测算数量" : "Estimated size"}</span>
+          <span className="num-display">{fmt(targetSize, 2)}</span>
+        </div>
+        <div className="border-t border-current/15 pt-1.5 opacity-60">
+          {isZh
+            ? "按开仓均价及目标委托数量估算；未计手续费、资金费、滑点及部分成交影响。"
+            : "Estimated from entry price and target-order size; excludes fees, funding, slippage and partial fills."}
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+function PositionTargets({ position, accountEquity, lang }: { position: HyperliquidPosition; accountEquity: number; lang: string }) {
+  const takeProfits = normalizedTargets(position.takeProfitTargets, position.takeProfitPrice, position.total);
+  const stopLosses = normalizedTargets(position.stopLossTargets, position.stopLossPrice, position.total);
+  const renderTargets = (targets: PositionTarget[], kind: "takeProfit" | "stopLoss") => targets.length > 0
+    ? targets.map((target, index) => (
+      <span key={`${kind}-${target.price}-${index}`} className="inline-flex items-center gap-1">
+        {index > 0 && <span className="text-muted-foreground">/</span>}
+        <ProjectedTarget position={position} target={target} kind={kind} accountEquity={accountEquity} lang={lang} />
+      </span>
+    ))
+    : <span>—</span>;
+
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1 whitespace-nowrap">
+      {renderTargets(takeProfits, "takeProfit")}
+      <span className="text-muted-foreground">/</span>
+      {renderTargets(stopLosses, "stopLoss")}
+    </span>
+  );
+}
+
 export default function PositionsTable({ accountId }: { accountId?: string } = {}) {
   const { tr, lang } = useLang();
   const t = (zh: string, en: string) => (lang === "zh" ? zh : en);
@@ -90,6 +181,11 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
     { accountId },
     { refetchInterval: 15_000 }
   );
+  const { data: accountOverview } = trpc.hyperliquid.accountOverview.useQuery(
+    { accountId },
+    { refetchInterval: 30_000, refetchOnWindowFocus: false }
+  );
+  const accountEquity = num(accountOverview?.totalEquityUsdc);
 
   const positions = ((data ?? []) as HyperliquidPosition[])
     .filter((p) => Math.abs(num(p.total)) > 0)
@@ -225,7 +321,7 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                       </td>
                       <td>{fmt(p.avgPrice, 2)}</td>
                       <td>{fmt(p.markPrice, 2)}</td>
-                      <td>{p.takeProfitPrice || "—"} / {p.stopLossPrice || "—"}</td>
+                      <td><PositionTargets position={p} accountEquity={accountEquity} lang={lang} /></td>
                       <td>
                         {fmt(p.marginUsed, 2)}{" "}
                         <span className="text-muted-foreground whitespace-nowrap" style={{ fontSize: "0.58rem" }}>
@@ -313,7 +409,7 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                     <div>
                       <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("止盈 / 止损", "TP / SL")}</div>
                       <div className="num-display mt-1 leading-tight" style={{ fontSize: "0.78rem" }}>
-                        {p.takeProfitPrice || "—"} / {p.stopLossPrice || "—"}
+                        <PositionTargets position={p} accountEquity={accountEquity} lang={lang} />
                       </div>
                     </div>
                   </div>

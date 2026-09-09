@@ -1479,8 +1479,13 @@ export async function getHyperliquidPositions() {
     const mark = Math.abs(size) > 0 && toNumber(position.positionValue) > 0
       ? toNumber(position.positionValue) / Math.abs(size)
       : entry;
+    const market = dex || "default";
     const triggerOrders = openOrders.filter((order) =>
-      order.coin === position.coin && order.isTrigger && order.reduceOnly && toNumber(order.triggerPrice) > 0
+      order.coin === position.coin
+      && order.market === market
+      && order.isTrigger
+      && order.reduceOnly
+      && toNumber(order.triggerPrice) > 0
     );
     const classifyTrigger = (order: (typeof triggerOrders)[number]) => {
       const orderType = order.orderType.toLowerCase();
@@ -1490,8 +1495,17 @@ export async function getHyperliquidPositions() {
       const isTakeProfit = side === "long" ? trigger >= entry : trigger <= entry;
       return isTakeProfit ? "takeProfit" : "stopLoss";
     };
-    const takeProfitPrices = triggerOrders.filter((order) => classifyTrigger(order) === "takeProfit").map((order) => order.triggerPrice);
-    const stopLossPrices = triggerOrders.filter((order) => classifyTrigger(order) === "stopLoss").map((order) => order.triggerPrice);
+    const toTarget = (order: (typeof triggerOrders)[number]) => {
+      const orderSize = Math.abs(toNumber(order.size || order.originalSize));
+      return {
+        price: order.triggerPrice,
+        // A target can close only part of a position. Use its remaining order
+        // size so projected PnL is not overstated when several targets exist.
+        size: String(orderSize > 0 ? Math.min(orderSize, Math.abs(size)) : Math.abs(size)),
+      };
+    };
+    const takeProfitTargets = triggerOrders.filter((order) => classifyTrigger(order) === "takeProfit").map(toTarget);
+    const stopLossTargets = triggerOrders.filter((order) => classifyTrigger(order) === "stopLoss").map(toTarget);
 
     return {
       category: "PERP",
@@ -1509,8 +1523,10 @@ export async function getHyperliquidPositions() {
       unrealisedPnl: String(toNumber(position.unrealizedPnl)),
       fundingFee: String(-toNumber(position.cumFunding?.sinceOpen)),
       liquidationPrice: position.liquidationPx ? String(position.liquidationPx) : "0",
-      takeProfitPrice: takeProfitPrices.join(" / "),
-      stopLossPrice: stopLossPrices.join(" / "),
+      takeProfitPrice: takeProfitTargets.map((target) => target.price).join(" / "),
+      stopLossPrice: stopLossTargets.map((target) => target.price).join(" / "),
+      takeProfitTargets,
+      stopLossTargets,
       profitRate: String(toNumber(position.returnOnEquity)),
       updatedTime: String(state.time ?? now),
     };
