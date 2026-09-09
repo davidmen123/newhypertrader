@@ -9,6 +9,7 @@ import {
 import { ChevronDown, Info, RefreshCw, Database, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { classifyObservationTrades } from "@/lib/reviewObservation";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -80,6 +81,8 @@ type TradeFill = {
   tradeSide?: string;
   closeMethod?: string;
   triggerPrice?: string;
+  observationNode?: boolean;
+  observationConverted?: boolean;
   trendContext?: {
     status: "ready" | "insufficient";
     reason?: "entry_history" | "four_hour_history";
@@ -172,10 +175,18 @@ function formatUtc8Date(date: Date) {
 function getTradeMeta(trade: TradeFill): { action: "买入" | "卖出"; childLabel?: string } {
   const action: "买入" | "卖出" = trade.side === "buy" || trade.side === "B" ? "买入" : "卖出";
   const closeMethod = String(trade.closeMethod ?? "");
-  const childLabel = closeMethod.includes("take_profit") ? "止盈"
+  const childLabel = trade.observationConverted ? "转为正式仓 · 加仓"
+    : trade.observationNode ? "观察仓"
+    : closeMethod.includes("take_profit") ? "止盈"
     : closeMethod.includes("stop_loss") ? "止损"
       : undefined;
   return { action, childLabel };
+}
+
+function tradeNodeContextLabel(trade: TradeFill, lang: string) {
+  if (trade.observationConverted) return lang === "zh" ? "转为正式仓 · 加仓" : "Converted to regular · Added";
+  if (trade.observationNode) return lang === "zh" ? "观察仓" : "Observation position";
+  return undefined;
 }
 
 function tradeActionLabel(action: "买入" | "卖出", lang: string) {
@@ -616,6 +627,7 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
   const [customEndDate, setCustomEndDate] = useState(() => formatUtc8Date(new Date()));
   const [reviewMode, setReviewMode] = useState(false);
   const [reviewSymbolQuery, setReviewSymbolQuery] = useState("");
+  const [showObservationNodes, setShowObservationNodes] = useState(false);
   const [selectedTrade, setSelectedTrade] = useState<TradeMarker | null>(null);
   const [hoveredTradeId, setHoveredTradeId] = useState<string | null>(null);
   const [showReviewDetail, setShowReviewDetail] = useState(false);
@@ -720,8 +732,9 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
   // Review nodes currently describe perpetual open/close decisions. Exclude
   // only fills explicitly identified as spot: older API responses may omit
   // category even though the symbol is a perpetual contract.
-  const allTrades = ((tradeHistory?.trades ?? []) as TradeFill[])
-    .filter((trade) => trade.category !== "SPOT");
+  const allTrades = classifyObservationTrades(
+    ((tradeHistory?.trades ?? []) as TradeFill[]).filter((trade) => trade.category !== "SPOT")
+  );
   const reviewStartTimestamp = startDate
     ? parseUtc8Timestamp(`${startDate}T00:00:00+08:00`)
     : 0;
@@ -732,11 +745,20 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
     const timestamp = Number(trade.createdTime);
     return Number.isFinite(timestamp) && timestamp >= reviewStartTimestamp && timestamp <= reviewEndTimestamp;
   });
-  const visibleReviewTrades = useMemo(() => {
+  const scopedReviewTrades = useMemo(() => {
     const query = reviewSymbolQuery.trim().toLowerCase();
     if (!reviewMode || !query) return trades;
     return trades.filter((trade) => trade.symbol.toLowerCase().includes(query));
   }, [reviewMode, reviewSymbolQuery, trades]);
+  const hiddenObservationNodeCount = useMemo(() => new Set(
+    scopedReviewTrades
+      .filter((trade) => trade.observationNode)
+      .map((trade) => `${formatUtc8Date(new Date(Number(trade.createdTime)))}:${getTradeMeta(trade).action}`)
+  ).size, [scopedReviewTrades]);
+  const visibleReviewTrades = useMemo(
+    () => showObservationNodes ? scopedReviewTrades : scopedReviewTrades.filter((trade) => !trade.observationNode),
+    [scopedReviewTrades, showObservationNodes]
+  );
   const selectedCoin = selectedTrade?.trade.symbol?.replace(/-PERP$/i, "") || "BTC";
   const selectedTime = Number(selectedTrade?.trade.createdTime);
   const candleWindowMs: Record<CandleInterval, number> = {
@@ -1007,7 +1029,11 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
         // A day/action marker can combine an opening fill with a reducing fill.
         // Prefer the opening fill as the marker representative so entry context
         // is available from the chart without attaching it to the exit.
-        if (trade.trendContext && !existing.trade.trendContext) {
+        const markerPriority = (candidate: TradeFill) => candidate.observationConverted ? 2 : candidate.observationNode ? 0 : 1;
+        if (
+          markerPriority(trade) > markerPriority(existing.trade)
+          || (trade.trendContext && !existing.trade.trendContext)
+        ) {
           existing.trade = trade;
           existing.childLabel = childLabel;
         }
@@ -1242,6 +1268,7 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
           onClick={() => {
             setReviewMode((active) => !active);
             setReviewSymbolQuery("");
+            setShowObservationNodes(false);
             clearHoverPreviewTimer();
             setHoveredTradePreview(null);
             setSelectedTrade(null);
@@ -1262,7 +1289,7 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
       {reviewMode && (
         <div className="flex flex-wrap items-start gap-x-3 gap-y-1 mb-5 rounded-lg px-3 py-2.5 text-muted-foreground" style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)", fontSize: "0.68rem" }}>
           <span className="shrink-0 text-foreground/80 tracking-widest">{lang === "zh" ? "说明" : "Guide"}</span>
-          <span>
+          <span className="min-w-0 flex-1">
             {lang === "zh" ? (
               <>
                 点击净值曲线上的交易节点（
@@ -1283,6 +1310,17 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
               </>
             )}
           </span>
+          {hiddenObservationNodeCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowObservationNodes((current) => !current)}
+              className="shrink-0 underline decoration-dashed underline-offset-4 transition-colors hover:text-foreground"
+            >
+              {lang === "zh"
+                ? `${showObservationNodes ? "已显示" : "已隐藏"} ${hiddenObservationNodeCount} 个观察仓节点 · ${showObservationNodes ? "隐藏" : "显示"}`
+                : `${showObservationNodes ? "Showing" : "Hidden"} ${hiddenObservationNodeCount} observation nodes · ${showObservationNodes ? "Hide" : "Show"}`}
+            </button>
+          )}
         </div>
       )}
 
@@ -1490,6 +1528,7 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
                     const marker = props.payload?.[tradeKey] as TradeMarker | undefined;
                     if (!marker || props.cx == null || props.cy == null) return <circle cx={0} cy={0} r={0} />;
                     const isHovered = hoveredTradeId === marker.trade.execId;
+                    const observationOnly = marker.trades.every((trade) => trade.observationNode);
                     return (
                       <g
                         style={{ cursor: "pointer" }}
@@ -1519,10 +1558,11 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
                         <circle
                           cx={props.cx}
                           cy={props.cy}
-                          r={isHovered ? 7 : 5}
+                          r={isHovered ? (observationOnly ? 5 : 7) : (observationOnly ? 3.5 : 5)}
                           fill={color}
                           stroke="var(--background)"
-                          strokeWidth={2}
+                          strokeWidth={observationOnly ? 1.5 : 2}
+                          opacity={observationOnly ? 0.48 : 1}
                           style={{
                             filter: isHovered ? `drop-shadow(0 0 5px ${color})` : undefined,
                             transition: "r 120ms ease, filter 120ms ease",
@@ -1563,6 +1603,11 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
                       <i className="inline-block mr-1.5 h-2 w-2 rounded-full align-middle" style={{ background: hoveredTradePreview.marker.action === "买入" ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)" }} />
                       {tradeActionLabel(hoveredTradePreview.marker.action, lang)}
                     </span>
+                    {tradeNodeContextLabel(hoveredTradePreview.marker.trade, lang) && (
+                      <span className="text-amber-500" style={{ fontSize: "0.66rem" }}>
+                        {tradeNodeContextLabel(hoveredTradePreview.marker.trade, lang)}
+                      </span>
+                    )}
                       <span className="text-foreground" style={{ fontSize: "0.78rem" }}>成交价：{Number(hoveredTradePreview.marker.trade.execPrice).toLocaleString("en-US", { maximumFractionDigits: 2 })}</span>
                     <span className="whitespace-nowrap text-muted-foreground" style={{ fontSize: "0.68rem" }}>成交时间：{formatTradeTime(hoveredTradePreview.marker.trade.createdTime)}</span>
                     {(() => {
@@ -1627,6 +1672,11 @@ export default function PnlChart({ accountId, onDateRangeChange }: { accountId?:
                       <span className="inline-block w-2 h-2 rounded-full" style={{ background: meta.action === "买入" ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)" }} />
                       {tradeActionLabel(meta.action, lang)} · {trade.symbol}
                     </div>
+                    {tradeNodeContextLabel(trade, lang) && (
+                      <div className="mt-1 text-amber-500" style={{ fontSize: "0.62rem" }}>
+                        {tradeNodeContextLabel(trade, lang)}
+                      </div>
+                    )}
                     <div className="text-muted-foreground/60 mt-1" style={{ fontSize: "0.62rem" }}>
                       {new Date(Number(trade.createdTime)).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} · 盈亏 {Number(trade.execPnl) >= 0 ? "+" : ""}{Number(trade.execPnl).toLocaleString("en-US", { maximumFractionDigits: 2 })}
                     </div>
