@@ -2,6 +2,7 @@ import { trpc } from "@/lib/trpc";
 import { useLang } from "@/contexts/LangContext";
 import { RefreshCw, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { OBSERVATION_POSITION_MAX_USDC } from "@/lib/reviewObservation";
 
 type HyperliquidPosition = {
   category: string;
@@ -60,7 +61,7 @@ function pnlColor(value: string | number | null | undefined) {
 
 function isObservationPosition(value: string | number | null | undefined) {
   const positionValue = Math.abs(num(value));
-  return positionValue > 0 && positionValue < 50;
+  return positionValue > 0 && positionValue <= OBSERVATION_POSITION_MAX_USDC;
 }
 
 function ObservationPositionTag({ lang }: { lang: string }) {
@@ -78,8 +79,8 @@ function ObservationPositionTag({ lang }: { lang: string }) {
       </TooltipTrigger>
       <TooltipContent className="max-w-64 text-xs" style={{ fontSize: "0.7rem" }}>
         {isZh
-          ? "仓位价值低于 50 USDC，可能为观察性仓位；仅按仓位规模识别，不代表后续一定加仓。"
-          : "Position value is below 50 USDC. It may be an observational position; this label is based only on size and does not imply a future increase."}
+          ? "仓位价值不超过 100 USDC，可能为观察性仓位；仅按仓位规模识别，不代表后续一定加仓。"
+          : "Position value is 100 USDC or less. It may be an observational position; this label is based only on size and does not imply a future increase."}
       </TooltipContent>
     </Tooltip>
   );

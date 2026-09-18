@@ -20,7 +20,7 @@ function trade(
 }
 
 describe("classifyObservationTrades", () => {
-  it("marks an entire sub-50 USDC position cycle as observation nodes", () => {
+  it("marks an entire sub-100 USDC position cycle as observation nodes", () => {
     const result = classifyObservationTrades([
       trade("open", "Open Long", 0.0004, 100_000, 1),
       trade("close", "Close Long", 0.0004, 101_000, 2),
@@ -29,22 +29,24 @@ describe("classifyObservationTrades", () => {
     expect(result.map((row) => row.observationNode)).toEqual([true, true]);
   });
 
-  it("starts showing nodes when an addition takes the position to 50 USDC", () => {
+  it("keeps an exactly 100 USDC position observational and shows nodes only above 100 USDC", () => {
     const result = classifyObservationTrades([
       trade("open", "Open Long", 0.0004, 100_000, 1),
-      trade("convert", "Open Long", 0.0001, 100_000, 2),
-      trade("close", "Close Long", 0.0005, 101_000, 3),
+      trade("boundary", "Open Long", 0.0006, 100_000, 2),
+      trade("convert", "Open Long", 0.0001, 100_000, 3),
+      trade("close", "Close Long", 0.0011, 101_000, 4),
     ]);
 
     expect(result[0].observationNode).toBe(true);
-    expect(result[1].observationConverted).toBe(true);
-    expect(result[2].observationNode).toBeUndefined();
+    expect(result[1].observationNode).toBe(true);
+    expect(result[2].observationConverted).toBe(true);
+    expect(result[3].observationNode).toBeUndefined();
   });
 
   it("does not convert an observation position because a later close has a higher price", () => {
     const result = classifyObservationTrades([
       trade("open", "Open Long", 0.0004, 100_000, 1),
-      trade("close", "Close Long", 0.0004, 150_000, 2),
+      trade("close", "Close Long", 0.0004, 300_000, 2),
     ]);
 
     expect(result[1].observationNode).toBe(true);
@@ -55,7 +57,7 @@ describe("classifyObservationTrades", () => {
     const result = classifyObservationTrades([
       trade("small-open", "Open Short", 0.0004, 100_000, 1),
       trade("small-close", "Close Short", 0.0004, 99_000, 2),
-      trade("regular-open", "Open Short", 0.001, 100_000, 3),
+      trade("regular-open", "Open Short", 0.0011, 100_000, 3),
     ]);
 
     expect(result[0].observationNode).toBe(true);

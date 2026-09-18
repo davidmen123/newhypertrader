@@ -10,6 +10,8 @@ export type ReviewObservationTrade = {
   observationConverted?: boolean;
 };
 
+export const OBSERVATION_POSITION_MAX_USDC = 100;
+
 export function classifyObservationTrades<T extends ReviewObservationTrade>(trades: T[]): T[] {
   const ordered = trades.slice().sort((a, b) => Number(a.createdTime) - Number(b.createdTime));
   const states = new Map<string, { quantity: number; observation: boolean; activated: boolean }>();
@@ -47,7 +49,7 @@ export function classifyObservationTrades<T extends ReviewObservationTrade>(trad
     const afterQuantity = Math.abs(beforeQuantity + signedDelta) < epsilon ? 0 : beforeQuantity + signedDelta;
 
     if (!state || Math.abs(beforeQuantity) < epsilon) {
-      const observation = Math.abs(afterQuantity) * price < 50;
+      const observation = Math.abs(afterQuantity) * price <= OBSERVATION_POSITION_MAX_USDC;
       states.set(trade.symbol, { quantity: afterQuantity, observation, activated: !observation });
       classified.set(trade.execId, observation ? { ...trade, observationNode: true } : trade);
       if (afterQuantity === 0) states.delete(trade.symbol);
@@ -59,7 +61,7 @@ export function classifyObservationTrades<T extends ReviewObservationTrade>(trad
       && !state.activated
       && !isClose
       && increasedPosition
-      && Math.abs(afterQuantity) * price >= 50;
+      && Math.abs(afterQuantity) * price > OBSERVATION_POSITION_MAX_USDC;
     if (crossedThreshold) state.activated = true;
     state.quantity = afterQuantity;
 
