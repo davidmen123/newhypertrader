@@ -615,28 +615,30 @@ export async function getHyperliquidFills(startTime?: number, endTime?: number) 
   return callInfo<HyperliquidFill[]>({ type: "userFills", user });
 }
 
-async function getHyperliquidSpotPairMap() {
-  const meta = await callInfo<HyperliquidSpotMeta>({ type: "spotMeta" });
+export function buildHyperliquidSpotPairMap(meta: HyperliquidSpotMeta) {
   const tokenNames = new Map(
     (meta.tokens ?? [])
-      .filter((token) => token.name && token.index != null)
-      .map((token) => [String(token.index), token.name as string])
+      .filter((token) => token.index != null)
+      .map((token) => [String(token.index), getHyperliquidSpotDisplayToken(token)])
   );
-  return new Map(
-    (meta.universe ?? [])
-      .filter((pair) => pair.index != null)
-      .map((pair) => {
-        const pairName = normalizeHyperliquidDisplayToken(String(pair.name ?? ""));
-        if (pairName && !/^@\d+$/.test(pairName)) {
-          return [`@${pair.index}`, pairName];
-        }
-        const [baseToken, quoteToken] = pair.tokens ?? [];
-        const baseName = normalizeHyperliquidDisplayToken(tokenNames.get(String(baseToken)));
-        const quoteName = normalizeHyperliquidDisplayToken(tokenNames.get(String(quoteToken)));
-        const resolvedName = baseName && quoteName ? `${baseName}/${quoteName}` : pairName;
-        return [`@${pair.index}`, resolvedName || `@${pair.index}`];
-      })
-  );
+  const pairs = new Map<string, string>();
+  (meta.universe ?? []).forEach((pair) => {
+    if (pair.index == null) return;
+    const pairName = String(pair.name ?? "");
+    const [baseToken, quoteToken] = pair.tokens ?? [];
+    const baseName = tokenNames.get(String(baseToken)) ?? "";
+    const quoteName = tokenNames.get(String(quoteToken)) ?? "";
+    const resolvedName = baseName && quoteName ? `${baseName}/${quoteName}` : pairName;
+    const apiKey = `@${pair.index}`;
+    pairs.set(apiKey, resolvedName || apiKey);
+    if (pairName) pairs.set(pairName, resolvedName || pairName);
+  });
+  return pairs;
+}
+
+async function getHyperliquidSpotPairMap() {
+  const meta = await callInfo<HyperliquidSpotMeta>({ type: "spotMeta" });
+  return buildHyperliquidSpotPairMap(meta);
 }
 
 async function getHyperliquidOpenOrdersForDex(dex = "") {
@@ -2026,7 +2028,7 @@ export async function getHyperliquidTradeHistory(params: {
       const isSpot = fill.coin.includes("/") || /^@\d+$/.test(fill.coin);
       const category = isSpot ? "SPOT" : "PERP";
       const symbol = isSpot
-        ? (fill.coin.includes("/") ? fill.coin : spotPairMap.get(fill.coin) ?? fill.coin)
+        ? (spotPairMap.get(fill.coin) ?? fill.coin)
         : `${fill.coin}-PERP`;
       const orderId = String(fill.oid ?? "");
       const historicalOrder = ordersById.get(orderId);

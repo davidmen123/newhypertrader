@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildHyperliquidSpotPairMap,
   buildHyperliquidSpotPositions,
   getHyperliquidSpotAvailableUsdc,
   type HyperliquidSpotClearinghouseState,
@@ -99,5 +100,31 @@ describe("buildHyperliquidSpotPositions", () => {
       markPrice: "0",
       unrealisedPnl: "0",
     });
+  });
+});
+
+describe("buildHyperliquidSpotPairMap", () => {
+  it("uses the same Unit-token display name as open spot positions", () => {
+    const pairs = buildHyperliquidSpotPairMap({
+      tokens: [
+        { name: "USDC", index: 0, isCanonical: true },
+        { name: "UXPL", index: 343, isCanonical: false, fullName: "Unit Plasma" },
+      ],
+      universe: [{ name: "@210", index: 210, tokens: [343, 0] }],
+    });
+
+    expect(pairs.get("@210")).toBe("XPL/USDC");
+  });
+
+  it("normalizes a named pair through its token metadata", () => {
+    const pairs = buildHyperliquidSpotPairMap({
+      tokens: [
+        { name: "USDC", index: 0, isCanonical: true },
+        { name: "UXPL", index: 343, isCanonical: false, fullName: "Unit Plasma" },
+      ],
+      universe: [{ name: "UXPL/USDC", index: 210, tokens: [343, 0] }],
+    });
+
+    expect(pairs.get("UXPL/USDC")).toBe("XPL/USDC");
   });
 });
