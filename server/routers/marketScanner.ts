@@ -9,6 +9,7 @@ export const marketScannerRouter = router({
       mode: z.enum(["consolidation", "bottom"]).default("consolidation"),
       daysToLookback: z.number().int().min(5).max(250).default(22),
       consolidationPercentage: z.number().min(0.1).max(50).default(10),
+      highLookbackDays: z.union([z.literal(250), z.literal(450)]).default(250),
       minPrice: z.number().min(0),
       maxPrice: z.number().positive(),
       minVolume: z.number().min(0).default(0),

@@ -1,6 +1,7 @@
 const PKSCREENER_DEFAULT_LOOKBACK = 22;
 const PKSCREENER_DEFAULT_CONSOLIDATION_PCT = 10;
-const BOTTOM_MODE_LOOKBACK = 250;
+const BOTTOM_MODE_DEFAULT_HIGH_LOOKBACK = 250;
+const BOTTOM_MODE_LONG_HIGH_LOOKBACK = 450;
 const BOTTOM_MODE_MIN_DRAWDOWN_PCT = 60;
 const NASDAQ_UNIVERSE_LIMIT = 100;
 const CRYPTO_SCAN_CONCURRENCY = 16;
@@ -19,6 +20,7 @@ export type MarketScanOptions = {
   mode?: ScannerMode;
   daysToLookback?: number;
   consolidationPercentage?: number;
+  highLookbackDays?: number;
   minPrice?: number;
   maxPrice?: number;
   minVolume?: number;
@@ -227,6 +229,9 @@ function normalizeOptions(options: MarketScanOptions): Required<Omit<MarketScanO
     mode: options.mode ?? "consolidation",
     daysToLookback: Math.min(250, Math.max(5, Math.trunc(options.daysToLookback ?? PKSCREENER_DEFAULT_LOOKBACK))),
     consolidationPercentage: Math.min(50, Math.max(0.1, options.consolidationPercentage ?? PKSCREENER_DEFAULT_CONSOLIDATION_PCT)),
+    highLookbackDays: options.highLookbackDays === BOTTOM_MODE_LONG_HIGH_LOOKBACK
+      ? BOTTOM_MODE_LONG_HIGH_LOOKBACK
+      : BOTTOM_MODE_DEFAULT_HIGH_LOOKBACK,
     minPrice: Math.max(0, options.minPrice ?? defaults.minPrice),
     maxPrice: Math.max(0, options.maxPrice ?? defaults.maxPrice),
     minVolume: Math.max(0, options.minVolume ?? 0),
@@ -248,19 +253,19 @@ export async function scanMarket(options: MarketScanOptions): Promise<MarketScan
   const candidates = universe.filter((item) => item.lastPrice >= parameters.minPrice
     && item.lastPrice <= parameters.maxPrice
     && (isStocks || item.volume >= parameters.minVolume));
-  const historyDays = Math.max(parameters.daysToLookback, parameters.mode === "bottom" ? BOTTOM_MODE_LOOKBACK : 0);
+  const historyDays = Math.max(parameters.daysToLookback, parameters.mode === "bottom" ? parameters.highLookbackDays : 0);
   const settled = await mapConcurrent(candidates, isStocks ? 12 : CRYPTO_SCAN_CONCURRENCY, async (item): Promise<MarketScanItem | null> => {
     const bars = isStocks
       ? await fetchNasdaqBars(item.symbol, historyDays)
       : await fetchBinanceFuturesBars(item.symbol, historyDays);
     if (bars.length < parameters.daysToLookback) return null;
-    if (parameters.mode === "bottom" && bars.length < BOTTOM_MODE_LOOKBACK) return null;
+    if (parameters.mode === "bottom" && bars.length < parameters.highLookbackDays) return null;
     const consolidation = calculatePkscreenerConsolidation(
       bars.slice(0, parameters.daysToLookback).map((bar) => bar.close),
       parameters.consolidationPercentage,
     );
     if (!consolidation?.qualified) return null;
-    const longTermBars = bars.slice(0, BOTTOM_MODE_LOOKBACK);
+    const longTermBars = bars.slice(0, parameters.highLookbackDays);
     const longTermMetrics = calculateLongTermMetrics(longTermBars.map((bar) => bar.close));
     if (!longTermMetrics) return null;
     if (parameters.mode === "bottom" && longTermMetrics.drawdownPct < BOTTOM_MODE_MIN_DRAWDOWN_PCT) return null;

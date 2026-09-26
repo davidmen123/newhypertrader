@@ -8,6 +8,7 @@ type ScannerMode = "consolidation" | "bottom";
 type ScannerSettings = {
   daysToLookback: number;
   consolidationPercentage: number;
+  highLookbackDays: 250 | 450;
   minPrice: number;
   maxPrice: number;
   minVolume: number;
@@ -15,12 +16,12 @@ type ScannerSettings = {
 
 const DEFAULTS: Record<ScannerMarket, Record<ScannerMode, ScannerSettings>> = {
   stocks: {
-    consolidation: { daysToLookback: 22, consolidationPercentage: 10, minPrice: 30, maxPrice: 10_000, minVolume: 0 },
-    bottom: { daysToLookback: 90, consolidationPercentage: 30, minPrice: 30, maxPrice: 10_000, minVolume: 0 },
+    consolidation: { daysToLookback: 22, consolidationPercentage: 10, highLookbackDays: 250, minPrice: 30, maxPrice: 10_000, minVolume: 0 },
+    bottom: { daysToLookback: 90, consolidationPercentage: 30, highLookbackDays: 250, minPrice: 30, maxPrice: 10_000, minVolume: 0 },
   },
   crypto: {
-    consolidation: { daysToLookback: 22, consolidationPercentage: 10, minPrice: 0, maxPrice: 1_000_000, minVolume: 5_000_000 },
-    bottom: { daysToLookback: 90, consolidationPercentage: 30, minPrice: 0, maxPrice: 1_000_000, minVolume: 5_000_000 },
+    consolidation: { daysToLookback: 22, consolidationPercentage: 10, highLookbackDays: 250, minPrice: 0, maxPrice: 1_000_000, minVolume: 5_000_000 },
+    bottom: { daysToLookback: 90, consolidationPercentage: 30, highLookbackDays: 250, minPrice: 0, maxPrice: 1_000_000, minVolume: 5_000_000 },
   },
 };
 
@@ -149,20 +150,34 @@ export default function MarketScanner() {
             </div>
             <p className="mt-3 max-w-2xl text-muted-foreground/65 leading-relaxed" style={{ fontSize: "0.68rem" }}>
               {mode === "bottom"
-                ? "要求当前价格相对过去250日最高收盘价至少回撤60%，并在最近设定天数内形成箱体；箱体宽度和成交额仍可调整。"
+                ? `要求当前价格相对过去${draft.highLookbackDays}日最高收盘价至少回撤60%，并在最近设定天数内形成箱体；箱体宽度和成交额仍可调整。`
                 : "按 PKScreener 原版 Consolidation 规则筛选：最近 N 根日线收盘价区间不超过设定百分比。这里只识别盘整，不判断底部、突破方向或买卖时点。"}
               {" 合约会扫描全部达到所选 24 小时 USDT 成交额门槛的标的。"}
             </p>
           </div>
           <div className="flex items-center gap-2 text-muted-foreground/60" style={{ fontSize: "0.64rem" }}>
             <Info size={12} />
-            {mode === "bottom" ? "底部模式：90 日 · 30% · 回撤≥60%" : "普通模式：1D · 22 日 · 10%"}
+            {mode === "bottom" ? `底部模式：${draft.daysToLookback} 日 · ${draft.consolidationPercentage}% · ${draft.highLookbackDays}日回撤≥60%` : "普通模式：1D · 22 日 · 10%"}
           </div>
         </div>
 
         <div className="mt-5 flex flex-wrap items-end gap-3">
           <NumericField label="回看天数" value={draft.daysToLookback} min={5} max={250} onChange={(value) => updateDraft("daysToLookback", value)} />
           <NumericField label="最大箱体宽度 (%)" value={draft.consolidationPercentage} min={0.1} max={50} step={0.1} onChange={(value) => updateDraft("consolidationPercentage", value)} />
+          {mode === "bottom" && (
+            <label className="min-w-[11rem] flex-1 space-y-1.5">
+              <span className="block text-muted-foreground tracking-widest" style={{ fontSize: "0.59rem" }}>回撤基准高点</span>
+              <select
+                value={draft.highLookbackDays}
+                onChange={(event) => updateDraft("highLookbackDays", Number(event.target.value))}
+                className="w-full rounded-lg bg-transparent px-3 py-2 outline-none"
+                style={{ border: "1px solid var(--panel-border)", color: "var(--foreground)", fontSize: "0.72rem" }}
+              >
+                <option value={250}>250 日最高收盘价</option>
+                <option value={450}>450 日最高收盘价</option>
+              </select>
+            </label>
+          )}
           <NumericField label="最低价格" value={draft.minPrice} min={0} step={0.01} onChange={(value) => updateDraft("minPrice", value)} />
           <NumericField label="最高价格" value={draft.maxPrice} min={0.01} step={1} onChange={(value) => updateDraft("maxPrice", value)} />
           {market === "stocks" ? (
@@ -242,8 +257,8 @@ export default function MarketScanner() {
                     <th className="px-4 py-3 text-right font-normal">最新价</th>
                     <th className="px-4 py-3 text-right font-normal">箱体宽度</th>
                     {mode === "bottom" && <>
-                      <th className="px-4 py-3 text-right font-normal">距250日高点回撤</th>
-                      <th className="px-4 py-3 text-right font-normal">250日区间位置</th>
+                      <th className="px-4 py-3 text-right font-normal">距{data.parameters.highLookbackDays}日高点回撤</th>
+                      <th className="px-4 py-3 text-right font-normal">{data.parameters.highLookbackDays}日区间位置</th>
                     </>}
                     <th className="px-4 py-3 text-right font-normal">箱底</th>
                     <th className="px-4 py-3 text-right font-normal">箱顶</th>
