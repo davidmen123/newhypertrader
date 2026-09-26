@@ -641,6 +641,14 @@ async function getHyperliquidSpotPairMap() {
   return buildHyperliquidSpotPairMap(meta);
 }
 
+export function resolveHyperliquidOrderSymbol(coin: string, spotPairMap: Map<string, string>) {
+  const isSpot = coin.includes("/") || /^@\d+$/.test(coin);
+  return {
+    category: isSpot ? "SPOT" as const : "PERP" as const,
+    symbol: isSpot ? (spotPairMap.get(coin) ?? coin) : `${coin}-PERP`,
+  };
+}
+
 async function getHyperliquidOpenOrdersForDex(dex = "") {
   const user = assertAddress();
   return callInfo<HyperliquidOpenOrder[]>({
@@ -651,12 +659,15 @@ async function getHyperliquidOpenOrdersForDex(dex = "") {
 }
 
 export async function getHyperliquidOpenOrders() {
-  const results = await Promise.allSettled(
-    getPerpDexes().map(async (dex) => ({
-      dex,
-      orders: await getHyperliquidOpenOrdersForDex(dex),
-    }))
-  );
+  const [results, spotPairMap] = await Promise.all([
+    Promise.allSettled(
+      getPerpDexes().map(async (dex) => ({
+        dex,
+        orders: await getHyperliquidOpenOrdersForDex(dex),
+      }))
+    ),
+    getHyperliquidSpotPairMap().catch(() => new Map<string, string>()),
+  ]);
 
   const orders = results.flatMap((result) => {
     if (result.status === "fulfilled") {
@@ -666,24 +677,29 @@ export async function getHyperliquidOpenOrders() {
     return [];
   });
 
-  return orders.map((order) => ({
-    symbol: order.coin ? `${order.coin}-PERP` : "—",
-    market: order.dex ? String(order.dex) : "default",
-    coin: order.coin ?? "",
-    side: order.side ?? "",
-    orderType: order.orderType ?? (order.isTrigger ? "Trigger" : "Limit"),
-    limitPrice: String(order.limitPx ?? ""),
-    size: String(order.sz ?? ""),
-    originalSize: String(order.origSz ?? order.sz ?? ""),
-    orderId: String(order.oid ?? ""),
-    timestamp: String(order.timestamp ?? ""),
-    reduceOnly: Boolean(order.reduceOnly),
-    tif: order.tif ?? "",
-    triggerPrice: order.triggerPx != null ? String(order.triggerPx) : "",
-    triggerCondition: order.triggerCondition ?? "",
-    isTrigger: Boolean(order.isTrigger),
-    cloid: order.cloid ?? "",
-  }));
+  return orders.map((order) => {
+    const coin = order.coin ?? "";
+    const display = coin ? resolveHyperliquidOrderSymbol(coin, spotPairMap) : null;
+    return {
+      category: display?.category ?? "PERP",
+      symbol: display?.symbol ?? "—",
+      market: order.dex ? String(order.dex) : "default",
+      coin,
+      side: order.side ?? "",
+      orderType: order.orderType ?? (order.isTrigger ? "Trigger" : "Limit"),
+      limitPrice: String(order.limitPx ?? ""),
+      size: String(order.sz ?? ""),
+      originalSize: String(order.origSz ?? order.sz ?? ""),
+      orderId: String(order.oid ?? ""),
+      timestamp: String(order.timestamp ?? ""),
+      reduceOnly: Boolean(order.reduceOnly),
+      tif: order.tif ?? "",
+      triggerPrice: order.triggerPx != null ? String(order.triggerPx) : "",
+      triggerCondition: order.triggerCondition ?? "",
+      isTrigger: Boolean(order.isTrigger),
+      cloid: order.cloid ?? "",
+    };
+  });
 }
 
 interface HyperliquidHistoricalOrder {
@@ -702,12 +718,15 @@ async function getHyperliquidOrderHistoryForDex(dex = "") {
 }
 
 export async function getHyperliquidOrderHistory(limit = 200) {
-  const results = await Promise.allSettled(
-    getPerpDexes().map(async (dex) => ({
-      dex,
-      entries: await getHyperliquidOrderHistoryForDex(dex),
-    }))
-  );
+  const [results, spotPairMap] = await Promise.all([
+    Promise.allSettled(
+      getPerpDexes().map(async (dex) => ({
+        dex,
+        entries: await getHyperliquidOrderHistoryForDex(dex),
+      }))
+    ),
+    getHyperliquidSpotPairMap().catch(() => new Map<string, string>()),
+  ]);
 
   const entries = results.flatMap((result) => {
     if (result.status === "fulfilled") {
@@ -743,10 +762,13 @@ export async function getHyperliquidOrderHistory(limit = 200) {
       const triggerCondition = order.triggerCondition && String(order.triggerCondition).toLowerCase() !== "n/a"
         ? String(order.triggerCondition)
         : String(childTrigger?.triggerCondition ?? "");
+      const coin = order.coin ?? "";
+      const display = coin ? resolveHyperliquidOrderSymbol(coin, spotPairMap) : null;
       return {
-        symbol: order.coin ? `${order.coin}-PERP` : "—",
+        category: display?.category ?? "PERP",
+        symbol: display?.symbol ?? "—",
         market: entry.dex ? String(entry.dex) : "default",
-        coin: order.coin ?? "",
+        coin,
         side: order.side ?? "",
         orderType: order.orderType ?? (order.isTrigger ? "Trigger" : "Limit"),
         limitPrice: String(order.limitPx ?? ""),

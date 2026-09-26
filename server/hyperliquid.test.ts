@@ -4,6 +4,7 @@ import {
   buildHyperliquidSpotPairMap,
   buildHyperliquidSpotPositions,
   getHyperliquidSpotAvailableUsdc,
+  resolveHyperliquidOrderSymbol,
   type HyperliquidSpotClearinghouseState,
 } from "./hyperliquid";
 
@@ -126,5 +127,27 @@ describe("buildHyperliquidSpotPairMap", () => {
     });
 
     expect(pairs.get("UXPL/USDC")).toBe("XPL/USDC");
+  });
+});
+
+describe("resolveHyperliquidOrderSymbol", () => {
+  const pairs = new Map([["@210", "XPL/USDC"], ["UXPL/USDC", "XPL/USDC"]]);
+
+  it("resolves indexed and named spot orders to the frontend pair", () => {
+    expect(resolveHyperliquidOrderSymbol("@210", pairs)).toEqual({
+      category: "SPOT",
+      symbol: "XPL/USDC",
+    });
+    expect(resolveHyperliquidOrderSymbol("UXPL/USDC", pairs)).toEqual({
+      category: "SPOT",
+      symbol: "XPL/USDC",
+    });
+  });
+
+  it("keeps perpetual orders in perpetual format", () => {
+    expect(resolveHyperliquidOrderSymbol("BTC", pairs)).toEqual({
+      category: "PERP",
+      symbol: "BTC-PERP",
+    });
   });
 });
