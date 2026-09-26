@@ -41,6 +41,16 @@ function fmt(value: string | number | null | undefined, decimals = 2) {
   });
 }
 
+function fmtSpotQuantity(value: string | number | null | undefined) {
+  return num(value).toLocaleString("en-US", { maximumFractionDigits: 8 });
+}
+
+function fmtSpotPrice(value: string | number | null | undefined) {
+  const price = Math.abs(num(value));
+  const decimals = price >= 1_000 ? 2 : price >= 1 ? 4 : 8;
+  return price > 0 ? fmt(value, decimals) : "—";
+}
+
 function signed(value: string | number | null | undefined, decimals = 2) {
   const n = num(value);
   return `${n > 0 ? "+" : ""}${fmt(n, decimals)}`;
@@ -303,31 +313,36 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
               </thead>
               <tbody>
                 {positions.map((p) => {
+                  const isSpot = p.category === "SPOT";
                   const isLong = p.posSide === "long";
                   return (
                     <tr key={`${p.category}-${p.symbol}-${p.posSide}`}>
                       <td className="text-foreground font-medium">{p.symbol}</td>
                       <td>
-                        <span className={`${isLong ? "text-profit" : "text-loss"} whitespace-nowrap`}>
-                          {isLong ? t("多", "Long") : t("空", "Short")}
-                          {leverageLabel(p.leverage) ? ` ${leverageLabel(p.leverage)}` : ""}
+                        <span className={`${isSpot ? "text-foreground" : isLong ? "text-profit" : "text-loss"} whitespace-nowrap`}>
+                          {isSpot ? t("现货持有", "Spot holding") : isLong ? t("多", "Long") : t("空", "Short")}
+                          {!isSpot && leverageLabel(p.leverage) ? ` ${leverageLabel(p.leverage)}` : ""}
                         </span>
                       </td>
-                      <td>{fmt(p.total, 2)}</td>
+                      <td>{isSpot ? fmtSpotQuantity(p.total) : fmt(p.total, 2)}</td>
                       <td>
                         <span className="inline-flex items-center gap-1.5">
                           <span>{fmt(p.positionValue, 0)}</span>
                           {isObservationPosition(p.positionValue) && <ObservationPositionTag lang={lang} />}
                         </span>
                       </td>
-                      <td>{fmt(p.avgPrice, 2)}</td>
-                      <td>{fmt(p.markPrice, 2)}</td>
-                      <td><PositionTargets position={p} accountEquity={accountEquity} lang={lang} /></td>
+                      <td>{isSpot ? fmtSpotPrice(p.avgPrice) : fmt(p.avgPrice, 2)}</td>
+                      <td>{isSpot ? fmtSpotPrice(p.markPrice) : fmt(p.markPrice, 2)}</td>
+                      <td>{isSpot ? "—" : <PositionTargets position={p} accountEquity={accountEquity} lang={lang} />}</td>
                       <td>
-                        {fmt(p.marginUsed, 2)}{" "}
-                        <span className="text-muted-foreground whitespace-nowrap" style={{ fontSize: "0.58rem" }}>
-                          {p.marginMode === "isolated" ? t("逐仓", "Isolated") : t("全仓", "Cross")}
-                        </span>
+                        {isSpot ? "—" : (
+                          <>
+                            {fmt(p.marginUsed, 2)}{" "}
+                            <span className="text-muted-foreground whitespace-nowrap" style={{ fontSize: "0.58rem" }}>
+                              {p.marginMode === "isolated" ? t("逐仓", "Isolated") : t("全仓", "Cross")}
+                            </span>
+                          </>
+                        )}
                       </td>
                       <td>
                         <span className={`inline-flex items-baseline whitespace-nowrap ${pnlColor(p.unrealisedPnl)}`}>
@@ -337,8 +352,8 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                           </span>
                         </span>
                       </td>
-                      <td><span className={pnlColor(p.fundingFee)}>{signed(p.fundingFee, 2)}</span></td>
-                      <td>{num(p.liquidationPrice) > 0 ? fmt(p.liquidationPrice, 2) : "—"}</td>
+                      <td>{isSpot ? "—" : <span className={pnlColor(p.fundingFee)}>{signed(p.fundingFee, 2)}</span>}</td>
+                      <td>{!isSpot && num(p.liquidationPrice) > 0 ? fmt(p.liquidationPrice, 2) : "—"}</td>
                     </tr>
                   );
                 })}
@@ -348,6 +363,7 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
 
           <div className="sm:hidden flex flex-col gap-2">
             {positions.map((p) => {
+              const isSpot = p.category === "SPOT";
               const isLong = p.posSide === "long";
               const leverage = leverageLabel(p.leverage);
               const marginMode = p.marginMode === "isolated" ? t("逐仓", "Isolated") : t("全仓", "Cross");
@@ -361,13 +377,13 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                     <div className="min-w-0">
                       <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("市场", "Market")}</div>
                       <div className="mt-1 truncate font-medium text-foreground" style={{ fontSize: "0.9rem" }}>{p.symbol}</div>
-                      <div className={`mt-0.5 ${isLong ? "text-profit" : "text-loss"}`} style={{ fontSize: "0.68rem" }}>
-                        {isLong ? t("多", "Long") : t("空", "Short")}{leverage ? ` ${leverage}` : ""}
+                      <div className={`mt-0.5 ${isSpot ? "text-foreground" : isLong ? "text-profit" : "text-loss"}`} style={{ fontSize: "0.68rem" }}>
+                        {isSpot ? t("现货持有", "Spot holding") : isLong ? t("多", "Long") : t("空", "Short")}{!isSpot && leverage ? ` ${leverage}` : ""}
                       </div>
                     </div>
                     <div className="min-w-0">
                       <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("数量", "Size")}</div>
-                      <div className="num-display mt-1 truncate" style={{ fontSize: "0.9rem" }}>{fmt(p.total, 2)}</div>
+                      <div className="num-display mt-1 truncate" style={{ fontSize: "0.9rem" }}>{isSpot ? fmtSpotQuantity(p.total) : fmt(p.total, 2)}</div>
                     </div>
                     <div className="min-w-0">
                       <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("盈亏（ROE）", "PnL (ROE)")}</div>
@@ -380,17 +396,17 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                     </div>
 
                     <div>
-                      <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("开仓价格", "Entry Price")}</div>
-                      <div className="num-display mt-1" style={{ fontSize: "0.84rem" }}>{fmt(p.avgPrice, 2)}</div>
+                      <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{isSpot ? t("成本均价", "Avg Cost") : t("开仓价格", "Entry Price")}</div>
+                      <div className="num-display mt-1" style={{ fontSize: "0.84rem" }}>{isSpot ? fmtSpotPrice(p.avgPrice) : fmt(p.avgPrice, 2)}</div>
                     </div>
                     <div>
                       <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("标记价格", "Mark Price")}</div>
-                      <div className="num-display mt-1" style={{ fontSize: "0.84rem" }}>{fmt(p.markPrice, 2)}</div>
+                      <div className="num-display mt-1" style={{ fontSize: "0.84rem" }}>{isSpot ? fmtSpotPrice(p.markPrice) : fmt(p.markPrice, 2)}</div>
                     </div>
                     <div>
                       <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("强平价格", "Liq. Price")}</div>
                       <div className="num-display mt-1" style={{ fontSize: "0.84rem" }}>
-                        {num(p.liquidationPrice) > 0 ? fmt(p.liquidationPrice, 2) : "—"}
+                        {!isSpot && num(p.liquidationPrice) > 0 ? fmt(p.liquidationPrice, 2) : "—"}
                       </div>
                     </div>
 
@@ -403,24 +419,24 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                       <div className="text-muted-foreground" style={{ fontSize: "0.62rem" }}>USDC</div>
                     </div>
                     <div>
-                      <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("保证金", "Margin")}</div>
-                      <div className="num-display mt-1" style={{ fontSize: "0.84rem" }}>{fmt(p.marginUsed, 2)}</div>
-                      <div className="text-muted-foreground" style={{ fontSize: "0.62rem" }}>{marginMode}</div>
+                      <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{isSpot ? t("可用数量", "Available") : t("保证金", "Margin")}</div>
+                      <div className="num-display mt-1" style={{ fontSize: "0.84rem" }}>{isSpot ? fmtSpotQuantity(p.available) : fmt(p.marginUsed, 2)}</div>
+                      {!isSpot && <div className="text-muted-foreground" style={{ fontSize: "0.62rem" }}>{marginMode}</div>}
                     </div>
                     <div>
                       <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("止盈 / 止损", "TP / SL")}</div>
                       <div className="num-display mt-1 leading-tight" style={{ fontSize: "0.78rem" }}>
-                        <PositionTargets position={p} accountEquity={accountEquity} lang={lang} />
+                        {isSpot ? "—" : <PositionTargets position={p} accountEquity={accountEquity} lang={lang} />}
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-4 border-t pt-3" style={{ borderColor: "var(--panel-border)" }}>
+                  {!isSpot && <div className="mt-4 border-t pt-3" style={{ borderColor: "var(--panel-border)" }}>
                     <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("资金费", "Funding")}</div>
                     <div className={`num-display mt-1 ${pnlColor(p.fundingFee)}`} style={{ fontSize: "0.82rem" }}>
                       {signed(p.fundingFee, 2)}
                     </div>
-                  </div>
+                  </div>}
                 </div>
               );
             })}

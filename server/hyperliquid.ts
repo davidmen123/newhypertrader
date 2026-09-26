@@ -284,6 +284,36 @@ interface HyperliquidSpotMeta {
   universe?: HyperliquidSpotPair[];
 }
 
+interface HyperliquidSpotAssetContext {
+  coin?: string;
+  markPx?: string;
+  midPx?: string;
+}
+
+export type HyperliquidDisplayPosition = {
+  category: "PERP" | "SPOT";
+  symbol: string;
+  marginCoin: string;
+  posSide: "long" | "short" | "spot";
+  marginMode: string;
+  total: string;
+  available: string;
+  positionValue: string;
+  marginUsed: string;
+  leverage: string;
+  avgPrice: string;
+  markPrice: string;
+  unrealisedPnl: string;
+  fundingFee: string;
+  liquidationPrice: string;
+  takeProfitPrice: string;
+  stopLossPrice: string;
+  takeProfitTargets: Array<{ price: string; size: string }>;
+  stopLossTargets: Array<{ price: string; size: string }>;
+  profitRate: string;
+  updatedTime: string;
+};
+
 export interface HyperliquidPortfolioWindow {
   accountValueHistory?: Array<[number, string]>;
   pnlHistory?: Array<[number, string]>;
@@ -404,6 +434,78 @@ export function getActiveHyperliquidPerpStates(
 export async function getHyperliquidSpotState() {
   const user = assertAddress();
   return callInfo<HyperliquidSpotClearinghouseState>({ type: "spotClearinghouseState", user });
+}
+
+async function getHyperliquidSpotMetaAndAssetContexts() {
+  return callInfo<[HyperliquidSpotMeta, HyperliquidSpotAssetContext[]]>({
+    type: "spotMetaAndAssetCtxs",
+  });
+}
+
+export function buildHyperliquidSpotPositions(
+  spotState: HyperliquidSpotClearinghouseState,
+  meta: HyperliquidSpotMeta,
+  contexts: HyperliquidSpotAssetContext[],
+  now = Date.now(),
+): HyperliquidDisplayPosition[] {
+  const tokens = new Map(
+    (meta.tokens ?? []).map((token) => [String(token.index), normalizeHyperliquidDisplayToken(token.name)]),
+  );
+  const usdcTokenIds = new Set(
+    (meta.tokens ?? [])
+      .filter((token) => ["USDC", "USDC.E"].includes(normalizeHyperliquidDisplayToken(token.name).toUpperCase()))
+      .map((token) => String(token.index)),
+  );
+  const marketsByBaseToken = new Map<string, { quote: string; mark: number }>();
+
+  (meta.universe ?? []).forEach((market, position) => {
+    const [baseToken, quoteToken] = market.tokens ?? [];
+    if (baseToken == null || quoteToken == null || !usdcTokenIds.has(String(quoteToken))) return;
+    const context = contexts[position];
+    const mark = toNumber(context?.markPx) || toNumber(context?.midPx);
+    marketsByBaseToken.set(String(baseToken), {
+      quote: tokens.get(String(quoteToken)) || "USDC",
+      mark,
+    });
+  });
+
+  return (spotState.balances ?? []).flatMap((balance) => {
+    const coin = normalizeHyperliquidDisplayToken(balance.coin);
+    const quantity = toNumber(balance.total);
+    if (quantity <= 0 || coin === "USDC" || coin === "USDC.E") return [];
+
+    const market = balance.token == null ? undefined : marketsByBaseToken.get(String(balance.token));
+    const entryNotional = Math.max(0, toNumber(balance.entryNtl));
+    const mark = market?.mark ?? 0;
+    const positionValue = mark > 0 ? quantity * mark : entryNotional;
+    const avgPrice = entryNotional > 0 ? entryNotional / quantity : 0;
+    const unrealisedPnl = positionValue - entryNotional;
+    const profitRate = entryNotional > 0 ? unrealisedPnl / entryNotional : 0;
+
+    return [{
+      category: "SPOT",
+      symbol: `${coin}/${market?.quote || "USDC"}`,
+      marginCoin: market?.quote || "USDC",
+      posSide: "spot",
+      marginMode: "spot",
+      total: String(quantity),
+      available: String(Math.max(0, quantity - toNumber(balance.hold))),
+      positionValue: String(positionValue),
+      marginUsed: "0",
+      leverage: "0",
+      avgPrice: String(avgPrice),
+      markPrice: String(mark),
+      unrealisedPnl: String(unrealisedPnl),
+      fundingFee: "0",
+      liquidationPrice: "0",
+      takeProfitPrice: "",
+      stopLossPrice: "",
+      takeProfitTargets: [],
+      stopLossTargets: [],
+      profitRate: String(profitRate),
+      updatedTime: String(now),
+    }];
+  });
 }
 
 export async function getHyperliquidAccountAbstraction() {
@@ -1463,14 +1565,20 @@ export async function getHyperliquidPortfolioSnapshots(params: {
 
 export async function getHyperliquidPositions() {
   const now = Date.now();
-  const [states, openOrders] = await Promise.all([
+  const [states, openOrders, spotPositions] = await Promise.all([
     getHyperliquidPerpStates(),
     getHyperliquidOpenOrders().catch((error) => {
       console.warn("[Hyperliquid] Failed to read trigger orders for positions:", error);
       return [];
     }),
+    Promise.all([getHyperliquidSpotState(), getHyperliquidSpotMetaAndAssetContexts()])
+      .then(([spotState, [meta, contexts]]) => buildHyperliquidSpotPositions(spotState, meta, contexts, now))
+      .catch((error) => {
+        console.warn("[Hyperliquid] Failed to read spot positions:", error);
+        return [] as HyperliquidDisplayPosition[];
+      }),
   ]);
-  return states.flatMap(({ dex, state }) => {
+  const perpPositions: HyperliquidDisplayPosition[] = states.flatMap(({ dex, state }) => {
     logHyperliquidPositions(dex, state);
     return (state.assetPositions ?? []).map(({ position }) => {
     const size = toNumber(position.szi);
@@ -1532,6 +1640,7 @@ export async function getHyperliquidPositions() {
     };
     });
   });
+  return [...perpPositions, ...spotPositions];
 }
 
 export async function getHyperliquidAccountOverview() {
