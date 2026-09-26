@@ -14,6 +14,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.65.0",
+    "date": "2026-09-26",
+    "zh": "新增股票与合约箱体扫描及底部模式",
+    "en": "Added stock and futures consolidation scanning with a bottom-range mode"
+  },
+  {
     "version": "1.64.0",
     "date": "2026-09-26",
     "zh": "持仓明细新增现货及展示优化",

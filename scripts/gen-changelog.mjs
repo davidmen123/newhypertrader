@@ -208,6 +208,12 @@ function build() {
         zh: "持仓明细新增现货及展示优化",
         en: "Added spot holdings and refined position display",
       },
+      {
+        version: "1.65.0",
+        date: "2026-09-26",
+        zh: "新增股票与合约箱体扫描及底部模式",
+        en: "Added stock and futures consolidation scanning with a bottom-range mode",
+      },
     ].reverse();
   }
 
