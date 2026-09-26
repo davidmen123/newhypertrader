@@ -211,8 +211,8 @@ function build() {
       {
         version: "1.65.0",
         date: "2026-09-26",
-        zh: "新增股票与合约箱体扫描及底部模式",
-        en: "Added stock and futures consolidation scanning with a bottom-range mode",
+        zh: "个人助手新增股票与合约箱体扫描模式",
+        en: "Added stock and futures consolidation scan modes to the personal assistant",
       },
     ].reverse();
   }
