@@ -26,6 +26,7 @@ const DEFAULTS: Record<ScannerMarket, Record<ScannerMode, ScannerSettings>> = {
 
 const FUTURES_VOLUME_OPTIONS = [
   { value: 0, label: "不限制" },
+  { value: 1_000_000, label: "≥ 100 万 U" },
   { value: 5_000_000, label: "≥ 500 万 U" },
   { value: 10_000_000, label: "≥ 1,000 万 U" },
   { value: 30_000_000, label: "≥ 3,000 万 U" },
