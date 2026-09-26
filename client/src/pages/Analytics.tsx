@@ -12,6 +12,7 @@ import PnlChart, { type PnlDateRange } from "@/components/PnlChart";
 import PnlBySymbol from "@/components/PnlBySymbol";
 import PositionsTable from "@/components/PositionsTable";
 import TradeHistory from "@/components/TradeHistory";
+import MarketScanner from "@/components/MarketScanner";
 
 // ─── UTC+8 date helpers ────────────────────────────────────────────────────
 // All dates on this page are UTC+8 calendar days (Asia/Shanghai).
@@ -957,7 +958,7 @@ function AnalyticsDashboard() {
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === "dark";
   const [period, setPeriod] = useState<Period>("week");
-  const [view, setView] = useState<"traffic" | "reviews" | "accounts" | "assistant">("traffic");
+  const [view, setView] = useState<"traffic" | "reviews" | "accounts" | "assistant" | "scanner">("traffic");
   const [customStart, setCustomStart] = useState(() => utc8DateStr(Date.now() - 6 * DAY_MS));
   const [customEnd, setCustomEnd] = useState(() => utc8DateStr(Date.now()));
 
@@ -971,6 +972,7 @@ function AnalyticsDashboard() {
 
   const { data, isLoading, isFetching, refetch } = trpc.analytics.overview.useQuery(dateRange, {
     refetchInterval: 30_000,
+    enabled: view === "traffic",
   });
 
   const summary = data?.summary ?? { visits: 0, uniqueIps: 0, avgDuration: 0 };
@@ -1018,7 +1020,7 @@ function AnalyticsDashboard() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className="text-xl sm:text-2xl font-light" style={{ fontFamily: "Cormorant Garamond, serif" }}>
-                {view === "traffic" ? "访问统计" : view === "reviews" ? "交易复盘" : view === "accounts" ? "账户盈亏" : "个人助手"}
+                {view === "traffic" ? "访问统计" : view === "reviews" ? "交易复盘" : view === "accounts" ? "账户盈亏" : view === "assistant" ? "个人助手" : "箱体扫描"}
               </h2>
               <div className="mt-2" style={{ width: 40, height: 1, background: "rgb(215 187 114 / 62%)" }} />
               <p className="text-muted-foreground/70 mt-2" style={{ fontSize: "0.72rem" }}>
@@ -1028,7 +1030,9 @@ function AnalyticsDashboard() {
                   ? "编辑交易复盘内容 · 保存后前台自动呈现"
                   : view === "accounts"
                   ? "切换查看各个 Hyperliquid 只读地址 · 首页始终只展示主账户"
-                  : "管理关注标的 · 后续接入财报、新闻与提醒"}
+                  : view === "assistant"
+                  ? "管理关注标的 · 后续接入财报、新闻与提醒"
+                  : "PKScreener 原版盘整规则 · 股票与加密货币分别扫描"}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -1085,17 +1089,18 @@ function AnalyticsDashboard() {
           )}
         </div>
 
-        <div className="flex items-center gap-1 rounded-lg p-1" style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}>
+        <div className="flex items-center gap-1 overflow-x-auto rounded-lg p-1" style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}>
           {([
             ["traffic", "访问统计"],
             ["reviews", "交易复盘"],
             ["accounts", "账户盈亏"],
             ["assistant", "个人助手"],
+            ["scanner", "箱体扫描"],
           ] as const).map(([key, label]) => (
             <button
               key={key}
               onClick={() => setView(key)}
-              className="flex-1 rounded-md px-4 py-2 transition-colors"
+              className="min-w-[6rem] shrink-0 rounded-md px-4 py-2 transition-colors sm:flex-1"
               style={{
                 fontSize: "0.72rem",
                 color: view === key ? "var(--foreground)" : "var(--text-soft)",
@@ -1108,7 +1113,9 @@ function AnalyticsDashboard() {
           ))}
         </div>
 
-        {view === "assistant" ? (
+        {view === "scanner" ? (
+          <MarketScanner />
+        ) : view === "assistant" ? (
           <PersonalAssistant />
         ) : view === "reviews" ? (
           <TradeReviewManager />

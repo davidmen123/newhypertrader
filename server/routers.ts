@@ -10,6 +10,7 @@ import { bitgetRouter } from "./routers/bitget.js";
 import { hyperliquidRouter } from "./routers/hyperliquid.js";
 import { feedbackRouter } from "./routers/feedback.js";
 import { assistantRouter } from "./routers/assistant.js";
+import { marketScannerRouter } from "./routers/marketScanner.js";
 import { incrementPageViews, getPageViews, logVisitor, updateVisitorDuration, getVisitorSummary, getVisitorLogCount, getDailyVisitorStats, getVisitorDeviceStats, getVisitorOsStats, getVisitorBrowserStats, getVisitorHourlyStats, getVisitorDailyHourlyStats, getVisitorGeoStats, getRecentVisitors } from "./db.js";
 import { getIpGeo, isTimezoneMismatch } from "./_core/ipGeo.js";
 import { parseUserAgent } from "./_core/userAgent.js";
@@ -78,6 +79,7 @@ export const appRouter = router({
   calendar: calendarRouter,
   feedback: feedbackRouter,
   assistant: assistantRouter,
+  marketScanner: marketScannerRouter,
 
   pageViews: router({
     // Called on each page load to increment counter and return total

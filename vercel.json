@@ -2,6 +2,11 @@
   "installCommand": "corepack pnpm install --no-frozen-lockfile",
   "buildCommand": "corepack pnpm exec vite build",
   "outputDirectory": "dist/public",
+  "functions": {
+    "api/trpc/[...trpc].ts": {
+      "maxDuration": 60
+    }
+  },
   "crons": [
     {
       "path": "/api/assistant/digest",
