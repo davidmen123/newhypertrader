@@ -46,6 +46,13 @@ function fmtPositionPrice(value: string | number | null | undefined) {
   return fmt(value, price >= 1 ? 2 : 3);
 }
 
+function fmtPositionQuantity(
+  quantity: string | number | null | undefined,
+  markPrice: string | number | null | undefined,
+) {
+  return fmt(quantity, Math.abs(num(markPrice)) > 10_000 ? 3 : 2);
+}
+
 function signed(value: string | number | null | undefined, decimals = 2) {
   const n = num(value);
   return `${n > 0 ? "+" : ""}${fmt(n, decimals)}`;
@@ -319,7 +326,7 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                           {!isSpot && leverageLabel(p.leverage) ? ` ${leverageLabel(p.leverage)}` : ""}
                         </span>
                       </td>
-                      <td>{fmt(p.total, 2)}</td>
+                      <td>{fmtPositionQuantity(p.total, p.markPrice)}</td>
                       <td>
                         <span className="inline-flex items-center gap-1.5">
                           <span>{fmt(p.positionValue, 0)}</span>
@@ -378,7 +385,7 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                     </div>
                     <div className="min-w-0">
                       <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("数量", "Size")}</div>
-                      <div className="num-display mt-1 truncate" style={{ fontSize: "0.9rem" }}>{fmt(p.total, 2)}</div>
+                      <div className="num-display mt-1 truncate" style={{ fontSize: "0.9rem" }}>{fmtPositionQuantity(p.total, p.markPrice)}</div>
                     </div>
                     <div className="min-w-0">
                       <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("盈亏（ROE）", "PnL (ROE)")}</div>
