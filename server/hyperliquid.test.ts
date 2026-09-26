@@ -46,10 +46,10 @@ describe("buildHyperliquidSpotPositions", () => {
   const meta = {
     tokens: [
       { name: "USDC", index: 0 },
-      { name: "HYPE", index: 150 },
+      { name: "UXPL", index: 343, isCanonical: false, fullName: "Unit Plasma" },
     ],
     universe: [
-      { name: "@107", index: 107, tokens: [150, 0] },
+      { name: "@210", index: 210, tokens: [343, 0] },
     ],
   };
 
@@ -58,26 +58,29 @@ describe("buildHyperliquidSpotPositions", () => {
       {
         balances: [
           { coin: "USDC", token: 0, total: "250", hold: "10", entryNtl: "0" },
-          { coin: "HYPE", token: 150, total: "10", hold: "2", entryNtl: "300" },
+          { coin: "UXPL", token: 343, total: "130.012573", hold: "2", entryNtl: "14.988821" },
         ],
       },
       meta,
-      [{ coin: "@107", markPx: "35", midPx: "34.9" }],
+      [
+        { coin: "@200", markPx: "1.715" },
+        { coin: "@210", markPx: "0.11499", midPx: "0.114955" },
+      ],
       1234,
     );
 
     expect(positions).toHaveLength(1);
     expect(positions[0]).toMatchObject({
       category: "SPOT",
-      symbol: "HYPE/USDC",
+      symbol: "XPL/USDC",
       posSide: "spot",
-      total: "10",
-      available: "8",
-      positionValue: "350",
-      avgPrice: "30",
-      markPrice: "35",
-      unrealisedPnl: "50",
-      profitRate: String(50 / 300),
+      total: "130.012573",
+      available: "128.012573",
+      positionValue: String(130.012573 * 0.11499),
+      avgPrice: String(14.988821 / 130.012573),
+      markPrice: "0.11499",
+      unrealisedPnl: String(130.012573 * 0.11499 - 14.988821),
+      profitRate: String((130.012573 * 0.11499 - 14.988821) / 14.988821),
       updatedTime: "1234",
     });
   });
@@ -86,7 +89,7 @@ describe("buildHyperliquidSpotPositions", () => {
     const positions = buildHyperliquidSpotPositions(
       { balances: [{ coin: "ALT", token: 999, total: "4", entryNtl: "20" }] },
       meta,
-      [{ coin: "@107", markPx: "35" }],
+      [{ coin: "@210", markPx: "0.11499" }],
     );
 
     expect(positions[0]).toMatchObject({

@@ -277,6 +277,8 @@ interface HyperliquidSpotPair {
 interface HyperliquidSpotToken {
   name?: string;
   index?: number | string;
+  isCanonical?: boolean;
+  fullName?: string | null;
 }
 
 interface HyperliquidSpotMeta {
@@ -313,6 +315,18 @@ export type HyperliquidDisplayPosition = {
   profitRate: string;
   updatedTime: string;
 };
+
+function getHyperliquidSpotDisplayToken(token: HyperliquidSpotToken | undefined) {
+  const name = normalizeHyperliquidDisplayToken(token?.name);
+  // Unit-wrapped assets use an internal `U{ticker}` L1 name, while the
+  // Hyperliquid frontend exposes the underlying ticker (UXPL -> XPL,
+  // UBTC -> BTC). Restrict the rewrite to tokens explicitly identified as
+  // non-canonical Unit assets so legitimate tickers beginning with U survive.
+  if (!token?.isCanonical && /^Unit\s/i.test(String(token?.fullName ?? "")) && /^U[A-Z0-9]+$/i.test(name)) {
+    return name.slice(1);
+  }
+  return name;
+}
 
 export interface HyperliquidPortfolioWindow {
   accountValueHistory?: Array<[number, string]>;
@@ -449,7 +463,7 @@ export function buildHyperliquidSpotPositions(
   now = Date.now(),
 ): HyperliquidDisplayPosition[] {
   const tokens = new Map(
-    (meta.tokens ?? []).map((token) => [String(token.index), normalizeHyperliquidDisplayToken(token.name)]),
+    (meta.tokens ?? []).map((token) => [String(token.index), getHyperliquidSpotDisplayToken(token)]),
   );
   const usdcTokenIds = new Set(
     (meta.tokens ?? [])
@@ -457,11 +471,18 @@ export function buildHyperliquidSpotPositions(
       .map((token) => String(token.index)),
   );
   const marketsByBaseToken = new Map<string, { quote: string; mark: number }>();
+  const contextsByCoin = new Map(
+    contexts
+      .filter((context) => context.coin)
+      .map((context) => [String(context.coin), context]),
+  );
 
-  (meta.universe ?? []).forEach((market, position) => {
+  (meta.universe ?? []).forEach((market) => {
     const [baseToken, quoteToken] = market.tokens ?? [];
     if (baseToken == null || quoteToken == null || !usdcTokenIds.has(String(quoteToken))) return;
-    const context = contexts[position];
+    // Delisted markets make the universe indexes sparse, so the context array
+    // cannot be paired by position. Its `coin` field is the stable market key.
+    const context = contextsByCoin.get(String(market.name ?? ""));
     const mark = toNumber(context?.markPx) || toNumber(context?.midPx);
     marketsByBaseToken.set(String(baseToken), {
       quote: tokens.get(String(quoteToken)) || "USDC",
@@ -470,7 +491,10 @@ export function buildHyperliquidSpotPositions(
   });
 
   return (spotState.balances ?? []).flatMap((balance) => {
-    const coin = normalizeHyperliquidDisplayToken(balance.coin);
+    const token = balance.token == null
+      ? undefined
+      : (meta.tokens ?? []).find((candidate) => String(candidate.index) === String(balance.token));
+    const coin = getHyperliquidSpotDisplayToken(token) || normalizeHyperliquidDisplayToken(balance.coin);
     const quantity = toNumber(balance.total);
     if (quantity <= 0 || coin === "USDC" || coin === "USDC.E") return [];
 
