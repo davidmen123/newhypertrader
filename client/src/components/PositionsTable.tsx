@@ -3,6 +3,7 @@ import { useLang } from "@/contexts/LangContext";
 import { RefreshCw, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { OBSERVATION_POSITION_MAX_USDC } from "@/lib/reviewObservation";
+import { marketPriceDecimals } from "@/lib/marketFormat";
 
 type HyperliquidPosition = {
   category: string;
@@ -42,8 +43,7 @@ function fmt(value: string | number | null | undefined, decimals = 2) {
 }
 
 function fmtPositionPrice(value: string | number | null | undefined) {
-  const price = Math.abs(num(value));
-  return fmt(value, price >= 1 ? 2 : 3);
+  return fmt(value, marketPriceDecimals(value));
 }
 
 function fmtPositionQuantity(

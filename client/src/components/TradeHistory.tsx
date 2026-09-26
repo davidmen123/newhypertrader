@@ -3,6 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { useLang } from "@/contexts/LangContext";
 import { RefreshCw, Search, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { marketPriceDecimals } from "@/lib/marketFormat";
 
 type Category = "ALL" | "PERP" | "SPOT";
 
@@ -49,6 +50,10 @@ function fmt(value: string | number | null | undefined, decimals = 2) {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
+}
+
+function fmtMarketPrice(value: string | number | null | undefined) {
+  return fmt(value, marketPriceDecimals(value));
 }
 
 function signed(value: string | number | null | undefined, decimals = 2) {
@@ -476,7 +481,7 @@ export default function TradeHistory({
                       {showTrendContext && <td className="py-2 pr-3"><TrendContextCell trade={trade} /></td>}
                       <td className="py-2 pr-3" style={{ fontSize: "0.66rem", color: closeMethodColor(trade.closeMethod), whiteSpace: "nowrap" }}>{closeMethodLabel(trade.closeMethod, lang)}</td>
                       <td className="py-2 pr-3 num-display whitespace-nowrap" style={{ fontSize: "0.7rem" }}>{fmt(trade.execQty, 2)}</td>
-                      <td className="py-2 pr-3 num-display whitespace-nowrap" style={{ fontSize: "0.7rem" }}>{fmt(trade.execPrice, 2)}</td>
+                      <td className="py-2 pr-3 num-display whitespace-nowrap" style={{ fontSize: "0.7rem" }}>{fmtMarketPrice(trade.execPrice)}</td>
                       <td className="py-2 pr-3 num-display whitespace-nowrap" style={{ fontSize: "0.7rem" }}>{fmt(trade.execValue, 0)}</td>
                       <td className="py-2 pr-3 num-display whitespace-nowrap" style={{ fontSize: "0.66rem", color: "var(--text-soft)" }}>{fee ? fmt(fee.fee, 2) : "—"}</td>
                       <td className="py-2 pr-3 num-display whitespace-nowrap" style={{ fontSize: "0.7rem", color: pnlColor(trade.fundingFee) }}>{num(trade.fundingFee) !== 0 ? signed(trade.fundingFee, 2) : "—"}</td>
