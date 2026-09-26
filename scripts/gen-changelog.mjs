@@ -202,6 +202,12 @@ function build() {
         zh: "仓位明细中优化排序及增加观察仓标签",
         en: "Optimized position sorting and added observation-position labels",
       },
+      {
+        version: "1.64.0",
+        date: "2026-09-26",
+        zh: "持仓明细新增现货及展示优化",
+        en: "Added spot holdings and refined position display",
+      },
     ].reverse();
   }
 

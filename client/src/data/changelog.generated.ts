@@ -14,6 +14,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "version": "1.64.0",
+    "date": "2026-09-26",
+    "zh": "持仓明细新增现货及展示优化",
+    "en": "Added spot holdings and refined position display"
+  },
+  {
     "version": "1.63.0",
     "date": "2026-09-08",
     "zh": "仓位明细中优化排序及增加观察仓标签",
