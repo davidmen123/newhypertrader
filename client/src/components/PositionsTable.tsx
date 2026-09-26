@@ -41,14 +41,9 @@ function fmt(value: string | number | null | undefined, decimals = 2) {
   });
 }
 
-function fmtSpotQuantity(value: string | number | null | undefined) {
-  return num(value).toLocaleString("en-US", { maximumFractionDigits: 8 });
-}
-
-function fmtSpotPrice(value: string | number | null | undefined) {
+function fmtPositionPrice(value: string | number | null | undefined) {
   const price = Math.abs(num(value));
-  const decimals = price >= 1_000 ? 2 : price >= 1 ? 4 : 8;
-  return price > 0 ? fmt(value, decimals) : "—";
+  return fmt(value, price >= 1 ? 2 : 3);
 }
 
 function signed(value: string | number | null | undefined, decimals = 2) {
@@ -324,15 +319,15 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                           {!isSpot && leverageLabel(p.leverage) ? ` ${leverageLabel(p.leverage)}` : ""}
                         </span>
                       </td>
-                      <td>{isSpot ? fmtSpotQuantity(p.total) : fmt(p.total, 2)}</td>
+                      <td>{fmt(p.total, 2)}</td>
                       <td>
                         <span className="inline-flex items-center gap-1.5">
                           <span>{fmt(p.positionValue, 0)}</span>
                           {isObservationPosition(p.positionValue) && <ObservationPositionTag lang={lang} />}
                         </span>
                       </td>
-                      <td>{isSpot ? fmtSpotPrice(p.avgPrice) : fmt(p.avgPrice, 2)}</td>
-                      <td>{isSpot ? fmtSpotPrice(p.markPrice) : fmt(p.markPrice, 2)}</td>
+                      <td>{fmtPositionPrice(p.avgPrice)}</td>
+                      <td>{fmtPositionPrice(p.markPrice)}</td>
                       <td>{isSpot ? "—" : <PositionTargets position={p} accountEquity={accountEquity} lang={lang} />}</td>
                       <td>
                         {isSpot ? "—" : (
@@ -383,7 +378,7 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                     </div>
                     <div className="min-w-0">
                       <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("数量", "Size")}</div>
-                      <div className="num-display mt-1 truncate" style={{ fontSize: "0.9rem" }}>{isSpot ? fmtSpotQuantity(p.total) : fmt(p.total, 2)}</div>
+                      <div className="num-display mt-1 truncate" style={{ fontSize: "0.9rem" }}>{fmt(p.total, 2)}</div>
                     </div>
                     <div className="min-w-0">
                       <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("盈亏（ROE）", "PnL (ROE)")}</div>
@@ -397,11 +392,11 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
 
                     <div>
                       <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{isSpot ? t("成本均价", "Avg Cost") : t("开仓价格", "Entry Price")}</div>
-                      <div className="num-display mt-1" style={{ fontSize: "0.84rem" }}>{isSpot ? fmtSpotPrice(p.avgPrice) : fmt(p.avgPrice, 2)}</div>
+                      <div className="num-display mt-1" style={{ fontSize: "0.84rem" }}>{fmtPositionPrice(p.avgPrice)}</div>
                     </div>
                     <div>
                       <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("标记价格", "Mark Price")}</div>
-                      <div className="num-display mt-1" style={{ fontSize: "0.84rem" }}>{isSpot ? fmtSpotPrice(p.markPrice) : fmt(p.markPrice, 2)}</div>
+                      <div className="num-display mt-1" style={{ fontSize: "0.84rem" }}>{fmtPositionPrice(p.markPrice)}</div>
                     </div>
                     <div>
                       <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{t("强平价格", "Liq. Price")}</div>
@@ -420,7 +415,7 @@ export default function PositionsTable({ accountId }: { accountId?: string } = {
                     </div>
                     <div>
                       <div className="text-muted-foreground" style={{ fontSize: "0.68rem" }}>{isSpot ? t("可用数量", "Available") : t("保证金", "Margin")}</div>
-                      <div className="num-display mt-1" style={{ fontSize: "0.84rem" }}>{isSpot ? fmtSpotQuantity(p.available) : fmt(p.marginUsed, 2)}</div>
+                      <div className="num-display mt-1" style={{ fontSize: "0.84rem" }}>{isSpot ? fmt(p.available, 2) : fmt(p.marginUsed, 2)}</div>
                       {!isSpot && <div className="text-muted-foreground" style={{ fontSize: "0.62rem" }}>{marginMode}</div>}
                     </div>
                     <div>
