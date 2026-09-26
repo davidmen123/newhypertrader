@@ -3,6 +3,10 @@
   "buildCommand": "corepack pnpm exec vite build",
   "outputDirectory": "dist/public",
   "functions": {
+    "api/trpc/index.ts": {
+      "maxDuration": 60,
+      "regions": ["fra1"]
+    },
     "api/trpc/[...trpc].ts": {
       "maxDuration": 60,
       "regions": ["fra1"]
