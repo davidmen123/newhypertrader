@@ -163,9 +163,6 @@ const STABLE_BASES = new Set([
   "USDC", "FDUSD", "TUSD", "USDP", "DAI", "BUSD", "USDE", "USDS", "USD1", "RLUSD", "PYUSD", "GUSD", "LUSD", "DUSD", "XUSD", "U",
   "EUR", "EURC", "AEUR", "TRY", "BRL", "GBP", "BIDR",
 ]);
-// Binance occasionally lists tokenized equities beside crypto spot pairs.
-// Keep the Crypto tab semantically clean rather than presenting them as coins.
-const TOKENIZED_EQUITY_BASES = new Set(["AAPLB", "NVDAB", "SPCXB", "TSLAB"]);
 const LEVERAGED_SUFFIXES = ["UP", "DOWN", "BULL", "BEAR"];
 
 function isEligibleUsdtPair(symbol: string) {
@@ -173,12 +170,11 @@ function isEligibleUsdtPair(symbol: string) {
   const base = symbol.slice(0, -4);
   return Boolean(base)
     && !STABLE_BASES.has(base)
-    && !TOKENIZED_EQUITY_BASES.has(base)
     && !LEVERAGED_SUFFIXES.some((suffix) => base.endsWith(suffix));
 }
 
-async function fetchBinanceUniverse(): Promise<UniverseItem[]> {
-  const payload = await fetchJson<any[]>("https://data-api.binance.vision/api/v3/ticker/24hr");
+async function fetchBinanceFuturesUniverse(): Promise<UniverseItem[]> {
+  const payload = await fetchJson<any[]>("https://fapi.binance.com/fapi/v1/ticker/24hr");
   return payload
     .filter((row) => isEligibleUsdtPair(String(row.symbol ?? "")))
     .map((row) => ({
@@ -186,7 +182,8 @@ async function fetchBinanceUniverse(): Promise<UniverseItem[]> {
       name: `${String(row.symbol).slice(0, -4)} / USDT`,
       lastPrice: finiteNumber(row.lastPrice) ?? 0,
       priceChangePct: finiteNumber(row.priceChangePercent),
-      volume: finiteNumber(row.volume) ?? 0,
+      // For futures, the selectable threshold is based on 24h quote volume in USDT.
+      volume: finiteNumber(row.quoteVolume) ?? 0,
       quoteVolume: finiteNumber(row.quoteVolume) ?? 0,
     }))
     .filter((item) => item.lastPrice > 0)
@@ -195,11 +192,12 @@ async function fetchBinanceUniverse(): Promise<UniverseItem[]> {
     .map(({ quoteVolume: _quoteVolume, ...item }) => item);
 }
 
-async function fetchBinanceBars(symbol: string, daysToLookback: number): Promise<PriceBar[]> {
-  const url = `https://data-api.binance.vision/api/v3/klines?symbol=${encodeURIComponent(symbol)}&interval=1d&limit=${daysToLookback}`;
+async function fetchBinanceFuturesBars(symbol: string, daysToLookback: number): Promise<PriceBar[]> {
+  const url = `https://fapi.binance.com/fapi/v1/klines?symbol=${encodeURIComponent(symbol)}&interval=1d&limit=${daysToLookback}`;
   const rows = await fetchJson<any[][]>(url);
   return rows
-    .map((row) => ({ close: finiteNumber(row[4]) ?? 0, volume: finiteNumber(row[5]) ?? 0 }))
+    // USDⓈ-M futures kline index 7 is quote-asset volume (USDT), not base volume.
+    .map((row) => ({ close: finiteNumber(row[4]) ?? 0, volume: finiteNumber(row[7]) ?? 0 }))
     .filter((bar) => bar.close > 0)
     .reverse();
 }
@@ -225,12 +223,12 @@ export async function scanMarket(options: MarketScanOptions): Promise<MarketScan
   if (cached && Date.now() - cached.at < CACHE_TTL_MS) return cached.value;
 
   const isStocks = options.market === "stocks";
-  const universe = isStocks ? await fetchNasdaqUniverse() : await fetchBinanceUniverse();
+  const universe = isStocks ? await fetchNasdaqUniverse() : await fetchBinanceFuturesUniverse();
   const candidates = universe.filter((item) => item.lastPrice >= parameters.minPrice && item.lastPrice <= parameters.maxPrice);
   const settled = await mapConcurrent(candidates, 12, async (item): Promise<MarketScanItem | null> => {
     const bars = isStocks
       ? await fetchNasdaqBars(item.symbol, parameters.daysToLookback)
-      : await fetchBinanceBars(item.symbol, parameters.daysToLookback);
+      : await fetchBinanceFuturesBars(item.symbol, parameters.daysToLookback);
     if (bars.length < parameters.daysToLookback) return null;
     const consolidation = calculatePkscreenerConsolidation(
       bars.slice(0, parameters.daysToLookback).map((bar) => bar.close),
@@ -247,7 +245,7 @@ export async function scanMarket(options: MarketScanOptions): Promise<MarketScan
       averageVolume,
       chartUrl: isStocks
         ? `https://www.tradingview.com/chart/?symbol=NASDAQ%3A${encodeURIComponent(item.symbol)}`
-        : `https://www.tradingview.com/chart/?symbol=BINANCE%3A${encodeURIComponent(item.symbol)}`,
+        : `https://www.tradingview.com/chart/?symbol=BINANCE%3A${encodeURIComponent(item.symbol)}.P`,
     };
   });
 
@@ -259,8 +257,8 @@ export async function scanMarket(options: MarketScanOptions): Promise<MarketScan
   const failedCount = settled.filter((entry) => entry.status === "rejected").length;
   const value: MarketScanResult = {
     market: options.market,
-    source: isStocks ? "Nasdaq 官方行情" : "Binance 官方市场数据",
-    universeLabel: isStocks ? "NASDAQ 市值前 100" : "Binance USDT 现货成交额前 100",
+    source: isStocks ? "Nasdaq 官方行情" : "Binance USDⓈ-M 合约行情",
+    universeLabel: isStocks ? "NASDAQ 市值前 100" : "USDⓈ-M USDT 合约成交额前 100",
     universeSize: universe.length,
     scannedCount: settled.length - failedCount,
     failedCount,

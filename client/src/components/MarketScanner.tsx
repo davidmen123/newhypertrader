@@ -14,8 +14,16 @@ type ScannerSettings = {
 
 const DEFAULTS: Record<ScannerMarket, ScannerSettings> = {
   stocks: { daysToLookback: 22, consolidationPercentage: 10, minPrice: 30, maxPrice: 10_000, minVolume: 0 },
-  crypto: { daysToLookback: 22, consolidationPercentage: 10, minPrice: 0, maxPrice: 1_000_000, minVolume: 0 },
+  crypto: { daysToLookback: 22, consolidationPercentage: 10, minPrice: 0, maxPrice: 1_000_000, minVolume: 5_000_000 },
 };
+
+const FUTURES_VOLUME_OPTIONS = [
+  { value: 0, label: "不限制" },
+  { value: 5_000_000, label: "≥ 500 万 U" },
+  { value: 10_000_000, label: "≥ 1,000 万 U" },
+  { value: 30_000_000, label: "≥ 3,000 万 U" },
+  { value: 100_000_000, label: "≥ 1 亿 U" },
+];
 
 function formatNumber(value: number, maximumFractionDigits = 2) {
   return value.toLocaleString("zh-CN", { maximumFractionDigits });
@@ -81,7 +89,7 @@ export default function MarketScanner() {
               {([[
                 "stocks", "NASDAQ 股票",
               ], [
-                "crypto", "Crypto",
+                "crypto", "USDⓈ-M 合约",
               ]] as const).map(([key, label]) => (
                 <button
                   key={key}
@@ -100,7 +108,7 @@ export default function MarketScanner() {
               ))}
             </div>
             <p className="mt-3 max-w-2xl text-muted-foreground/65 leading-relaxed" style={{ fontSize: "0.68rem" }}>
-              按 PKScreener 原版 Consolidation 规则筛选：最近 N 根日线收盘价区间不超过设定百分比。这里只识别盘整，不判断底部、突破方向或买卖时点。
+              按 PKScreener 原版 Consolidation 规则筛选：最近 N 根日线收盘价区间不超过设定百分比。合约使用 24 小时 USDT 成交额过滤。这里只识别盘整，不判断底部、突破方向或买卖时点。
             </p>
           </div>
           <div className="flex items-center gap-2 text-muted-foreground/60" style={{ fontSize: "0.64rem" }}>
@@ -114,7 +122,21 @@ export default function MarketScanner() {
           <NumericField label="最大箱体宽度 (%)" value={draft.consolidationPercentage} min={0.1} max={50} step={0.1} onChange={(value) => updateDraft("consolidationPercentage", value)} />
           <NumericField label="最低价格" value={draft.minPrice} min={0} step={0.01} onChange={(value) => updateDraft("minPrice", value)} />
           <NumericField label="最高价格" value={draft.maxPrice} min={0.01} step={1} onChange={(value) => updateDraft("maxPrice", value)} />
-          <NumericField label="最低当日成交量" value={draft.minVolume} min={0} step={1} onChange={(value) => updateDraft("minVolume", value)} />
+          {market === "stocks" ? (
+            <NumericField label="最低当日成交量（股）" value={draft.minVolume} min={0} step={1} onChange={(value) => updateDraft("minVolume", value)} />
+          ) : (
+            <label className="min-w-[11rem] flex-1 space-y-1.5">
+              <span className="block text-muted-foreground tracking-widest" style={{ fontSize: "0.59rem" }}>最低24H成交额（USDT）</span>
+              <select
+                value={draft.minVolume}
+                onChange={(event) => updateDraft("minVolume", Number(event.target.value))}
+                className="w-full rounded-lg bg-transparent px-3 py-2 outline-none"
+                style={{ border: "1px solid var(--panel-border)", color: "var(--foreground)", fontSize: "0.72rem" }}
+              >
+                {FUTURES_VOLUME_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </label>
+          )}
           <button
             type="button"
             onClick={runScan}
@@ -138,7 +160,7 @@ export default function MarketScanner() {
 
       {isLoading ? (
         <div className="glass-card px-8 py-20 text-center text-sm text-muted-foreground animate-pulse">
-          正在读取并扫描 {market === "stocks" ? "NASDAQ" : "Binance USDT"} 日线数据…
+          正在读取并扫描 {market === "stocks" ? "NASDAQ" : "Binance USDⓈ-M 合约"} 日线数据…
         </div>
       ) : error ? (
         <div className="glass-card px-8 py-16 text-center">
@@ -178,7 +200,7 @@ export default function MarketScanner() {
                     <th className="px-4 py-3 text-right font-normal">箱底</th>
                     <th className="px-4 py-3 text-right font-normal">箱顶</th>
                     <th className="px-4 py-3 text-right font-normal">当日涨跌</th>
-                    <th className="px-5 py-3 text-right font-normal">平均成交量</th>
+                    <th className="px-5 py-3 text-right font-normal">{market === "stocks" ? "平均成交量" : "平均成交额（U）"}</th>
                   </tr>
                 </thead>
                 <tbody>
