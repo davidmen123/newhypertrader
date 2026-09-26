@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculatePkscreenerConsolidation } from "./marketScanner";
+import { calculateLongTermMetrics, calculatePkscreenerConsolidation } from "./marketScanner";
 
 describe("calculatePkscreenerConsolidation", () => {
   it("matches PKScreener's five-percent example", () => {
@@ -26,5 +26,8 @@ describe("calculatePkscreenerConsolidation", () => {
   it("ignores invalid source values before calculating the range", () => {
     expect(calculatePkscreenerConsolidation([100, Number.NaN, 95], 10)?.rangePct).toBe(5);
   });
-});
 
+  it("calculates bottom-mode drawdown from the newest close against the long-term high", () => {
+    expect(calculateLongTermMetrics([40, 45, 100, 60])).toEqual({ drawdownPct: 60, positionPct: 0 });
+  });
+});

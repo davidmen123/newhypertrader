@@ -6,7 +6,8 @@ export const marketScannerRouter = router({
   scan: ownerProcedure
     .input(z.object({
       market: z.enum(["stocks", "crypto"]),
-      daysToLookback: z.number().int().min(5).max(120).default(22),
+      mode: z.enum(["consolidation", "bottom"]).default("consolidation"),
+      daysToLookback: z.number().int().min(5).max(250).default(22),
       consolidationPercentage: z.number().min(0.1).max(50).default(10),
       minPrice: z.number().min(0),
       maxPrice: z.number().positive(),
@@ -14,4 +15,3 @@ export const marketScannerRouter = router({
     }))
     .query(({ input }) => scanMarket(input)),
 });
-

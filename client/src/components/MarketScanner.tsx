@@ -3,6 +3,7 @@ import { ExternalLink, Info, RefreshCw } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
 type ScannerMarket = "stocks" | "crypto";
+type ScannerMode = "consolidation" | "bottom";
 
 type ScannerSettings = {
   daysToLookback: number;
@@ -12,9 +13,15 @@ type ScannerSettings = {
   minVolume: number;
 };
 
-const DEFAULTS: Record<ScannerMarket, ScannerSettings> = {
-  stocks: { daysToLookback: 22, consolidationPercentage: 10, minPrice: 30, maxPrice: 10_000, minVolume: 0 },
-  crypto: { daysToLookback: 22, consolidationPercentage: 10, minPrice: 0, maxPrice: 1_000_000, minVolume: 5_000_000 },
+const DEFAULTS: Record<ScannerMarket, Record<ScannerMode, ScannerSettings>> = {
+  stocks: {
+    consolidation: { daysToLookback: 22, consolidationPercentage: 10, minPrice: 30, maxPrice: 10_000, minVolume: 0 },
+    bottom: { daysToLookback: 90, consolidationPercentage: 30, minPrice: 30, maxPrice: 10_000, minVolume: 0 },
+  },
+  crypto: {
+    consolidation: { daysToLookback: 22, consolidationPercentage: 10, minPrice: 0, maxPrice: 1_000_000, minVolume: 5_000_000 },
+    bottom: { daysToLookback: 90, consolidationPercentage: 30, minPrice: 0, maxPrice: 1_000_000, minVolume: 5_000_000 },
+  },
 };
 
 const FUTURES_VOLUME_OPTIONS = [
@@ -62,10 +69,11 @@ function NumericField({ label, value, min = 0, max, step = 1, onChange }: {
 
 export default function MarketScanner() {
   const [market, setMarket] = useState<ScannerMarket>("stocks");
-  const [drafts, setDrafts] = useState<Record<ScannerMarket, ScannerSettings>>(DEFAULTS);
-  const [applied, setApplied] = useState<Record<ScannerMarket, ScannerSettings>>(DEFAULTS);
-  const draft = drafts[market];
-  const queryInput = useMemo(() => ({ market, ...applied[market] }), [applied, market]);
+  const [mode, setMode] = useState<ScannerMode>("consolidation");
+  const [drafts, setDrafts] = useState(DEFAULTS);
+  const [applied, setApplied] = useState(DEFAULTS);
+  const draft = drafts[market][mode];
+  const queryInput = useMemo(() => ({ market, mode, ...applied[market][mode] }), [applied, market, mode]);
   const { data, isLoading, isFetching, error, refetch } = trpc.marketScanner.scan.useQuery(queryInput, {
     staleTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -73,11 +81,20 @@ export default function MarketScanner() {
   });
 
   const updateDraft = (key: keyof ScannerSettings, value: number) => {
-    setDrafts((current) => ({ ...current, [market]: { ...current[market], [key]: Number.isFinite(value) ? value : 0 } }));
+    setDrafts((current) => ({
+      ...current,
+      [market]: {
+        ...current[market],
+        [mode]: { ...current[market][mode], [key]: Number.isFinite(value) ? value : 0 },
+      },
+    }));
   };
 
   const runScan = () => {
-    setApplied((current) => ({ ...current, [market]: { ...drafts[market] } }));
+    setApplied((current) => ({
+      ...current,
+      [market]: { ...current[market], [mode]: { ...drafts[market][mode] } },
+    }));
   };
 
   return (
@@ -107,18 +124,43 @@ export default function MarketScanner() {
                 </button>
               ))}
             </div>
+            <div className="mt-3 flex flex-wrap gap-1 rounded-lg p-1" style={{ background: "var(--surface-subtle)", border: "1px solid var(--panel-border)" }}>
+              {([[
+                "consolidation", "普通模式",
+              ], [
+                "bottom", "底部箱体模式",
+              ]] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setMode(key)}
+                  className="rounded-md px-4 py-1.5 transition-colors"
+                  style={{
+                    color: mode === key ? "var(--foreground)" : "var(--text-soft)",
+                    background: mode === key ? "var(--background)" : "transparent",
+                    boxShadow: mode === key ? "0 2px 10px rgb(0 0 0 / 12%)" : "none",
+                    fontSize: "0.68rem",
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <p className="mt-3 max-w-2xl text-muted-foreground/65 leading-relaxed" style={{ fontSize: "0.68rem" }}>
-              按 PKScreener 原版 Consolidation 规则筛选：最近 N 根日线收盘价区间不超过设定百分比。合约使用 24 小时 USDT 成交额过滤。这里只识别盘整，不判断底部、突破方向或买卖时点。
+              {mode === "bottom"
+                ? "要求当前价格相对过去250日最高收盘价至少回撤60%，并在最近设定天数内形成箱体；箱体宽度和成交额仍可调整。"
+                : "按 PKScreener 原版 Consolidation 规则筛选：最近 N 根日线收盘价区间不超过设定百分比。这里只识别盘整，不判断底部、突破方向或买卖时点。"}
+              {" 合约使用 24 小时 USDT 成交额过滤。"}
             </p>
           </div>
           <div className="flex items-center gap-2 text-muted-foreground/60" style={{ fontSize: "0.64rem" }}>
             <Info size={12} />
-            默认参数：1D · 22 日 · 10%
+            {mode === "bottom" ? "底部模式：90 日 · 30% · 回撤≥60%" : "普通模式：1D · 22 日 · 10%"}
           </div>
         </div>
 
         <div className="mt-5 flex flex-wrap items-end gap-3">
-          <NumericField label="回看天数" value={draft.daysToLookback} min={5} max={120} onChange={(value) => updateDraft("daysToLookback", value)} />
+          <NumericField label="回看天数" value={draft.daysToLookback} min={5} max={250} onChange={(value) => updateDraft("daysToLookback", value)} />
           <NumericField label="最大箱体宽度 (%)" value={draft.consolidationPercentage} min={0.1} max={50} step={0.1} onChange={(value) => updateDraft("consolidationPercentage", value)} />
           <NumericField label="最低价格" value={draft.minPrice} min={0} step={0.01} onChange={(value) => updateDraft("minPrice", value)} />
           <NumericField label="最高价格" value={draft.maxPrice} min={0.01} step={1} onChange={(value) => updateDraft("maxPrice", value)} />
@@ -186,7 +228,7 @@ export default function MarketScanner() {
 
           {data.results.length === 0 ? (
             <div className="px-6 py-20 text-center text-sm text-muted-foreground">
-              当前参数下没有符合盘整条件的标的
+              {mode === "bottom" ? "当前参数下没有符合底部箱体条件的标的" : "当前参数下没有符合盘整条件的标的"}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -197,6 +239,10 @@ export default function MarketScanner() {
                     <th className="px-4 py-3 font-normal">标的</th>
                     <th className="px-4 py-3 text-right font-normal">最新价</th>
                     <th className="px-4 py-3 text-right font-normal">箱体宽度</th>
+                    {mode === "bottom" && <>
+                      <th className="px-4 py-3 text-right font-normal">距250日高点回撤</th>
+                      <th className="px-4 py-3 text-right font-normal">250日区间位置</th>
+                    </>}
                     <th className="px-4 py-3 text-right font-normal">箱底</th>
                     <th className="px-4 py-3 text-right font-normal">箱顶</th>
                     <th className="px-4 py-3 text-right font-normal">当日涨跌</th>
@@ -218,6 +264,10 @@ export default function MarketScanner() {
                       </td>
                       <td className="px-4 py-3 text-right num-display" style={{ fontSize: "0.72rem" }}>{formatPrice(item.lastPrice)}</td>
                       <td className="px-4 py-3 text-right num-display" style={{ color: "oklch(68% 0.15 145)", fontSize: "0.72rem" }}>{item.rangePct.toFixed(1)}%</td>
+                      {mode === "bottom" && <>
+                        <td className="px-4 py-3 text-right num-display" style={{ color: "oklch(68% 0.15 145)", fontSize: "0.72rem" }}>{item.drawdownPct?.toFixed(1)}%</td>
+                        <td className="px-4 py-3 text-right num-display" style={{ fontSize: "0.72rem" }}>{item.longTermPositionPct?.toFixed(1)}%</td>
+                      </>}
                       <td className="px-4 py-3 text-right num-display" style={{ fontSize: "0.72rem" }}>{formatPrice(item.lowClose)}</td>
                       <td className="px-4 py-3 text-right num-display" style={{ fontSize: "0.72rem" }}>{formatPrice(item.highClose)}</td>
                       <td className="px-4 py-3 text-right num-display" style={{ color: (item.priceChangePct ?? 0) >= 0 ? "oklch(68% 0.15 145)" : "oklch(62% 0.15 25)", fontSize: "0.72rem" }}>
@@ -232,7 +282,7 @@ export default function MarketScanner() {
           )}
 
           <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-muted-foreground/60" style={{ fontSize: "0.6rem" }}>
-            <span>按箱体宽度从窄到宽排序 · {data.failedCount > 0 ? `${data.failedCount} 个标的读取失败` : "全部读取成功"}</span>
+            <span>{mode === "bottom" ? "按回撤幅度从大到小排序" : "按箱体宽度从窄到宽排序"} · {data.failedCount > 0 ? `${data.failedCount} 个标的读取失败` : "全部读取成功"}</span>
             <span>{new Date(data.updatedAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}</span>
           </div>
         </div>

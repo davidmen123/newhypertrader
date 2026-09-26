@@ -1,5 +1,7 @@
 const PKSCREENER_DEFAULT_LOOKBACK = 22;
 const PKSCREENER_DEFAULT_CONSOLIDATION_PCT = 10;
+const BOTTOM_MODE_LOOKBACK = 250;
+const BOTTOM_MODE_MIN_DRAWDOWN_PCT = 60;
 const SCANNER_UNIVERSE_LIMIT = 100;
 const CACHE_TTL_MS = 30 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 12_000;
@@ -9,9 +11,11 @@ const USER_AGENT =
   "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 export type ScannerMarket = "stocks" | "crypto";
+export type ScannerMode = "consolidation" | "bottom";
 
 export type MarketScanOptions = {
   market: ScannerMarket;
+  mode?: ScannerMode;
   daysToLookback?: number;
   consolidationPercentage?: number;
   minPrice?: number;
@@ -33,6 +37,8 @@ export type MarketScanItem = ConsolidationMetrics & {
   volume: number;
   averageVolume: number;
   priceChangePct: number | null;
+  drawdownPct: number | null;
+  longTermPositionPct: number | null;
   chartUrl: string;
 };
 
@@ -94,6 +100,18 @@ export function calculatePkscreenerConsolidation(
     rangePct,
     highClose,
     lowClose,
+  };
+}
+
+export function calculateLongTermMetrics(closes: number[]) {
+  const values = closes.map(Number).filter((value) => Number.isFinite(value) && value > 0);
+  if (values.length === 0) return null;
+  const currentClose = values[0];
+  const highClose = Math.max(...values);
+  const lowClose = Math.min(...values);
+  return {
+    drawdownPct: round(((highClose - currentClose) / highClose) * 100, 1),
+    positionPct: highClose === lowClose ? 0 : round(((currentClose - lowClose) / (highClose - lowClose)) * 100, 1),
   };
 }
 
@@ -207,7 +225,8 @@ function normalizeOptions(options: MarketScanOptions): Required<Omit<MarketScanO
     ? { minPrice: 30, maxPrice: 10_000 }
     : { minPrice: 0, maxPrice: 1_000_000 };
   return {
-    daysToLookback: Math.min(120, Math.max(5, Math.trunc(options.daysToLookback ?? PKSCREENER_DEFAULT_LOOKBACK))),
+    mode: options.mode ?? "consolidation",
+    daysToLookback: Math.min(250, Math.max(5, Math.trunc(options.daysToLookback ?? PKSCREENER_DEFAULT_LOOKBACK))),
     consolidationPercentage: Math.min(50, Math.max(0.1, options.consolidationPercentage ?? PKSCREENER_DEFAULT_CONSOLIDATION_PCT)),
     minPrice: Math.max(0, options.minPrice ?? defaults.minPrice),
     maxPrice: Math.max(0, options.maxPrice ?? defaults.maxPrice),
@@ -225,16 +244,22 @@ export async function scanMarket(options: MarketScanOptions): Promise<MarketScan
   const isStocks = options.market === "stocks";
   const universe = isStocks ? await fetchNasdaqUniverse() : await fetchBinanceFuturesUniverse();
   const candidates = universe.filter((item) => item.lastPrice >= parameters.minPrice && item.lastPrice <= parameters.maxPrice);
+  const historyDays = Math.max(parameters.daysToLookback, parameters.mode === "bottom" ? BOTTOM_MODE_LOOKBACK : 0);
   const settled = await mapConcurrent(candidates, 12, async (item): Promise<MarketScanItem | null> => {
     const bars = isStocks
-      ? await fetchNasdaqBars(item.symbol, parameters.daysToLookback)
-      : await fetchBinanceFuturesBars(item.symbol, parameters.daysToLookback);
+      ? await fetchNasdaqBars(item.symbol, historyDays)
+      : await fetchBinanceFuturesBars(item.symbol, historyDays);
     if (bars.length < parameters.daysToLookback) return null;
+    if (parameters.mode === "bottom" && bars.length < BOTTOM_MODE_LOOKBACK) return null;
     const consolidation = calculatePkscreenerConsolidation(
       bars.slice(0, parameters.daysToLookback).map((bar) => bar.close),
       parameters.consolidationPercentage,
     );
     if (!consolidation?.qualified) return null;
+    const longTermBars = bars.slice(0, BOTTOM_MODE_LOOKBACK);
+    const longTermMetrics = calculateLongTermMetrics(longTermBars.map((bar) => bar.close));
+    if (!longTermMetrics) return null;
+    if (parameters.mode === "bottom" && longTermMetrics.drawdownPct < BOTTOM_MODE_MIN_DRAWDOWN_PCT) return null;
     const volume = item.volume || bars[0]?.volume || 0;
     if (volume < parameters.minVolume) return null;
     const averageVolume = bars.reduce((sum, bar) => sum + bar.volume, 0) / bars.length;
@@ -243,6 +268,8 @@ export async function scanMarket(options: MarketScanOptions): Promise<MarketScan
       ...consolidation,
       volume,
       averageVolume,
+      drawdownPct: parameters.mode === "bottom" ? longTermMetrics.drawdownPct : null,
+      longTermPositionPct: parameters.mode === "bottom" ? longTermMetrics.positionPct : null,
       chartUrl: isStocks
         ? `https://www.tradingview.com/chart/?symbol=NASDAQ%3A${encodeURIComponent(item.symbol)}`
         : `https://www.tradingview.com/chart/?symbol=BINANCE%3A${encodeURIComponent(item.symbol)}.P`,
@@ -253,7 +280,9 @@ export async function scanMarket(options: MarketScanOptions): Promise<MarketScan
     .filter((entry): entry is PromiseFulfilledResult<MarketScanItem | null> => entry.status === "fulfilled")
     .map((entry) => entry.value)
     .filter((item): item is MarketScanItem => item != null)
-    .sort((a, b) => a.rangePct - b.rangePct || b.averageVolume - a.averageVolume);
+    .sort((a, b) => parameters.mode === "bottom"
+      ? (b.drawdownPct ?? 0) - (a.drawdownPct ?? 0) || a.rangePct - b.rangePct
+      : a.rangePct - b.rangePct || b.averageVolume - a.averageVolume);
   const failedCount = settled.filter((entry) => entry.status === "rejected").length;
   const value: MarketScanResult = {
     market: options.market,
