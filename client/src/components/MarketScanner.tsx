@@ -150,7 +150,7 @@ export default function MarketScanner() {
               {mode === "bottom"
                 ? "要求当前价格相对过去250日最高收盘价至少回撤60%，并在最近设定天数内形成箱体；箱体宽度和成交额仍可调整。"
                 : "按 PKScreener 原版 Consolidation 规则筛选：最近 N 根日线收盘价区间不超过设定百分比。这里只识别盘整，不判断底部、突破方向或买卖时点。"}
-              {" 合约使用 24 小时 USDT 成交额过滤。"}
+              {" 合约会扫描全部达到所选 24 小时 USDT 成交额门槛的标的。"}
             </p>
           </div>
           <div className="flex items-center gap-2 text-muted-foreground/60" style={{ fontSize: "0.64rem" }}>
@@ -202,7 +202,7 @@ export default function MarketScanner() {
 
       {isLoading ? (
         <div className="glass-card px-8 py-20 text-center text-sm text-muted-foreground animate-pulse">
-          正在读取并扫描 {market === "stocks" ? "NASDAQ" : "Binance USDⓈ-M 合约"} 日线数据…
+          正在读取并扫描 {market === "stocks" ? "NASDAQ" : "全部符合成交额门槛的 Binance USDⓈ-M 合约"} 日线数据…
         </div>
       ) : error ? (
         <div className="glass-card px-8 py-16 text-center">
@@ -212,9 +212,10 @@ export default function MarketScanner() {
         </div>
       ) : data ? (
         <div className="glass-card overflow-hidden">
-          <div className="grid grid-cols-2 gap-px border-b sm:grid-cols-4" style={{ borderColor: "var(--panel-border)", background: "var(--panel-border)" }}>
+          <div className="grid grid-cols-2 gap-px border-b sm:grid-cols-5" style={{ borderColor: "var(--panel-border)", background: "var(--panel-border)" }}>
             {[
               ["扫描范围", data.universeLabel],
+              [market === "crypto" ? "成交额达标" : "价格达标", `${data.candidateCount} / ${data.universeSize} 个`],
               ["参与扫描", `${data.scannedCount} 个`],
               ["符合条件", `${data.matchedCount} 个`],
               ["数据源", data.source],

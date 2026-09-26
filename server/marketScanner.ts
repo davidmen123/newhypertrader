@@ -2,7 +2,8 @@ const PKSCREENER_DEFAULT_LOOKBACK = 22;
 const PKSCREENER_DEFAULT_CONSOLIDATION_PCT = 10;
 const BOTTOM_MODE_LOOKBACK = 250;
 const BOTTOM_MODE_MIN_DRAWDOWN_PCT = 60;
-const SCANNER_UNIVERSE_LIMIT = 100;
+const NASDAQ_UNIVERSE_LIMIT = 100;
+const CRYPTO_SCAN_CONCURRENCY = 16;
 const CACHE_TTL_MS = 30 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 12_000;
 
@@ -47,6 +48,7 @@ export type MarketScanResult = {
   source: string;
   universeLabel: string;
   universeSize: number;
+  candidateCount: number;
   scannedCount: number;
   failedCount: number;
   matchedCount: number;
@@ -146,7 +148,7 @@ function isoDate(time: number) {
 }
 
 async function fetchNasdaqUniverse(): Promise<UniverseItem[]> {
-  const url = `https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=${SCANNER_UNIVERSE_LIMIT}&offset=0&exchange=NASDAQ`;
+  const url = `https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=${NASDAQ_UNIVERSE_LIMIT}&offset=0&exchange=NASDAQ`;
   const payload = await fetchJson<any>(url, {
     Origin: "https://www.nasdaq.com",
     Referer: "https://www.nasdaq.com/",
@@ -202,12 +204,9 @@ async function fetchBinanceFuturesUniverse(): Promise<UniverseItem[]> {
       priceChangePct: finiteNumber(row.priceChangePercent),
       // For futures, the selectable threshold is based on 24h quote volume in USDT.
       volume: finiteNumber(row.quoteVolume) ?? 0,
-      quoteVolume: finiteNumber(row.quoteVolume) ?? 0,
     }))
     .filter((item) => item.lastPrice > 0)
-    .sort((a, b) => b.quoteVolume - a.quoteVolume)
-    .slice(0, SCANNER_UNIVERSE_LIMIT)
-    .map(({ quoteVolume: _quoteVolume, ...item }) => item);
+    .sort((a, b) => b.volume - a.volume);
 }
 
 async function fetchBinanceFuturesBars(symbol: string, daysToLookback: number): Promise<PriceBar[]> {
@@ -243,9 +242,14 @@ export async function scanMarket(options: MarketScanOptions): Promise<MarketScan
 
   const isStocks = options.market === "stocks";
   const universe = isStocks ? await fetchNasdaqUniverse() : await fetchBinanceFuturesUniverse();
-  const candidates = universe.filter((item) => item.lastPrice >= parameters.minPrice && item.lastPrice <= parameters.maxPrice);
+  // For futures, the selected 24h USDT turnover threshold defines the complete
+  // scan universe. Do this before requesting daily candles so every qualified
+  // contract is scanned rather than an arbitrary top-N subset.
+  const candidates = universe.filter((item) => item.lastPrice >= parameters.minPrice
+    && item.lastPrice <= parameters.maxPrice
+    && (isStocks || item.volume >= parameters.minVolume));
   const historyDays = Math.max(parameters.daysToLookback, parameters.mode === "bottom" ? BOTTOM_MODE_LOOKBACK : 0);
-  const settled = await mapConcurrent(candidates, 12, async (item): Promise<MarketScanItem | null> => {
+  const settled = await mapConcurrent(candidates, isStocks ? 12 : CRYPTO_SCAN_CONCURRENCY, async (item): Promise<MarketScanItem | null> => {
     const bars = isStocks
       ? await fetchNasdaqBars(item.symbol, historyDays)
       : await fetchBinanceFuturesBars(item.symbol, historyDays);
@@ -287,8 +291,9 @@ export async function scanMarket(options: MarketScanOptions): Promise<MarketScan
   const value: MarketScanResult = {
     market: options.market,
     source: isStocks ? "Nasdaq 官方行情" : "Binance USDⓈ-M 合约行情",
-    universeLabel: isStocks ? "NASDAQ 市值前 100" : "USDⓈ-M USDT 合约成交额前 100",
+    universeLabel: isStocks ? "NASDAQ 市值前 100" : "全部 USDⓈ-M USDT 合约",
     universeSize: universe.length,
+    candidateCount: candidates.length,
     scannedCount: settled.length - failedCount,
     failedCount,
     matchedCount: results.length,
