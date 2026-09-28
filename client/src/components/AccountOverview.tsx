@@ -19,7 +19,7 @@ function MetricTile({
   label: string;
   value: string;
   unit?: string;
-  sub?: string;
+  sub?: ReactNode;
   tone?: "neutral" | "profit" | "loss" | "warning";
   valueFont?: "mono" | "text";
   tooltip?: string;
@@ -244,6 +244,8 @@ export default function AccountOverview({ accountId }: { accountId?: string } = 
   const plRatio = metricsData?.plRatio ?? null;
   const expectancyUsdc = metricsData?.expectancyUsdc ?? null;
   const profitFactor = metricsData?.profitFactor ?? null;
+  const maxSingleProfitUsdc = metricsData?.maxSingleProfitUsdc ?? null;
+  const maxSingleLossUsdc = metricsData?.maxSingleLossUsdc ?? null;
   const maxConsecutiveLosses = metricsData?.maxConsecutiveLosses ?? null;
   const maxConsecutiveLossUsdc = metricsData?.maxConsecutiveLossUsdc ?? null;
   const totalTrades = metricsData?.totalTrades ?? null;
@@ -453,10 +455,24 @@ export default function AccountOverview({ accountId }: { accountId?: string } = 
             <MetricTile
               label={t("最大回撤", "Max Drawdown")}
               value={data.maxDrawdownPct != null ? `${data.maxDrawdownPct.toFixed(2)}%` : "--"}
+              sub={
+                metricsData ? (
+                  <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                    <span>{t("最大单笔盈利/亏损：", "Best / worst trade:")}</span>
+                    <span className="num-display" style={{ color: "oklch(68% 0.15 145)" }}>
+                      {fmtSign(maxSingleProfitUsdc, 0)}
+                    </span>
+                    <span>/</span>
+                    <span className="num-display" style={{ color: "oklch(62% 0.15 25)" }}>
+                      {fmtSign(maxSingleLossUsdc, 0)}
+                    </span>
+                  </span>
+                ) : undefined
+              }
               tone={data.maxDrawdownUsdc != null && data.maxDrawdownUsdc < 0 ? "loss" : "neutral"}
               tooltip={t(
-                "基于累计 PnL 构造的现金流调整后策略净值，从历史峰值到其后谷值的最大跌幅，按全周期计算；充值和出金不直接计入回撤。与最大连续亏损（按已平仓交易统计）互为对照。",
-                "Largest peak-to-trough decline of the cash-flow-adjusted strategy equity reconstructed from cumulative PnL over the full history. Deposits and withdrawals do not directly count as drawdown. The curve-based counterpart to max consecutive losses (closed trades only)."
+                "基于累计 PnL 构造的现金流调整后策略净值，从历史峰值到其后谷值的最大跌幅，按全周期计算；充值和出金不直接计入回撤。下方为完整平仓交易中最高和最低的已实现盈亏，使用与交易表现一致的统计口径。",
+                "Largest peak-to-trough decline of the cash-flow-adjusted strategy equity reconstructed from cumulative PnL over the full history. Deposits and withdrawals do not directly count as drawdown. The line below shows the best and worst realized PnL among completed trades, using the same basis as trade performance."
               )}
             />
             <MetricTile

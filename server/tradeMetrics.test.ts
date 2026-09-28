@@ -83,6 +83,19 @@ describe("calculateRoundTripTradeMetrics – max consecutive losses", () => {
   });
 });
 
+describe("calculateRoundTripTradeMetrics – largest single-trade PnL", () => {
+  it("returns the best and worst completed round trip", () => {
+    const result = metricsFor([55, -72, 128, -19]);
+    expect(result.maxSingleProfitUsdc).toBe(128);
+    expect(result.maxSingleLossUsdc).toBe(-72);
+  });
+
+  it("keeps a missing winning or losing side empty instead of treating it as zero", () => {
+    expect(metricsFor([50, 70]).maxSingleLossUsdc).toBeNull();
+    expect(metricsFor([-50, -70]).maxSingleProfitUsdc).toBeNull();
+  });
+});
+
 describe("calculateRoundTripTradeMetrics – fill ordering", () => {
   // One round trip closed by two partial fills sharing a timestamp. `userFills`
   // hands these back newest-first, and a stable sort would keep that inverted

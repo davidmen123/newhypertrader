@@ -1350,6 +1350,8 @@ export function calculateRoundTripTradeMetrics(fills: HyperliquidFill[], complet
   const grossLoss = Math.abs(completedPnls.reduce((sum, pnl) => sum + Math.min(0, pnl), 0));
   const avgWin = winningTrades > 0 ? grossWin / winningTrades : 0;
   const avgLoss = losingTrades > 0 ? grossLoss / losingTrades : 0;
+  const maxSingleProfitUsdc = winningTrades > 0 ? Math.max(...completedPnls.filter((pnl) => pnl > 0)) : null;
+  const maxSingleLossUsdc = losingTrades > 0 ? Math.min(...completedPnls.filter((pnl) => pnl < 0)) : null;
   const expectancyUsdc = completedPnls.length > 0
     ? completedPnls.reduce((sum, pnl) => sum + pnl, 0) / completedPnls.length
     : null;
@@ -1388,6 +1390,8 @@ export function calculateRoundTripTradeMetrics(fills: HyperliquidFill[], complet
     winRate: completedPnls.length > 0 ? (winningTrades / completedPnls.length) * 100 : null,
     plRatio: avgLoss > 0 ? avgWin / avgLoss : null,
     profitFactor: grossLoss > 0 ? grossWin / grossLoss : grossWin > 0 ? Infinity : null,
+    maxSingleProfitUsdc,
+    maxSingleLossUsdc,
     maxConsecutiveLosses: completedPnls.length > 0 ? maxConsecutiveLosses : null,
     maxConsecutiveLossUsdc: completedPnls.length > 0 ? maxConsecutiveLossUsdc : null,
     expectancyUsdc,
